@@ -1,37 +1,93 @@
-import { describe, expect, it } from 'vitest';
-import { parseEnv } from './env';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { parseEnv, requireEnv, resetEnvCache } from './env';
 
 const valid = {
   APP_URL: 'http://localhost:3000',
-  MONGODB_URI: 'mongodb+srv://user:hunter2@cluster0.example.mongodb.net',
+  MONGODB_URI: 'mongodb+srv://cluster0.example.mongodb.net',
   MONGODB_DB_NAME: 'make_marriage_dev',
 };
 
 describe('parseEnv', () => {
-  it('accepts a valid environment and applies defaults', () => {
-    expect(parseEnv(valid)).toMatchObject({
+  it('boots with only the required app and database variables', () => {
+    const env = parseEnv(valid);
+    expect(env).toMatchObject({
       ...valid,
       NODE_ENV: 'development',
       MONGODB_MAX_POOL_SIZE: 5,
       LOG_LEVEL: 'info',
+      EMAIL_DAILY_LIMIT: 100,
     });
+    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.R2_BUCKET).toBeUndefined();
+    expect(env.CRON_SECRET).toBeUndefined();
+    expect(env.GOOGLE_PLACES_API_KEY).toBeUndefined();
+  });
+
+  it('treats empty optional variables (KEY= from .env.example) as not set', () => {
+    const env = parseEnv({ ...valid, RESEND_API_KEY: '', R2_BUCKET: '', CRON_SECRET: '' });
+    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.R2_BUCKET).toBeUndefined();
+    expect(env.CRON_SECRET).toBeUndefined();
+  });
+
+  it('validates optional variables when they are set', () => {
+    expect(() => parseEnv({ ...valid, CRON_SECRET: 'too-short-secret-value' })).toThrow(
+      /CRON_SECRET/,
+    );
+    expect(() => parseEnv({ ...valid, EMAIL_FROM: 'not an address' })).toThrow(/EMAIL_FROM/);
+    expect(() => parseEnv({ ...valid, R2_BUCKET: 'Bad_Bucket' })).toThrow(/R2_BUCKET/);
+    expect(parseEnv({ ...valid, EMAIL_FROM: 'Wedding <hello@example.com>' }).EMAIL_FROM).toBe(
+      'Wedding <hello@example.com>',
+    );
   });
 
   it('names every missing or invalid variable without printing values', () => {
     let message = '';
     try {
-      parseEnv({ ...valid, MONGODB_URI: undefined, APP_URL: 'not a url hunter2' });
+      parseEnv({ ...valid, MONGODB_URI: undefined, APP_URL: 'not a url sekrit42' });
     } catch (error) {
       message = (error as Error).message;
     }
     expect(message).toContain('MONGODB_URI');
     expect(message).toContain('APP_URL');
-    expect(message).not.toContain('hunter2');
+    expect(message).not.toContain('sekrit42');
   });
 
   it('rejects a non-MongoDB connection string', () => {
     expect(() => parseEnv({ ...valid, MONGODB_URI: 'postgres://localhost' })).toThrow(
       /MONGODB_URI/,
     );
+  });
+});
+
+describe('requireEnv', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetEnvCache();
+  });
+
+  function stubEnv(values: Record<string, string>) {
+    for (const [key, value] of Object.entries({ ...valid, ...values })) vi.stubEnv(key, value);
+    resetEnvCache();
+  }
+
+  it('returns the requested variables when set', () => {
+    stubEnv({ RESEND_API_KEY: 're_test_key', EMAIL_FROM: 'hello@example.com' });
+    expect(requireEnv('RESEND_API_KEY', 'EMAIL_FROM')).toEqual({
+      RESEND_API_KEY: 're_test_key',
+      EMAIL_FROM: 'hello@example.com',
+    });
+  });
+
+  it('names the missing variables and never prints values', () => {
+    stubEnv({ RESEND_API_KEY: 're_secret_value', R2_BUCKET: '' });
+    expect(() => requireEnv('RESEND_API_KEY', 'EMAIL_FROM', 'R2_BUCKET')).toThrow(
+      'EMAIL_FROM, R2_BUCKET are required for this feature but not set. See .env.example.',
+    );
+    try {
+      requireEnv('EMAIL_FROM', 'RESEND_API_KEY');
+    } catch (error) {
+      expect((error as Error).message).not.toContain('re_secret_value');
+    }
   });
 });
