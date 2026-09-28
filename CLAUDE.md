@@ -8,7 +8,7 @@ The product name is not final. Keep it in one config value (`APP_NAME`) and neve
 ## Source of truth
 Read the relevant doc before planning any feature:
 - `docs/prd.md`: features, scope, priorities
-- `docs/system-architecture.md`: architecture, modules, auth, security, jobs, storage
+- `docs/system-architecture.md`: architecture, modules, file structure (§4.5–4.6), auth, security, jobs, storage, design system (§18)
 - `docs/database-design.md`: collections, fields, indexes, queries, cascades
 - `docs/api-spec.md`: endpoints, request and response shapes, error codes
 
@@ -25,14 +25,15 @@ If the code needs to differ from a doc, stop and ask. When a decision changes, u
 - Hosting on Vercel, region Mumbai
 
 ## Architecture rules
-1. Modular monolith. Code lives in `src/modules/<module>/` as `<module>.routes.ts`, `.service.ts`, `.repository.ts`, `.schemas.ts`, `.types.ts`, `.indexes.ts`, and a public `index.ts`. Files in `src/app/api/**/route.ts` only re-export handlers from a module.
+1. Modular monolith, laid out as in architecture §4.5. Server code lives in `src/modules/<module>/` as `<module>.handlers.ts`, `.service.ts`, `.repository.ts`, `.schemas.ts`, `.types.ts`, `.indexes.ts`, and a public `index.ts`. `src/app/` is routing only: pages render components from `src/features/`, and `src/app/api/**/route.ts` files only re-export module handlers. Ask before adding a new top-level folder.
 2. Route handlers stay thin: validate with Zod, resolve auth context, call one service function, return the response envelope.
 3. Business rules and permission checks live in services.
 4. Only repositories touch MongoDB. Every tenant repository function takes `weddingId` first and always filters by it, including updates and deletes.
-5. Modules call each other only through their public `index.ts` (server-only), never another module's repository. The one other importable file is `<module>.schemas.ts`: client-safe Zod schemas shared with forms, which must never import server code.
-6. The browser reads and writes only through the REST API. Server-rendered pages (public site, invitation, gallery) call the same module services directly through `index.ts`, never their own `/api` over HTTP.
-7. Files go directly between the browser and R2. Never stream uploads through the app.
-8. No long-running processes. Background work runs as short batches triggered by the cron route.
+5. Modules call each other only through their public `index.ts` (server-only), never another module's repository. The only other files importable from outside a module are `<module>.schemas.ts` and `<module>.types.ts`: client-safe, never importing server code (`import type` only from `mongodb`).
+6. `src/modules/` and `src/lib/` are server-only (`import 'server-only'`), except schemas and types. `src/features/` is client UI and never imports from `modules/` except schemas and types. `src/shared/` holds code safe on both sides. `src/config/` holds `APP_NAME` and constants.
+7. The browser reads and writes only through the REST API. Server-rendered pages (public site, invitation, gallery) call the same module services directly through `index.ts`, never their own `/api` over HTTP.
+8. Files go directly between the browser and R2. Never stream uploads through the app.
+9. No long-running processes. Background work runs as short batches triggered by the cron route.
 
 ## Security rules
 - Never log passwords, tokens, session IDs or full email bodies.
@@ -44,7 +45,8 @@ If the code needs to differ from a doc, stop and ask. When a decision changes, u
 ## Conventions
 - Response envelope: `{ data, meta }` for success, `{ error: { code, message, details, requestId } }` for errors, using the codes in `docs/api-spec.md`.
 - Money as integer paise. Calendar dates as `YYYY-MM-DD`, times as `HH:mm`, timestamps as UTC `Date`.
-- Environment variables are validated with Zod at startup in `src/lib/env.ts`. Add a variable to the schema in the phase that first needs it, and to `.env.example` in the same change.
+- Design system (architecture §18): colours are CSS variables in `src/app/globals.css` mapped to Tailwind and shadcn/ui tokens; components never use hex values. Fraunces for headings, Inter for body. Light mode only.
+- Environment variables are validated with Zod at startup in `src/lib/env.ts`. `.env.example` lists every variable, grouped by service with the phase that needs it. Only app and database variables are required now; future ones (Resend, R2, cron, Google Places) are optional until their feature is built, and code that needs one calls `requireEnv(...)`. When a feature ships, make its variables required.
 - Tenant repositories use `scopedCollection(name, weddingId)` from `src/lib/db/tenant.ts`, never a raw collection.
 - Integration tests use a dedicated Atlas test database (`TEST_MONGODB_URI`), never the dev or production database.
 
@@ -73,4 +75,4 @@ Package manager is pnpm (Node 22). Local config lives in `.env.local`; integrati
 | Seed dev data | not yet (Phase 1) |
 
 ## Next.js version
-This project uses Next.js 16. Read `AGENTS.md` and the bundled guides in `node_modules/next/dist/docs/` before writing framework code.
+This project uses Next.js 16. Read `AGENTS.md` and the bundled guides in `node_modules/next/dist/docs/` before writing framework code. Next 16 renamed `middleware.ts` to `proxy.ts`.

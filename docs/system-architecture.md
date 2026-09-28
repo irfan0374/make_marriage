@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.2 (architecture only) |
+| **Version** | 1.3 (architecture only) |
 | **Date** | 28 September 2026 |
 | **Owner** | Irfan |
 | **Related docs** | PRD v1.1, Database Design v1.1, API Spec v1.1 |
@@ -144,26 +144,29 @@ flowchart LR
 | `dashboard` | Dashboard summary, composed from other modules' services |
 | `files` | R2 presigned URLs and upload verification |
 | `audit` | Audit log entries |
-| `system` | Health check |
+| `system` | Health check and API fallbacks |
 
 ### 4.2 Folder layout
 ```
 src/
-  app/            # Next.js pages; app/api/**/route.ts files only re-export handlers from modules
-  modules/        # One folder per module: <m>.routes.ts, .service.ts, .repository.ts, .schemas.ts,
-                  # .types.ts, .indexes.ts, and a public index.ts
-  lib/            # Shared: env, config, logger, db client and tenant helpers, http envelope/errors, validation
+  app/            # Next.js routing only; app/api/**/route.ts files re-export module handlers
+  modules/        # Server code, one folder per module (see 4.5)
+  features/       # Client UI per feature
   components/     # Shared UI (shadcn/ui primitives in components/ui)
+  config/         # APP_NAME and constants
+  lib/            # Server-only helpers: env, db, http, errors, logger, ...
+  shared/         # Code safe on both client and server
 scripts/          # Index creation, migrations, seed data
-tests/            # Integration tests and test setup
+tests/            # Integration tests, e2e tests and helpers
 ```
+Section 4.5 has the full layout and 4.6 the rules.
 
 ### 4.3 Module rules
 1. **Route handlers are thin.** Validate input, resolve the auth context, call one service function, return the response.
 2. **Services hold business logic** and permission checks.
 3. **Repositories are the only code that touches the database**, and every tenant function requires a `weddingId`.
 4. **Modules talk through services, never another module's repository.**
-5. **Each module exposes a public `index.ts`** (server-only). The only other file importable from outside is `<module>.schemas.ts`, which holds client-safe Zod schemas shared with forms and must never import server code.
+5. **Each module exposes a public `index.ts`** (server-only). The only other files importable from outside the module are `<module>.schemas.ts` and `<module>.types.ts`, which are client-safe and must never import server code (`import type` only from `mongodb`).
 
 ### 4.4 Request lifecycle
 ```mermaid
@@ -188,6 +191,102 @@ sequenceDiagram
     S-->>H: Result
     H-->>C: JSON response
 ```
+
+### 4.5 Detailed file structure
+
+The full folder layout. Every new file follows this structure. Ask before adding a new top-level folder.
+
+```
+wedding-app/
+├── CLAUDE.md                      # Rules for Claude Code
+├── README.md
+├── .env.example                   # Every env variable, dummy values only
+├── package.json, tsconfig.json, next.config.ts
+├── eslint.config.mjs, prettier.config.mjs
+├── vitest.config.ts, playwright.config.ts, components.json
+├── docs/                          # PRD, architecture, database, API, design
+├── public/
+│   ├── logo/                      # Logo SVG and PNG files
+│   └── icons/                     # Favicons
+├── scripts/
+│   ├── create-indexes.ts          # Idempotent, runs after every deploy
+│   ├── seed.ts                    # Dev data, refuses to run on production
+│   └── migrations/
+├── tests/
+│   ├── integration/               # Vitest against the Atlas test database
+│   ├── e2e/                       # Playwright journeys
+│   └── helpers/                   # Test database setup, factories
+└── src/
+    ├── proxy.ts                   # Redirects /app/* to /login without a session
+    │                              # (Next.js 16 name for middleware.ts)
+    ├── instrumentation.ts         # Validates env at server start
+    ├── app/                       # Next.js routing only (thin files)
+    │   ├── layout.tsx, globals.css, providers.tsx, not-found.tsx
+    │   ├── (marketing)/page.tsx   # Landing page
+    │   ├── (auth)/                # login, signup, forgot-password, reset-password
+    │   ├── join/[token]/          # Accept a member invite
+    │   ├── app/                   # Private app /app/*
+    │   │   ├── page.tsx           # Wedding picker
+    │   │   ├── new/               # Create a wedding
+    │   │   └── [weddingId]/       # layout.tsx (sidebar + top bar), dashboard, events,
+    │   │                          # guests, invitations, tasks, expenses, vendors,
+    │   │                          # website, gallery, team, settings
+    │   ├── w/[slug]/              # Public wedding website
+    │   ├── invited/[token]/       # Guest invitation and RSVP
+    │   ├── gallery/[token]/       # Guest photo gallery
+    │   └── api/                   # REST API: each route.ts re-exports a module handler
+    │       ├── [...path]/         # JSON 404 for unknown API paths
+    │       ├── health, auth, me, member-invites
+    │       ├── weddings/[weddingId]/...
+    │       ├── public/            # invitations, sites, gallery
+    │       ├── cron/              # process-jobs, daily
+    │       └── webhooks/resend
+    ├── modules/                   # SERVER code, one folder per module
+    │   └── <module>/              # auth, weddings, members, events, households,
+    │                              # invitations, tasks, expenses, vendors, places,
+    │                              # website, gallery, files, dashboard,
+    │                              # notifications, jobs, audit, system
+    │   └── collections.ts         # Registry of every module's collection specs
+    ├── features/                  # CLIENT UI per feature: api.ts, hooks.ts, components/
+    ├── components/
+    │   ├── ui/                    # shadcn/ui primitives
+    │   ├── layout/                # Sidebar, TopBar, WeddingSwitcher, PageHeader
+    │   └── common/                # Logo, EmptyState, MoneyText, DateText
+    ├── emails/                    # React Email templates
+    ├── config/                    # app.ts (APP_NAME), constants.ts (limits)
+    ├── lib/                       # Server helpers: env, http, errors, auth-context,
+    │   │                          # rate-limit, logger, r2, email, tokens, ids, pagination
+    │   └── db/                    # client.ts, tenant.ts (scopedCollection),
+    │                              # transaction.ts, indexes.ts
+    └── shared/                    # Client and server safe: money, dates, slug, enums
+```
+
+**Inside a server module** (example `src/modules/events/`):
+
+```
+events/
+├── index.ts                # Public API of the module
+├── events.handlers.ts      # Route handler functions
+├── events.service.ts       # Business rules and permission checks
+├── events.repository.ts    # MongoDB access, always filtered by weddingId
+├── events.schemas.ts       # Zod schemas
+├── events.types.ts         # TypeScript types
+├── events.indexes.ts       # Collection indexes and $jsonSchema validator
+└── events.*.test.ts        # Tests next to the layer they cover
+```
+
+**Inside a client feature** (example `src/features/events/`): `api.ts` for fetch calls, `hooks.ts` for TanStack Query hooks, and `components/` for the UI.
+
+### 4.6 File structure rules
+
+| Rule | Why |
+|---|---|
+| `app/` holds routing only. Pages render components from `features/`, API route files re-export handlers from `modules/` | Keeps business logic out of Next.js files |
+| `modules/` and `lib/` are server-only (`import "server-only"`), except `*.schemas.ts` and `*.types.ts` | Stops database code and secrets reaching the browser |
+| `features/` never imports from `modules/`, except schemas and types | Clean client and server split |
+| Only `*.repository.ts` files import `lib/db/` (client and tenant helpers) | One place to enforce the `weddingId` filter |
+| `shared/` has no Node-only or browser-only code | Safe to import anywhere |
+| Folders in kebab-case, module files as `<module>.<layer>.ts`, React components in PascalCase, import alias `@/` for `src/` | Consistent naming |
 
 ---
 
@@ -466,7 +565,7 @@ Passwords, tokens and session IDs are never logged. Vercel Hobby keeps logs only
 3. Merging to `main` deploys to production.
 4. The index script runs after every deploy.
 
-**Configuration:** all secrets and settings (database, R2, Resend, cron secret, Google key, daily email limit) come from environment variables, validated with Zod at startup in `src/lib/env.ts`. Each variable is added to the schema, as required, in the phase that first needs it. The app won't start if a required one is missing.
+**Configuration:** all secrets and settings (database, R2, Resend, cron secret, Google key, daily email limit) come from environment variables, validated with Zod at startup in `src/lib/env.ts`. `.env.example` lists every variable the app will ever need, grouped by service, with the phase that needs it. Only the variables needed now (app and database) are required; the app won't start without them. Future ones (Resend, R2, cron secret, Google Places) are optional in the schema and become required when their feature is built; until then, code that needs one calls `requireEnv(...)`, which fails clearly at the point of use.
 
 ---
 
@@ -475,7 +574,7 @@ Passwords, tokens and session IDs are never logged. Vercel Hobby keeps logs only
 | Level | Tool | Focus |
 |---|---|---|
 | Unit | Vitest | Business rules, permissions, slug creation, money formatting, validation |
-| Integration | Vitest with a dedicated Atlas test database (`TEST_MONGODB_URI`, a throwaway `test_*` database per run) | API behaviour end to end, tenant isolation, side scoping, RSVP rules, job retries |
+| Integration | Vitest with a dedicated Atlas test database (`TEST_MONGODB_URI`, a throwaway `test_*` database per test file) | API behaviour end to end, tenant isolation, side scoping, RSVP rules, job retries |
 | End to end | Playwright | Sign up, create a wedding, add guests, send invitations, guest RSVP on a phone-sized screen, gallery upload |
 
 **Must pass before the first real wedding**
@@ -498,3 +597,48 @@ Passwords, tokens and session IDs are never logged. Vercel Hobby keeps logs only
 | 5. Email verification | Before public launch | Verify email on sign-up |
 | 6. Error tracking | When traffic grows | Add Sentry or similar |
 | 7. Separate worker | If one-minute batches aren't enough | Run the same job code as its own service |
+
+---
+
+## 18. Design system
+
+### 18.1 Direction
+Modern, warm, elegant, quietly celebratory and trustworthy. It should feel like a well-made software product, not a traditional wedding website. Light mode only in v1. No stock photos, illustrations, florals, ornaments, gradients, or red or yellow as brand colours.
+
+### 18.2 Colours
+
+| Token | Hex | Use |
+|---|---|---|
+| `background` | `#FAF6F0` | Page background (warm ivory) |
+| `background-alt` | `#F3EDE4` | Alternate sections |
+| `surface` | `#FFFFFF` | Cards, inputs, panels |
+| `border` | `#E8DFD3` | Card and input borders |
+| `text` | `#1F1A1C` | Main text |
+| `text-muted` | `#6B6166` | Secondary text |
+| `primary` | `#4A2545` | Deep plum: primary buttons, active nav, links, icons, charts |
+| `primary-foreground` | `#FAF6F0` | Text on plum |
+| `primary-tint` | `#EFE6EC` | Active nav background, icon backgrounds, small badges |
+| `gold` | `#C9A46A` | Tiny accents only (a dot or thin line), never large areas |
+| `success-bg` / `success-text` | `#E6F0E8` / `#2F5D3A` | Done, attending |
+| `pending-bg` / `pending-text` | `#F4ECE0` / `#7A5A2E` | Pending, waiting |
+| `danger-bg` / `danger-text` | `#F6E9E6` / `#8A3A2E` | Errors, destructive actions |
+
+Colours are defined as CSS variables in `src/app/globals.css` and mapped to Tailwind and shadcn/ui theme tokens. Components never use hex values directly.
+
+### 18.3 Typography
+
+| Role | Font | Weight |
+|---|---|---|
+| Headings and large numbers | Fraunces (serif) | 500 |
+| Body, UI, forms, tables | Inter (sans-serif) | 400 and 500 |
+
+Both fonts are loaded with `next/font/google` in the root layout.
+
+### 18.4 Shape and formatting
+- Cards: 16px radius, 1px border, very soft shadow. Inputs: 12px radius, plum border on focus.
+- Buttons: pill-shaped. One primary (plum) button per view, others outline or ghost.
+- Icons: simple outline style in plum (lucide-react).
+- Money in Indian format with the rupee symbol (₹24,50,000). Dates as "14 Apr 2028". Sentence case for labels and buttons.
+
+### 18.5 Logo files
+Stored in `public/logo/`: `logo-horizontal-plum.svg` for the header and footer, `logo-stacked-plum.svg` for auth pages, `mark-plum.svg` for small spaces, and favicons in `public/icons/`.
