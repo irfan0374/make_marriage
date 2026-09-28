@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, expect, it, vi } from 'vitest';
 import { pingDatabase } from './system.repository';
-import { apiNotFoundHandler, getHealthHandler } from './system.routes';
+import { apiNotFoundHandler, getHealthHandler } from './system.handlers';
 
 vi.mock('./system.repository', () => ({ pingDatabase: vi.fn() }));
 

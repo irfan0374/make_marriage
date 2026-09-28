@@ -1,4 +1,4 @@
-import { APP_NAME } from '@/lib/config';
+import { APP_NAME } from '@/config/app';
 
 export default function HomePage() {
   return (

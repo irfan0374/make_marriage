@@ -14,7 +14,7 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
     // `server-only` throws outside a React Server Components bundle; tests run plain Node.
-    alias: { 'server-only': new URL('./tests/setup/server-only.ts', import.meta.url).pathname },
+    alias: { 'server-only': new URL('./tests/helpers/server-only.ts', import.meta.url).pathname },
   },
   test: {
     environment: 'node',
@@ -32,8 +32,8 @@ export default defineConfig({
               test: {
                 name: 'integration',
                 include: ['tests/integration/**/*.test.ts'],
-                globalSetup: ['tests/setup/global-setup.ts'],
-                setupFiles: ['tests/setup/test-db.ts'],
+                globalSetup: ['tests/helpers/global-setup.ts'],
+                setupFiles: ['tests/helpers/test-db.ts'],
                 env: { NODE_ENV: 'test' as const, LOG_LEVEL: 'error' },
                 testTimeout: 30_000,
                 hookTimeout: 60_000,

@@ -1,4 +1,5 @@
 // Error codes from docs/api-spec.md §22. `code` is stable; `message` is a display default.
+// Client-safe: the UI can switch on `ErrorCode` and show the default messages.
 
 export const ERROR_CODES = {
   VALIDATION_ERROR: { status: 400, message: 'Please check the highlighted fields.' },
@@ -51,25 +52,3 @@ export type ErrorCode = keyof typeof ERROR_CODES;
 
 /** Field-level problems (validation errors) or a small object (e.g. `{ affectedHouseholds }`). */
 export type ErrorDetails = { path: string; message: string }[] | Record<string, unknown>;
-
-/** Thrown by services and handlers; mapped to the error envelope by `defineHandler`. */
-export class AppError extends Error {
-  readonly code: ErrorCode;
-  readonly status: number;
-  readonly details: ErrorDetails | undefined;
-  /** Extra response headers, e.g. `Retry-After` for RATE_LIMITED. */
-  readonly headers: Record<string, string> | undefined;
-
-  constructor(
-    code: ErrorCode,
-    message?: string,
-    options: { details?: ErrorDetails; headers?: Record<string, string> } = {},
-  ) {
-    super(message ?? ERROR_CODES[code].message);
-    this.name = 'AppError';
-    this.code = code;
-    this.status = ERROR_CODES[code].status;
-    this.details = options.details;
-    this.headers = options.headers;
-  }
-}

@@ -1,6 +1,6 @@
 import 'server-only';
 import { MongoClient, type Collection, type Db, type Document } from 'mongodb';
-import { APP_ID } from '@/lib/config';
+import { APP_ID } from '@/config/app';
 import { getEnv } from '@/lib/env';
 
 // One client per function instance, reused across requests and across dev hot reloads.

@@ -1,7 +1,6 @@
 import 'server-only';
-import { ok } from '@/lib/http/envelope';
-import { AppError } from '@/lib/http/errors';
-import { defineHandler } from '@/lib/http/handler';
+import { AppError } from '@/lib/errors';
+import { defineHandler, ok } from '@/lib/http';
 import { getHealth } from './system.service';
 
 // GET /api/health (api-spec §21.4). Public; 503 when the database is unreachable.

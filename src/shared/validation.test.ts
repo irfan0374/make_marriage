@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountPaise, calendarDate, clockTime, objectIdString } from './common';
+import { amountPaise, calendarDate, clockTime, objectIdString } from './validation';
 
 describe('common schemas', () => {
   it('objectIdString', () => {
