@@ -1,0 +1,6 @@
+docs/
+CLAUDE.md
+AGENTS.md
+pnpm-lock.yaml
+.next/
+node_modules/

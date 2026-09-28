@@ -57,4 +57,20 @@ If the code needs to differ from a doc, stop and ask. When a decision changes, u
 - Don't edit files in `docs/` unless asked or as part of an approved decision change.
 
 ## Commands
-To be filled in after the scaffold is created (dev, build, lint, typecheck, test, create indexes, seed).
+Package manager is pnpm (Node 22). Local config lives in `.env.local`; integration tests read `TEST_MONGODB_URI` from `.env.test.local`. See `.env.example`.
+
+| Task | Command |
+|---|---|
+| Dev server | `pnpm dev` |
+| Production build | `pnpm build` then `pnpm start` |
+| Lint (includes module-boundary rules) | `pnpm lint` |
+| Type check | `pnpm typecheck` |
+| Format | `pnpm format` (check only: `pnpm format:check`) |
+| All tests | `pnpm test` |
+| Unit tests only | `pnpm test:unit` |
+| Integration tests (Atlas test DB) | `pnpm test:integration` |
+| Create collections and indexes | `pnpm db:indexes` |
+| Seed dev data | not yet (Phase 1) |
+
+## Next.js version
+This project uses Next.js 16. Read `AGENTS.md` and the bundled guides in `node_modules/next/dist/docs/` before writing framework code.
