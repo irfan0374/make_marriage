@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { describe, expect, it, vi } from 'vitest';
 import { pingDatabase } from './system.repository';
-import { getHealthHandler } from './system.routes';
+import { apiNotFoundHandler, getHealthHandler } from './system.routes';
 
 vi.mock('./system.repository', () => ({ pingDatabase: vi.fn() }));
 
@@ -23,5 +23,21 @@ describe('GET /api/health', () => {
     const res = await getHealthHandler(request());
     expect(res.status).toBe(503);
     expect((await res.json()).data).toMatchObject({ status: 'error', db: 'down' });
+  });
+});
+
+describe('unknown /api paths', () => {
+  it('return NOT_FOUND in the JSON envelope for any method', async () => {
+    for (const method of ['GET', 'POST', 'DELETE']) {
+      const res = await apiNotFoundHandler(
+        new NextRequest('http://localhost/api/does-not-exist', { method }),
+      );
+      expect(res.status).toBe(404);
+      expect(res.headers.get('content-type')).toContain('application/json');
+      expect((await res.json()).error).toMatchObject({
+        code: 'NOT_FOUND',
+        requestId: expect.stringMatching(/^req_/),
+      });
+    }
   });
 });

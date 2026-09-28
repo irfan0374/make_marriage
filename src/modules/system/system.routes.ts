@@ -1,5 +1,6 @@
 import 'server-only';
 import { ok } from '@/lib/http/envelope';
+import { AppError } from '@/lib/http/errors';
 import { defineHandler } from '@/lib/http/handler';
 import { getHealth } from './system.service';
 
@@ -7,4 +8,10 @@ import { getHealth } from './system.service';
 export const getHealthHandler = defineHandler({ route: '/api/health' }, async () => {
   const health = await getHealth();
   return ok(health, undefined, health.db === 'ok' ? 200 : 503);
+});
+
+// Any /api path with no route file. Next.js prefers more specific routes, so this only catches
+// unknown paths, and returns the JSON envelope instead of the HTML 404 page.
+export const apiNotFoundHandler = defineHandler({ route: '/api/[...path]' }, async () => {
+  throw new AppError('NOT_FOUND');
 });

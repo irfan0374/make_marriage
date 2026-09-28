@@ -12,7 +12,7 @@ describe('parseEnv', () => {
     expect(parseEnv(valid)).toMatchObject({
       ...valid,
       NODE_ENV: 'development',
-      MONGODB_MAX_POOL_SIZE: 10,
+      MONGODB_MAX_POOL_SIZE: 5,
       LOG_LEVEL: 'info',
     });
   });

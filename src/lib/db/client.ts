@@ -12,7 +12,10 @@ export function getMongoClient(): MongoClient {
     const env = getEnv();
     globalForMongo.__mongoClient = new MongoClient(env.MONGODB_URI, {
       appName: APP_ID,
+      // Small pool per serverless instance: many instances share Atlas's connection limit.
       maxPoolSize: env.MONGODB_MAX_POOL_SIZE,
+      // Close idle connections so paused or scaled-down instances don't hold them.
+      maxIdleTimeMS: 60_000,
       serverSelectionTimeoutMS: 5_000,
     });
   }

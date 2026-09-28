@@ -2,6 +2,10 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 
+// ESLint stays on v9 (marked deprecated upstream): v10 crashes eslint-plugin-react 7.37.5, which
+// eslint-config-next 16.3.6 bundles ("contextOrFilename.getFilename is not a function").
+// Retry the upgrade when eslint-config-next ships a compatible plugin.
+
 // Architecture boundaries (CLAUDE.md "Architecture rules"). ESLint replaces, not merges,
 // a rule's options when several blocks match a file, so each block lists its full set.
 

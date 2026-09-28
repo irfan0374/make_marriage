@@ -9,7 +9,7 @@ const envSchema = z.object({
     .string()
     .regex(/^mongodb(\+srv)?:\/\//, 'Must be a mongodb:// or mongodb+srv:// connection string'),
   MONGODB_DB_NAME: z.string().regex(/^[A-Za-z0-9_-]{1,63}$/, 'Must be a valid database name'),
-  MONGODB_MAX_POOL_SIZE: z.coerce.number().int().min(1).max(100).default(10),
+  MONGODB_MAX_POOL_SIZE: z.coerce.number().int().min(1).max(100).default(5),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
 
