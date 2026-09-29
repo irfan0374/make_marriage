@@ -5,6 +5,9 @@ A web app where an Indian couple (bride and groom) and their family plan a multi
 
 The product name is not final. Keep it in one config value (`APP_NAME`) and never hardcode it elsewhere.
 
+## Project status
+Read `docs/STATUS.md` at the start of every task to see what's done, what's next and what's open. When a change finishes, starts or blocks work, update `docs/STATUS.md` in the same commit (the dated "Done" row, "Next", and "Open items").
+
 ## Source of truth
 Read the relevant doc before planning any feature:
 - `docs/prd.md`: features, scope, priorities
