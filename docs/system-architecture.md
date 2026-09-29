@@ -641,4 +641,4 @@ Both fonts are loaded with `next/font/google` in the root layout.
 - Money in Indian format with the rupee symbol (₹24,50,000). Dates as "14 Apr 2028". Sentence case for labels and buttons.
 
 ### 18.5 Logo files
-Stored in `public/logo/`: `logo-horizontal-plum.svg` for the header and footer, `logo-stacked-plum.svg` for auth pages, `mark-plum.svg` for small spaces, and favicons in `public/icons/`.
+Stored in `public/logo/`: `logo-horizontal-plum.svg` for the header and footer, `logo-stacked-plum.svg` for auth pages, `mark-plum.svg` for small spaces, and `-white` / `-on-plum` versions for dark backgrounds. Favicons and the app icon (`favicon.svg`, `favicon-32/180/192.png`, `app-icon.svg/png`) are in `public/icons/`. Components use them through `Logo` in `src/components/common/logo.tsx`.

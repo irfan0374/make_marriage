@@ -44,7 +44,7 @@ export function MarketingHeader() {
     <header className="border-border bg-background/90 sticky top-0 z-10 border-b backdrop-blur">
       <div className={cn(container, 'flex h-16 items-center justify-between gap-4')}>
         <div className="flex items-center gap-10">
-          <Logo />
+          <Logo priority />
           <nav aria-label="Main" className="text-text-muted hidden gap-8 text-sm md:flex">
             <a href={`#${SECTION_IDS.features}`} className="hover:text-text">
               Features

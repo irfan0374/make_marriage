@@ -21,6 +21,15 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: APP_NAME,
   description: 'Plan your wedding events, guests, invitations and RSVPs together.',
+  // Favicons live in public/icons/ (architecture §18.5).
+  icons: {
+    icon: [
+      { url: '/icons/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/favicon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: { url: '/icons/favicon-180.png', sizes: '180x180' },
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
