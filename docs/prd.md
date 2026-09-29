@@ -261,6 +261,16 @@ A **household** is a family or group that receives one invitation.
 | NOTIF-6 | Guest emails include a "stop reminders" link that stops reminders but not access to the invitation. | P1 |
 | NOTIF-7 | Scheduled emails are sent at 9:00 AM in the wedding timezone. | P1 |
 
+### 5.12 Marketing homepage (HOME)
+| ID | Requirement | Priority |
+|---|---|---|
+| HOME-1 | A public landing page at `/` for couples, following the design system (architecture §18). Static: no data and no API calls. | P0 |
+| HOME-2 | Sections: header (logo, Features, How it works, Log in, Start planning), hero with product previews, six feature cards, three steps, the guest experience with a sample invite, three privacy points, a closing call to action, and a footer (Features, How it works, Log in, Privacy). | P0 |
+| HOME-3 | "Start planning" goes to `/signup` and "Log in" to `/login`. "See a sample invite" scrolls to the guest section. | P0 |
+| HOME-4 | Product previews are built in HTML with sample data, not screenshots, and are hidden from screen readers. | P1 |
+| HOME-5 | Copy only claims what v1 does. No pricing, customer counts or features outside this PRD. | P0 |
+| HOME-6 | Mobile-first: on phones the header shows the logo and "Start planning", and the hero shows the invite preview instead of the dashboard. | P0 |
+
 ---
 
 ## 6. Key user flows
