@@ -44,7 +44,7 @@ export function MarketingHeader() {
     <header className="border-border bg-background/90 sticky top-0 z-10 border-b backdrop-blur">
       <div className={cn(container, 'flex h-16 items-center justify-between gap-4')}>
         <div className="flex items-center gap-10">
-          <Logo priority />
+          <Logo eager />
           <nav aria-label="Main" className="text-text-muted hidden gap-8 text-sm md:flex">
             <a href={`#${SECTION_IDS.features}`} className="hover:text-text">
               Features
@@ -104,8 +104,8 @@ export function Hero() {
       </div>
 
       <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-        <DashboardMockup className="hidden lg:mr-16 lg:block" />
-        <InvitePhoneMockup className="mx-auto w-64 lg:absolute lg:-right-2 lg:-bottom-12 lg:w-56" />
+        <DashboardMockup className="lg:mr-16" />
+        <InvitePhoneMockup className="mx-auto mt-8 w-64 lg:absolute lg:-right-2 lg:-bottom-12 lg:mt-0 lg:w-56" />
       </div>
     </section>
   );

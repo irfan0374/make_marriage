@@ -47,10 +47,10 @@ export function DashboardMockup({ className }: { className?: string }) {
         <span className="bg-text-muted size-2 rounded-full" />
         <span className="bg-text-muted size-2 rounded-full" />
       </div>
-      <div className="bg-background space-y-4 rounded-xl p-5">
+      <div className="bg-background space-y-4 rounded-xl p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <p className="font-heading text-lg">Nafiya &amp; Irfan</p>
               <span className="bg-primary-tint text-primary rounded-full px-2 py-0.5 text-[0.625rem] font-medium">
                 48 days to go
@@ -71,7 +71,7 @@ export function DashboardMockup({ className }: { className?: string }) {
         </div>
 
         <div className="bg-surface border-border rounded-xl border p-4">
-          <div className="flex items-baseline justify-between">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3">
             <p className="text-sm font-medium">RSVP summary</p>
             <p className="text-text-muted text-xs">210 of 312 families replied</p>
           </div>
@@ -84,7 +84,7 @@ export function DashboardMockup({ className }: { className?: string }) {
               />
             ))}
           </div>
-          <div className="text-text-muted mt-2 flex gap-4 text-[0.6875rem]">
+          <div className="text-text-muted mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.6875rem]">
             {RSVP.map((part) => (
               <span key={part.label} className="flex items-center gap-1.5">
                 <span className={cn('size-1.5 rounded-full', part.className)} />
@@ -94,7 +94,7 @@ export function DashboardMockup({ className }: { className?: string }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {EVENTS.map((event) => (
             <div
               key={event.name}
@@ -172,7 +172,7 @@ export function RsvpPhoneMockup({ className }: { className?: string }) {
         <p className="text-text-muted text-center text-xs">Nafiya &amp; Irfan warmly invite you</p>
 
         <div className="bg-background border-border mt-4 rounded-xl border p-3">
-          <p className="text-sm font-medium">Mehendi and Sangeet</p>
+          <p className="text-sm font-medium">Sangeet</p>
           <p className="text-text-muted text-xs">15 Nov · 7:00 PM · The Courtyard</p>
           <div className="mt-2 flex items-center justify-between">
             <span className="text-success-text flex items-center gap-1.5 text-xs font-medium">

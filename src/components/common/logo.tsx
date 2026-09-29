@@ -14,11 +14,12 @@ type LogoProps = {
   variant?: keyof typeof LOGOS;
   /** Rendered height in pixels; width follows the file's aspect ratio. */
   height?: number;
-  priority?: boolean;
+  /** Load immediately instead of lazily (use for the logo above the fold). */
+  eager?: boolean;
   className?: string;
 };
 
-export function Logo({ variant = 'horizontal', height = 44, priority, className }: LogoProps) {
+export function Logo({ variant = 'horizontal', height = 44, eager, className }: LogoProps) {
   const logo = LOGOS[variant];
   return (
     <Link href="/" className={cn('inline-flex shrink-0', className)}>
@@ -27,7 +28,7 @@ export function Logo({ variant = 'horizontal', height = 44, priority, className 
         alt={APP_NAME}
         width={Math.round((logo.width / logo.height) * height)}
         height={height}
-        priority={priority}
+        loading={eager ? 'eager' : undefined}
         // SVGs are already optimal; the image optimizer would reject them without extra config.
         unoptimized
       />

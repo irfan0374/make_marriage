@@ -269,7 +269,7 @@ A **household** is a family or group that receives one invitation.
 | HOME-3 | "Start planning" goes to `/signup` and "Log in" to `/login`. "See a sample invite" scrolls to the guest section. | P0 |
 | HOME-4 | Product previews are built in HTML with sample data, not screenshots, and are hidden from screen readers. | P1 |
 | HOME-5 | Copy only claims what v1 does. No pricing, customer counts or features outside this PRD. | P0 |
-| HOME-6 | Mobile-first: on phones the header shows the logo and "Start planning", and the hero shows the invite preview instead of the dashboard. | P0 |
+| HOME-6 | Mobile-first: on phones the header shows the logo and "Start planning", and the hero stacks the dashboard preview above the invite preview. | P0 |
 
 ---
 
