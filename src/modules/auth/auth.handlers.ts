@@ -1,13 +1,53 @@
 import 'server-only';
+import type { NextRequest } from 'next/server';
+import { SESSION_COOKIE_NAME } from '@/config/app';
 import { created, defineHandler, noContent, ok } from '@/lib/http';
 import { loginSchema, signupSchema } from './auth.schemas';
 import { getMe, login, logout, logoutAll, signup } from './auth.service';
-import {
-  clearSessionCookie,
-  clientInfo,
-  readSessionToken,
-  setSessionCookie,
-} from './session-cookie';
+
+// The session cookie (api-spec §3.1): HttpOnly, SameSite=Lax, Secure outside local dev.
+
+export function readSessionToken(request: NextRequest): string | undefined {
+  return request.cookies.get(SESSION_COOKIE_NAME)?.value || undefined;
+}
+
+function serializeCookie(value: string, maxAgeSeconds: number): string {
+  const parts = [
+    `${SESSION_COOKIE_NAME}=${value}`,
+    'Path=/',
+    `Max-Age=${maxAgeSeconds}`,
+    'HttpOnly',
+    'SameSite=Lax',
+  ];
+  // Safari drops Secure cookies on http://localhost, so dev runs without it.
+  if (process.env.NODE_ENV === 'production') parts.push('Secure');
+  return parts.join('; ');
+}
+
+export function setSessionCookie(
+  response: Response,
+  token: string,
+  expiresAt: Date,
+  now = new Date(),
+) {
+  const maxAge = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+  response.headers.append('Set-Cookie', serializeCookie(token, maxAge));
+  return response;
+}
+
+export function clearSessionCookie(response: Response) {
+  response.headers.append('Set-Cookie', serializeCookie('', 0));
+  return response;
+}
+
+export function clientInfo(request: NextRequest) {
+  // Vercel puts the real client address first in x-forwarded-for.
+  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  return {
+    ip: forwarded || request.headers.get('x-real-ip') || 'unknown',
+    userAgent: request.headers.get('user-agent'),
+  };
+}
 
 // POST /api/auth/signup (api-spec §5.1)
 export const signupHandler = defineHandler(
@@ -44,11 +84,5 @@ export const logoutAllHandler = defineHandler(
 
 // GET /api/me (api-spec §5.7)
 export const getMeHandler = defineHandler({ route: '/api/me' }, async ({ request }) => {
-  const token = readSessionToken(request);
-  const { me, refreshedExpiresAt } = await getMe(token);
-  const response = ok(me);
-  // The session slid forward: move the cookie's expiry with it.
-  return token && refreshedExpiresAt
-    ? setSessionCookie(response, token, refreshedExpiresAt)
-    : response;
+  return ok(await getMe(readSessionToken(request)));
 });

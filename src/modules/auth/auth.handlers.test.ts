@@ -130,15 +130,12 @@ describe('GET /api/me', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns the user and refreshes the cookie when the session slid forward', async () => {
-    vi.mocked(service.getMe).mockResolvedValueOnce({
-      me: { user, weddings: [] },
-      refreshedExpiresAt: expiresAt,
-    });
+  it('returns the user and the weddings list', async () => {
+    vi.mocked(service.getMe).mockResolvedValueOnce({ user, weddings: [] });
     const res = await getMeHandler(
       new NextRequest('http://localhost/api/me', { headers: { cookie: 'mmm_session=raw-token' } }),
     );
     expect(await res.json()).toEqual({ data: { user, weddings: [] } });
-    expect(res.headers.get('set-cookie')).toContain('mmm_session=raw-token');
+    expect(service.getMe).toHaveBeenCalledWith('raw-token');
   });
 });

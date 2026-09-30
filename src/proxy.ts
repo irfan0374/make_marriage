@@ -1,11 +1,23 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { SESSION_COOKIE_NAME } from '@/config/app';
+import { SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from '@/config/app';
 
-// Fast redirect for the private app (architecture §4.5): no session cookie, no /app.
-// Only checks that the cookie exists; pages and the API still validate the session itself.
+// Private app gate (architecture §4.5). Only checks that the session cookie exists; pages and
+// the API still validate the session itself.
 export function proxy(request: NextRequest) {
-  if (request.cookies.has(SESSION_COOKIE_NAME)) return NextResponse.next();
-  return NextResponse.redirect(new URL('/login', request.url));
+  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  if (!token) return NextResponse.redirect(new URL('/login', request.url));
+
+  // Sessions extend while active: every app page load pushes the cookie's expiry 30 days out.
+  // The database session slides in step (at most once a day) when the page reads it.
+  const response = NextResponse.next();
+  response.cookies.set(SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
+  return response;
 }
 
 export const config = {

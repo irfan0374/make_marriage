@@ -2,6 +2,7 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import type { z } from 'zod';
+import { getEnv } from '@/lib/env';
 import { AppError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 
@@ -119,10 +120,16 @@ async function readJsonBody(request: Request): Promise<unknown> {
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-/** Reject a data-changing request whose `Origin` isn't this app (api-spec §3.1). */
+/**
+ * Reject a data-changing request whose `Origin` isn't this app (api-spec §3.1). The app's
+ * public URL (`APP_URL`) is always accepted, so a proxy that rewrites Host or scheme can't break
+ * it; the host the request arrived on is accepted too, for preview deployments.
+ */
 export function assertSameOrigin(request: NextRequest): void {
   if (!UNSAFE_METHODS.has(request.method)) return;
-  if (request.headers.get('origin') !== request.nextUrl.origin) throw new AppError('FORBIDDEN');
+  const origin = request.headers.get('origin');
+  const allowed = [new URL(getEnv().APP_URL).origin, request.nextUrl.origin];
+  if (!origin || !allowed.includes(origin)) throw new AppError('FORBIDDEN');
 }
 
 function parseWith<S extends Schema>(schema: S, value: unknown): z.output<S> {

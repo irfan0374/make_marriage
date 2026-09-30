@@ -1,8 +1,7 @@
 import 'server-only';
 
 // Public API of the auth module. Server-rendered pages use `getSession` with the cookie value.
-export { getSession, requireSession } from './auth.service';
-export { getPageSession } from './session-cookie';
+export { getPageSession, getSession, requireSession } from './auth.service';
 export {
   getMeHandler,
   loginHandler,

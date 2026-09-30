@@ -1,6 +1,6 @@
 import 'server-only';
 import type { CollectionSpec } from '@/lib/db/indexes';
-import { rateLimitsSpec } from '@/lib/db/rate-limits';
+import { rateLimitsSpec } from '@/lib/db/rate-limits.repository';
 import { authCollectionSpecs } from '@/modules/auth';
 
 /**

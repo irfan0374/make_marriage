@@ -72,9 +72,10 @@ describe('auth (Atlas test database)', () => {
     expect((await res.json()).error.code).toBe('EMAIL_TAKEN');
   });
 
+  // Its own email: the first test's logins already count against irfan@example.com's window.
   it('locks login for an email after 5 attempts in 15 minutes', async () => {
     const attempt = () =>
-      login(post('/api/auth/login', { email: 'irfan@example.com', password: 'wrong' }));
+      login(post('/api/auth/login', { email: 'lockout@example.com', password: 'wrong' }));
     for (let i = 0; i < 5; i++) expect((await attempt()).status).toBe(401);
     expect((await attempt()).status).toBe(429);
   });

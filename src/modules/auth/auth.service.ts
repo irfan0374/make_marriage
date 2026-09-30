@@ -1,6 +1,8 @@
 import 'server-only';
 import type { ObjectId } from 'mongodb';
+import { cookies } from 'next/headers';
 import { hash, verify, type Algorithm } from '@node-rs/argon2';
+import { SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from '@/config/app';
 import { AppError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { enforceRateLimits, HOUR, MINUTE } from '@/lib/rate-limit';
@@ -17,7 +19,6 @@ import {
   insertUser,
   recordLogin,
 } from './auth.repository';
-import { isCommonPassword } from './common-passwords';
 import type {
   ClientInfo,
   LoginInput,
@@ -29,7 +30,7 @@ import type {
 
 // Accounts and sessions (architecture §6.1, api-spec §5).
 
-export const SESSION_TTL_MS = 30 * 24 * HOUR;
+export const SESSION_TTL_MS = SESSION_MAX_AGE_SECONDS * 1000;
 /** Sessions slide forward at most once a day, so an active user stays logged in. */
 const SESSION_REFRESH_MS = 24 * HOUR;
 
@@ -42,8 +43,92 @@ const ARGON2 = {
   parallelism: 1,
 };
 
-/** Verified against when the email has no account, so both paths take the same time. */
-let dummyHash: Promise<string> | undefined;
+/**
+ * Checked against when the email has no account, so both paths do the same Argon2 work.
+ * A fixed hash of a random, discarded password: nothing can ever match it.
+ */
+const DUMMY_HASH =
+  '$argon2id$v=19$m=19456,t=2,p=1$NBW+AZnxS6CAdq8E9O/MZQ$SfS071WTKQNdQq/AqoZoKqPTzNKYilOZFR5L6l5o8vI';
+
+// Passwords of 8+ characters from the top of public breach lists. Signing up with one of these
+// returns WEAK_PASSWORD (api-spec §5.1). Compared lowercased.
+const COMMON = [
+  '12345678',
+  '123456789',
+  '1234567890',
+  '12345678910',
+  '11111111',
+  '00000000',
+  '88888888',
+  '87654321',
+  '11223344',
+  '12341234',
+  '123123123',
+  '147258369',
+  '987654321',
+  '1q2w3e4r',
+  '1qaz2wsx',
+  'qwertyui',
+  'qwertyuiop',
+  'asdfghjk',
+  'asdfghjkl',
+  'zxcvbnm1',
+  'password',
+  'password1',
+  'password12',
+  'password123',
+  'passw0rd',
+  'p@ssw0rd',
+  'p@ssword',
+  'iloveyou',
+  'iloveyou1',
+  'sunshine',
+  'princess',
+  'football',
+  'baseball',
+  'welcome1',
+  'welcome123',
+  'superman',
+  'starwars',
+  'whatever',
+  'trustno1',
+  'letmein1',
+  'computer',
+  'michelle',
+  'jennifer',
+  'corvette',
+  'mercedes',
+  'qwerty123',
+  'qwerty12',
+  'abc12345',
+  'abcd1234',
+  'abcdefgh',
+  'admin123',
+  'administrator',
+  'changeme',
+  'internet',
+  'charlie1',
+  'football1',
+  'monkey123',
+  'dragon123',
+  'master123',
+  'shadow123',
+  'india123',
+  'india@123',
+  'bharat123',
+  'krishna1',
+  'ganesh123',
+  'wedding1',
+  'wedding123',
+  'marriage',
+  'marriage1',
+  'makemymarriage',
+];
+const COMMON_SET = new Set(COMMON);
+
+export function isCommonPassword(password: string): boolean {
+  return COMMON_SET.has(password.toLowerCase());
+}
 
 export interface NewSession {
   user: PublicUser;
@@ -55,8 +140,6 @@ export interface NewSession {
 export interface CurrentSession {
   userId: ObjectId;
   user: PublicUser;
-  /** Set when the session was just extended, so the caller can refresh the cookie. */
-  refreshedExpiresAt: Date | null;
 }
 
 export function toPublicUser(user: UserDocument): PublicUser {
@@ -85,8 +168,9 @@ export async function signup(
   client: ClientInfo,
   now = new Date(),
 ): Promise<NewSession> {
-  await enforceRateLimits([{ key: `signup:ip:${client.ip}`, limit: 5, windowMs: HOUR }], now);
+  // A weak password is a typo-level mistake: reject it before it counts against the limit.
   if (isCommonPassword(input.password)) throw new AppError('WEAK_PASSWORD');
+  await enforceRateLimits([{ key: `signup:ip:${client.ip}`, limit: 5, windowMs: HOUR }], now);
 
   const passwordHash = await hash(input.password, ARGON2);
   let user: UserDocument;
@@ -114,17 +198,23 @@ export async function login(
   );
 
   const user = await findUserByEmail(input.email);
-  dummyHash ??= hash('not-a-real-password', ARGON2);
-  const valid = await verify(user?.passwordHash ?? (await dummyHash), input.password);
+  const valid = await verify(user?.passwordHash ?? DUMMY_HASH, input.password);
   // Same error whether or not the email has an account (architecture §6.1).
   if (!user || !valid) throw new AppError('INVALID_CREDENTIALS');
 
-  await recordLogin(user._id, now);
+  const [session] = await Promise.all([
+    startSession(user, client, now),
+    recordLogin(user._id, now),
+  ]);
   logger.info('auth.login', { userId: user._id.toHexString() });
-  return startSession(user, client, now);
+  return session;
 }
 
-/** The user behind a session cookie, or null if it's missing, unknown or expired. */
+/**
+ * The user behind a session cookie, or null if it's missing, unknown or expired. An active
+ * session slides forward 30 days in the database at most once a day; `proxy.ts` slides the
+ * cookie's own expiry on every app page load.
+ */
 export async function getSession(
   token: string | undefined,
   now = new Date(),
@@ -135,12 +225,10 @@ export async function getSession(
   const user = await findUserById(session.userId);
   if (!user) return null;
 
-  let refreshedExpiresAt: Date | null = null;
   if (now.getTime() - session.lastSeenAt.getTime() >= SESSION_REFRESH_MS) {
-    refreshedExpiresAt = new Date(now.getTime() + SESSION_TTL_MS);
-    await extendSession(session._id, now, refreshedExpiresAt);
+    await extendSession(session._id, now, new Date(now.getTime() + SESSION_TTL_MS));
   }
-  return { userId: user._id, user: toPublicUser(user), refreshedExpiresAt };
+  return { userId: user._id, user: toPublicUser(user) };
 }
 
 /** Like `getSession`, but throws 401 UNAUTHENTICATED when there's no valid session. */
@@ -159,8 +247,13 @@ export async function logoutAll(token: string | undefined, now = new Date()): Pr
   await deleteUserSessions(session.userId);
 }
 
-export async function getMe(token: string | undefined, now = new Date()) {
+export async function getMe(token: string | undefined, now = new Date()): Promise<Me> {
   const session = await requireSession(token, now);
-  const me: Me = { user: session.user, weddings: [] };
-  return { me, refreshedExpiresAt: session.refreshedExpiresAt };
+  return { user: session.user, weddings: [] };
+}
+
+/** The logged-in session for a server-rendered page, or null. */
+export async function getPageSession() {
+  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+  return getSession(token || undefined);
 }

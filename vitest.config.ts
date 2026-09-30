@@ -23,7 +23,14 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['src/**/*.test.ts'],
-          env: { NODE_ENV: 'test' as const, LOG_LEVEL: 'error' },
+          // Placeholders so code that reads the validated env works; unit tests never connect.
+          env: {
+            NODE_ENV: 'test' as const,
+            LOG_LEVEL: 'error',
+            APP_URL: 'https://app.example',
+            MONGODB_URI: 'mongodb://127.0.0.1:27017',
+            MONGODB_DB_NAME: 'unit',
+          },
         },
       },
       ...(hasTestDb

@@ -65,6 +65,18 @@ describe('defineHandler', () => {
     }
   });
 
+  it("accepts the app's public URL as the origin even when the request arrived on another host", async () => {
+    // APP_URL is https://app.example in unit tests (vitest.config.ts).
+    const res = await createThing(
+      new NextRequest('http://internal:3000/api/things', {
+        method: 'POST',
+        body: '{"name":"A","headcount":1}',
+        headers: { 'content-type': 'application/json', origin: 'https://app.example' },
+      }),
+    );
+    expect(res.status).toBe(201);
+  });
+
   it('skips the origin check for safe methods and when turned off', async () => {
     const webhook = defineHandler({ route: '/api/hook', originCheck: false }, async () =>
       noContent(),

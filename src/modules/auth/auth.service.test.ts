@@ -100,6 +100,8 @@ describe('signup', () => {
       signup({ name: 'Irfan', email: 'irfan@example.com', password: 'Password123' }, client, now),
     ).rejects.toMatchObject({ code: 'WEAK_PASSWORD' });
     expect(repo.insertUser).not.toHaveBeenCalled();
+    // A weak password doesn't use up the sign-up limit.
+    expect(enforceRateLimits).not.toHaveBeenCalled();
   });
 
   it('returns EMAIL_TAKEN when the email already has an account', async () => {
@@ -201,7 +203,6 @@ describe('sessions', () => {
     vi.mocked(repo.findUserById).mockResolvedValueOnce(user);
     const session = await getSession('token', now);
     expect(session?.user.email).toBe('irfan@example.com');
-    expect(session?.refreshedExpiresAt).toBeNull();
     expect(repo.extendSession).not.toHaveBeenCalled();
   });
 
@@ -212,7 +213,7 @@ describe('sessions', () => {
     vi.mocked(repo.findUserById).mockResolvedValueOnce(user);
     const session = await getSession('token', now);
     const expected = new Date(now.getTime() + SESSION_TTL_MS);
-    expect(session?.refreshedExpiresAt).toEqual(expected);
+    expect(session?.user.email).toBe('irfan@example.com');
     expect(repo.extendSession).toHaveBeenCalledWith(stale._id, now, expected);
   });
 
