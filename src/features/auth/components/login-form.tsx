@@ -8,7 +8,7 @@ import { useAuthForm } from './use-auth-form';
 
 export function LoginForm() {
   const mutation = useLogin();
-  const { fieldErrors, formError, validate, showError } = useAuthForm(loginSchema);
+  const { formRef, fieldErrors, formError, validate, showError } = useAuthForm(loginSchema);
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -18,7 +18,7 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-5">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-5">
       <FormAlert message={formError} />
       <FormField
         label="Email"

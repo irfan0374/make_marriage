@@ -1,5 +1,5 @@
 import { Logo } from '@/components/common/logo';
-import { LogoutButton } from './logout-button';
+import { LogoutAllButton, LogoutButton } from './logout-button';
 
 // Placeholder for the wedding picker (architecture §4.5 `app/page.tsx`) until weddings exist.
 export function AppHome({ name }: { name: string }) {
@@ -16,6 +16,9 @@ export function AppHome({ name }: { name: string }) {
         <p className="text-text-muted">
           Creating your wedding comes next. For now, this is where your weddings will appear.
         </p>
+        <div className="mt-6">
+          <LogoutAllButton />
+        </div>
       </main>
     </div>
   );

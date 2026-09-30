@@ -6,3 +6,4 @@ export const signup = (input: SignupInput) =>
 export const login = (input: LoginInput) =>
   postJson<{ user: PublicUser }>('/api/auth/login', input);
 export const logout = () => postJson<void>('/api/auth/logout');
+export const logoutAll = () => postJson<void>('/api/auth/logout-all');

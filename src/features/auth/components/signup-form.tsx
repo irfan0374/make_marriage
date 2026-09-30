@@ -8,7 +8,7 @@ import { useAuthForm } from './use-auth-form';
 
 export function SignupForm() {
   const mutation = useSignup();
-  const { fieldErrors, formError, validate, showError } = useAuthForm(signupSchema, {
+  const { formRef, fieldErrors, formError, validate, showError } = useAuthForm(signupSchema, {
     EMAIL_TAKEN: 'email',
     WEAK_PASSWORD: 'password',
   });
@@ -25,7 +25,7 @@ export function SignupForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-5">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-5">
       <FormAlert message={formError} />
       <FormField
         label="Your name"

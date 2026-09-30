@@ -3,7 +3,10 @@
 
 export const ERROR_CODES = {
   VALIDATION_ERROR: { status: 400, message: 'Please check the highlighted fields.' },
-  WEAK_PASSWORD: { status: 400, message: 'Password is too short or too common.' },
+  WEAK_PASSWORD: {
+    status: 400,
+    message: 'This password is too common. Try a less predictable one.',
+  },
   RESET_TOKEN_INVALID: { status: 400, message: 'This reset link has expired or was already used.' },
   NOT_INVITED_TO_EVENT: { status: 400, message: 'This household is not invited to that event.' },
   HEADCOUNT_EXCEEDED: { status: 400, message: 'Attending count is above the invited headcount.' },
