@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Fraunces, Inter } from 'next/font/google';
 import './globals.css';
 import { APP_NAME } from '@/config/app';
+import { Providers } from './providers';
 
 // Fonts (architecture §18.3): Fraunces 500 for headings and large numbers, Inter 400/500 for UI.
 const inter = Inter({
@@ -19,7 +20,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: APP_NAME,
+  title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
   description: 'Plan your wedding events, guests, invitations and RSVPs together.',
   // Favicons live in public/icons/ (architecture §18.5).
   icons: {
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable} h-full antialiased`}>
       <body className="bg-background text-foreground flex min-h-full flex-col font-sans">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

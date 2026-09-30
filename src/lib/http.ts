@@ -80,6 +80,11 @@ export interface HandlerInput<S extends HandlerSchemas> {
 export type HandlerOptions<S extends HandlerSchemas> = S & {
   /** Route pattern for logs, e.g. `/api/public/invitations/[token]`. Never log the real path: it may hold tokens. */
   route: string;
+  /**
+   * CSRF guard (architecture §6.3): requests that change data must come from the app's own
+   * origin. On by default; turn off only for callers that aren't browsers (cron, webhooks).
+   */
+  originCheck?: boolean;
 };
 
 /** Second argument Next.js passes to route handlers. */
@@ -110,6 +115,14 @@ async function readJsonBody(request: Request): Promise<unknown> {
   } catch {
     throw new AppError('VALIDATION_ERROR', 'Request body must be valid JSON.');
   }
+}
+
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/** Reject a data-changing request whose `Origin` isn't this app (api-spec §3.1). */
+export function assertSameOrigin(request: NextRequest): void {
+  if (!UNSAFE_METHODS.has(request.method)) return;
+  if (request.headers.get('origin') !== request.nextUrl.origin) throw new AppError('FORBIDDEN');
 }
 
 function parseWith<S extends Schema>(schema: S, value: unknown): z.output<S> {
@@ -143,6 +156,7 @@ export function defineHandler<S extends HandlerSchemas>(
     let response: Response;
 
     try {
+      if (options.originCheck !== false) assertSameOrigin(request);
       const params = options.params
         ? parseParams(options.params, (await context?.params) ?? {})
         : undefined;

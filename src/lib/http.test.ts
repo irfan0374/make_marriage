@@ -10,7 +10,7 @@ function jsonRequest(body: string, contentType = 'application/json') {
   return new NextRequest('http://localhost/api/things', {
     method: 'POST',
     body,
-    headers: { 'content-type': contentType },
+    headers: { 'content-type': contentType, origin: 'http://localhost' },
   });
 }
 
@@ -47,6 +47,30 @@ describe('defineHandler', () => {
   it('rejects unknown fields and $-operators', async () => {
     const res = await createThing(jsonRequest('{"name":"A","headcount":1,"$where":"1"}'));
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('rejects data-changing requests from another origin or with no Origin (CSRF)', async () => {
+    for (const origin of ['https://evil.example', null]) {
+      const headers: Record<string, string> = { 'content-type': 'application/json' };
+      if (origin) headers.origin = origin;
+      const res = await createThing(
+        new NextRequest('http://localhost/api/things', {
+          method: 'POST',
+          body: '{"name":"A","headcount":1}',
+          headers,
+        }),
+      );
+      expect(res.status).toBe(403);
+      expect((await res.json()).error.code).toBe('FORBIDDEN');
+    }
+  });
+
+  it('skips the origin check for safe methods and when turned off', async () => {
+    const webhook = defineHandler({ route: '/api/hook', originCheck: false }, async () =>
+      noContent(),
+    );
+    const res = await webhook(new NextRequest('http://localhost/api/hook', { method: 'POST' }));
+    expect(res.status).toBe(204);
   });
 
   it('rejects invalid JSON and non-JSON content types', async () => {
