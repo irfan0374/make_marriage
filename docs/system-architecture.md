@@ -603,7 +603,7 @@ Passwords, tokens and session IDs are never logged. Vercel Hobby keeps logs only
 ## 18. Design system
 
 ### 18.1 Direction
-Modern, warm, elegant, quietly celebratory and trustworthy. It should feel like a well-made software product, not a traditional wedding website. Light mode only in v1. No stock photos, illustrations, florals, ornaments, gradients, or red or yellow as brand colours.
+Modern, warm, elegant, quietly celebratory and trustworthy. It should feel like a well-made software product, not a traditional wedding website. Light mode only in v1. No stock photos, illustrations, florals, ornaments, gradients, or red or yellow as brand colours. One exception: the login and sign-up pages show a single wedding photo (`public/images/auth-couple.jpg`) under a plum overlay on desktop, as in the Stitch design.
 
 ### 18.2 Colours
 
