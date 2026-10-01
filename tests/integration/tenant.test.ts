@@ -43,7 +43,9 @@ describe('scopedCollection against a real database', () => {
     expect((await thingsA().find().toArray()).map((t) => t.name).sort()).toEqual(['a1', 'a2']);
     expect(await thingsA().countDocuments()).toBe(2);
     expect(await thingsA().findOne({ _id: bThingId })).toBeNull();
-    expect(await thingsA().findOne({ weddingId: weddingB } as never)).toBeNull();
+    // A caller-supplied weddingId is overridden, so wedding B is never reachable.
+    const found = await thingsA().findOne({ weddingId: weddingB } as never);
+    expect(found?.weddingId).toEqual(weddingA);
   });
 
   it("can't update or delete another wedding's document by id", async () => {
