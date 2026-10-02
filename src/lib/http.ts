@@ -132,8 +132,26 @@ export function assertSameOrigin(request: NextRequest): void {
   if (!origin || !allowed.includes(origin)) throw new AppError('FORBIDDEN');
 }
 
+const TYPE_NAMES: Record<string, string> = {
+  string: 'text',
+  boolean: 'true or false',
+  number: 'a number',
+  array: 'a list',
+  object: 'an object',
+};
+
+/**
+ * Plain wording for problems our schemas don't word themselves: a missing field or a value of
+ * the wrong JSON type. Messages set in a schema always take precedence over this.
+ */
+const plainErrors: z.core.$ZodErrorMap = (issue) => {
+  if (issue.code !== 'invalid_type') return undefined;
+  if (issue.input === undefined) return 'This field is required.';
+  return `Must be ${TYPE_NAMES[issue.expected] ?? issue.expected}.`;
+};
+
 function parseWith<S extends Schema>(schema: S, value: unknown): z.output<S> {
-  const result = schema.safeParse(value);
+  const result = schema.safeParse(value, { error: plainErrors });
   if (!result.success) {
     throw new AppError('VALIDATION_ERROR', undefined, { details: zodDetails(result.error) });
   }

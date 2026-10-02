@@ -44,6 +44,23 @@ describe('defineHandler', () => {
     expect(body.error.requestId).toBe(res.headers.get('x-request-id'));
   });
 
+  it('words missing fields and wrong types plainly, keeping schema messages', async () => {
+    const details = async (body: string) =>
+      Object.fromEntries(
+        (
+          (await (await createThing(jsonRequest(body))).json()).error.details as {
+            path: string;
+            message: string;
+          }[]
+        ).map((d) => [d.path, d.message]),
+      );
+    expect(await details('{"headcount":"2"}')).toEqual({
+      name: 'This field is required.',
+      headcount: 'Must be a number.',
+    });
+    expect(await details('{"name":null,"headcount":1}')).toEqual({ name: 'Must be text.' });
+  });
+
   it('rejects unknown fields and $-operators', async () => {
     const res = await createThing(jsonRequest('{"name":"A","headcount":1,"$where":"1"}'));
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');

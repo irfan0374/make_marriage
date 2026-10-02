@@ -1,11 +1,10 @@
 import type { ObjectId } from 'mongodb';
 import type { z } from 'zod';
-import type { loginSchema, meSchema, publicUserSchema, signupSchema } from './auth.schemas';
+import type { loginSchema, publicUserSchema, signupSchema } from './auth.schemas';
 
 export type SignupInput = z.output<typeof signupSchema>;
 export type LoginInput = z.output<typeof loginSchema>;
 export type PublicUser = z.infer<typeof publicUserSchema>;
-export type Me = z.infer<typeof meSchema>;
 
 /** `users` collection (database-design §6.1). */
 export interface UserDocument {

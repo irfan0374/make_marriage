@@ -1,1 +1,1 @@
-export { getMeHandler as GET } from '@/modules/auth';
+export { getMeHandler as GET } from '@/modules/weddings';

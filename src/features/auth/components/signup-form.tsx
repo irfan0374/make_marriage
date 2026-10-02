@@ -2,13 +2,13 @@
 
 import { Button } from '@/components/ui/button';
 import { useSignup } from '@/features/auth/hooks';
-import { signupSchema } from '@/modules/auth/auth.schemas';
-import { FormAlert, FormField } from './form-field';
-import { useAuthForm } from './use-auth-form';
+import { EMAIL_MAX, NAME_MAX, PASSWORD_MAX, signupSchema } from '@/modules/auth/auth.schemas';
+import { FormAlert, FormField } from '@/components/common/form-field';
+import { useForm } from '@/components/common/use-form';
 
 export function SignupForm() {
   const mutation = useSignup();
-  const { formRef, fieldErrors, formError, validate, showError } = useAuthForm(signupSchema, {
+  const { formRef, fieldErrors, formError, validate, showError, onInput } = useForm(signupSchema, {
     EMAIL_TAKEN: 'email',
     WEAK_PASSWORD: 'password',
   });
@@ -25,13 +25,14 @@ export function SignupForm() {
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-5">
+    <form ref={formRef} onSubmit={onSubmit} onInput={onInput} noValidate className="space-y-5">
       <FormAlert message={formError} />
       <FormField
         label="Your name"
         name="name"
         autoComplete="name"
-        placeholder="Irfan"
+        maxLength={NAME_MAX}
+        placeholder="e.g. Priya Sharma"
         error={fieldErrors.name}
       />
       <FormField
@@ -39,6 +40,7 @@ export function SignupForm() {
         name="email"
         type="email"
         autoComplete="email"
+        maxLength={EMAIL_MAX}
         placeholder="you@example.com"
         error={fieldErrors.email}
       />
@@ -47,6 +49,7 @@ export function SignupForm() {
         name="password"
         type="password"
         autoComplete="new-password"
+        maxLength={PASSWORD_MAX}
         hint="At least 8 characters."
         error={fieldErrors.password}
       />

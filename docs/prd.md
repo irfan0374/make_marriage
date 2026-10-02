@@ -114,7 +114,7 @@ Each wedding member has one role: **Admin** or **Manager**. There are no per-mod
 ### 5.2 Wedding setup and events (SETUP)
 | ID | Requirement | Priority |
 |---|---|---|
-| SETUP-1 | Wedding profile: bride name, groom name, primary wedding date, city, and timezone (default Asia/Kolkata). | P0 |
+| SETUP-1 | Wedding profile: bride name, groom name, primary wedding date, city, venue (optional free text), and timezone (default Asia/Kolkata, chosen when the wedding is created). | P0 |
 | SETUP-2 | Add unlimited events with quick-add presets (Engagement, Mehendi, Haldi, Sangeet, Wedding, Reception) or a custom name. | P0 |
 | SETUP-3 | Event fields: name, date, start time, end time (optional), venue name, address, map link, dress code, notes, and "show on public website" (default on). | P0 |
 | SETUP-4 | Edit, reorder and delete events. Deleting an event that has invited households or RSVPs requires confirmation. | P0 |
@@ -283,6 +283,8 @@ A **household** is a family or group that receives one invitation.
 5. Invite the partner (Admin) and family members (Managers), setting side scopes.
 6. Land on the dashboard with the setup checklist.
 
+*Built so far (Oct 2026):* steps 1, 2 and 4 on one "Create your wedding" screen (`/app/new`), then a wedding overview with a setup checklist. Steps 3 and 5 join the flow as onboarding steps when events and team invites are built. After login, `/app` opens the user's only wedding, shows a picker when there are several, or goes to `/app/new` when there are none.
+
 **Sending invitations**
 1. Add households manually or import a CSV.
 2. Assign events to each household.
@@ -310,7 +312,7 @@ A **household** is a family or group that receives one invitation.
 | Entity | Key fields |
 |---|---|
 | **User** | id, email, name |
-| **Wedding** | id, bride name, groom name, date, city, timezone, sides enabled, RSVP deadline, invitation message |
+| **Wedding** | id, bride name, groom name, date, city, venue, timezone, sides enabled, RSVP deadline, invitation message |
 | **WeddingMember** | wedding, user, role (admin or manager), side scope |
 | **Event** | wedding, name, date, times, venue, address, map link, dress code, notes, show on website, order |
 | **Household** | wedding, display name, members, headcount, email, phone, side, tags, notes, personal token, invite status, bounced flag |

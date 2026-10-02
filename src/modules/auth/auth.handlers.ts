@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { SESSION_COOKIE_NAME } from '@/config/app';
 import { created, defineHandler, noContent, ok } from '@/lib/http';
 import { loginSchema, signupSchema } from './auth.schemas';
-import { getMe, login, logout, logoutAll, signup } from './auth.service';
+import { login, logout, logoutAll, signup } from './auth.service';
 
 // The session cookie (api-spec §3.1): HttpOnly, SameSite=Lax, Secure outside local dev.
 
@@ -81,8 +81,3 @@ export const logoutAllHandler = defineHandler(
     return clearSessionCookie(noContent());
   },
 );
-
-// GET /api/me (api-spec §5.7)
-export const getMeHandler = defineHandler({ route: '/api/me' }, async ({ request }) => {
-  return ok(await getMe(readSessionToken(request)));
-});

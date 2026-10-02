@@ -19,14 +19,7 @@ import {
   insertUser,
   recordLogin,
 } from './auth.repository';
-import type {
-  ClientInfo,
-  LoginInput,
-  Me,
-  PublicUser,
-  SignupInput,
-  UserDocument,
-} from './auth.types';
+import type { ClientInfo, LoginInput, PublicUser, SignupInput, UserDocument } from './auth.types';
 
 // Accounts and sessions (architecture §6.1, api-spec §5).
 
@@ -245,11 +238,6 @@ export async function logout(token: string | undefined): Promise<void> {
 export async function logoutAll(token: string | undefined, now = new Date()): Promise<void> {
   const session = await requireSession(token, now);
   await deleteUserSessions(session.userId);
-}
-
-export async function getMe(token: string | undefined, now = new Date()): Promise<Me> {
-  const session = await requireSession(token, now);
-  return { user: session.user, weddings: [] };
 }
 
 /** The logged-in session for a server-rendered page, or null. */

@@ -2,23 +2,27 @@ import { z } from 'zod';
 
 // Client-safe: the sign-up and login forms validate with these same schemas (api-spec §5).
 
+export const EMAIL_MAX = 254;
+export const PASSWORD_MAX = 128;
+export const NAME_MAX = 80;
+
 export const emailField = z
   .string()
   .trim()
   .toLowerCase()
-  .max(254, 'Email is too long')
+  .max(EMAIL_MAX, 'Email is too long')
   .pipe(z.email('Enter a valid email'));
 
 export const passwordField = z
   .string()
   .min(8, 'Use at least 8 characters')
-  .max(128, 'Use at most 128 characters');
+  .max(PASSWORD_MAX, `Use at most ${PASSWORD_MAX} characters`);
 
 export const nameField = z
   .string()
   .trim()
   .min(1, 'Enter your name')
-  .max(80, 'Use at most 80 characters');
+  .max(NAME_MAX, `Use at most ${NAME_MAX} characters`);
 
 export const signupSchema = z.strictObject({
   name: nameField,
@@ -29,17 +33,14 @@ export const signupSchema = z.strictObject({
 // Login doesn't re-apply password rules: an old password that no longer meets them must still work.
 export const loginSchema = z.strictObject({
   email: emailField,
-  password: z.string().min(1, 'Enter your password').max(128, 'Use at most 128 characters'),
+  password: z
+    .string()
+    .min(1, 'Enter your password')
+    .max(PASSWORD_MAX, `Use at most ${PASSWORD_MAX} characters`),
 });
 
 export const publicUserSchema = z.object({
   id: z.string(),
   email: z.string(),
   name: z.string(),
-});
-
-export const meSchema = z.object({
-  user: publicUserSchema,
-  // Filled in by the weddings module; empty until it exists.
-  weddings: z.array(z.unknown()),
 });

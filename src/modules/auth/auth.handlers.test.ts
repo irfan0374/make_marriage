@@ -2,14 +2,13 @@ import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/lib/errors';
 import * as service from './auth.service';
-import { getMeHandler, loginHandler, logoutHandler, signupHandler } from './auth.handlers';
+import { loginHandler, logoutHandler, signupHandler } from './auth.handlers';
 
 vi.mock('./auth.service', () => ({
   signup: vi.fn(),
   login: vi.fn(),
   logout: vi.fn(),
   logoutAll: vi.fn(),
-  getMe: vi.fn(),
 }));
 
 const user = { id: '66f1a2b3c4d5e6f708091011', email: 'irfan@example.com', name: 'Irfan' };
@@ -120,22 +119,5 @@ describe('POST /api/auth/logout', () => {
     expect(res.status).toBe(204);
     expect(service.logout).toHaveBeenCalledWith('raw-token');
     expect(res.headers.get('set-cookie')).toMatch(/^mmm_session=; Path=\/; Max-Age=0/);
-  });
-});
-
-describe('GET /api/me', () => {
-  it('returns 401 without a session', async () => {
-    vi.mocked(service.getMe).mockRejectedValueOnce(new AppError('UNAUTHENTICATED'));
-    const res = await getMeHandler(new NextRequest('http://localhost/api/me'));
-    expect(res.status).toBe(401);
-  });
-
-  it('returns the user and the weddings list', async () => {
-    vi.mocked(service.getMe).mockResolvedValueOnce({ user, weddings: [] });
-    const res = await getMeHandler(
-      new NextRequest('http://localhost/api/me', { headers: { cookie: 'mmm_session=raw-token' } }),
-    );
-    expect(await res.json()).toEqual({ data: { user, weddings: [] } });
-    expect(service.getMe).toHaveBeenCalledWith('raw-token');
   });
 });

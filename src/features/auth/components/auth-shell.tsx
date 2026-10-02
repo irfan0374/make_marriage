@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import { Logo } from '@/components/common/logo';
 
 // Split layout from the Stitch login design: wedding photo under a plum overlay on desktop,
@@ -59,11 +58,6 @@ export function AuthShell({
           <div className="mt-8">{children}</div>
           <p className="text-text-muted mt-6 text-center text-sm">{footer}</p>
         </div>
-        <p className="text-text-muted mt-10 text-center text-xs">
-          <Link href="/privacy" className="hover:text-text">
-            Privacy
-          </Link>
-        </p>
       </main>
     </div>
   );

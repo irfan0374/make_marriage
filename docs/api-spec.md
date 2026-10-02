@@ -172,6 +172,7 @@ API responses never include password hashes, session or token hashes, or interna
   "groomName": "Irfan",
   "weddingDate": "2028-04-14",
   "city": "Kochi",
+  "venue": "Grand Hyatt, Bolgatty Island",
   "timezone": "Asia/Kolkata",
   "sidesEnabled": true,
   "status": "active",
@@ -444,12 +445,16 @@ Request:
   "groomName": "Irfan",
   "weddingDate": "2028-04-14",
   "city": "Kochi",
+  "venue": "Grand Hyatt, Bolgatty Island",
+  "timezone": "Asia/Kolkata",
   "sidesEnabled": true
 }
 ```
 Response `201`: `{ "data": <Wedding> }`
 
-Server-side defaults: timezone `Asia/Kolkata`, invitation message, website settings (unpublished, suggested slug), gallery token, 3 GB storage cap.
+Rules: `brideName` and `groomName` 1-60 characters with at least one letter (any script), `city` 1-80, `venue` optional free text up to 200 (default `""`), `timezone` optional valid IANA timezone (default `Asia/Kolkata`; stored in its standard spelling, so `asia/kolkata` becomes `Asia/Kolkata`), `weddingDate` from today to 5 years ahead in that timezone (`VALIDATION_ERROR` otherwise), `sidesEnabled` optional (default `false`). One person may create several weddings.
+
+Server-side defaults: timezone `Asia/Kolkata`, invitation message, website settings (unpublished, suggested slug `{bride}-{groom}-{dd}-{mon}-{yyyy}` with `-2`, `-3`... if taken), gallery token, 3 GB storage cap. The wedding and the caller's admin membership are created in one transaction.
 
 ### 6.2 `GET /api/weddings/{weddingId}`
 **Access:** Member. Response `200`: `{ "data": <Wedding> }`.
@@ -464,6 +469,7 @@ Request (any subset):
   "groomName": "Irfan",
   "weddingDate": "2028-04-14",
   "city": "Kochi",
+  "venue": "Grand Hyatt, Bolgatty Island",
   "timezone": "Asia/Kolkata",
   "sidesEnabled": true,
   "customExpenseCategories": ["Mehendi artist"],

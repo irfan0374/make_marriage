@@ -251,9 +251,6 @@ export function MarketingFooter() {
           <Link href={ROUTES.login} className="hover:text-text">
             Log in
           </Link>
-          <Link href={ROUTES.privacy} className="hover:text-text">
-            Privacy
-          </Link>
         </nav>
       </div>
     </footer>

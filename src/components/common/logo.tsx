@@ -17,12 +17,20 @@ type LogoProps = {
   /** Load immediately instead of lazily (use for the logo above the fold). */
   eager?: boolean;
   className?: string;
+  /** Where the logo goes: the homepage on public pages, `/app` inside the app. */
+  href?: string;
 };
 
-export function Logo({ variant = 'horizontal', height = 44, eager, className }: LogoProps) {
+export function Logo({
+  variant = 'horizontal',
+  height = 44,
+  eager,
+  className,
+  href = '/',
+}: LogoProps) {
   const logo = LOGOS[variant];
   return (
-    <Link href="/" className={cn('inline-flex shrink-0', className)}>
+    <Link href={href} className={cn('inline-flex shrink-0', className)}>
       <Image
         src={logo.src}
         alt={APP_NAME}

@@ -18,7 +18,6 @@ import {
 export const ROUTES = {
   signup: '/signup',
   login: '/login',
-  privacy: '/privacy',
 } as const;
 
 export const SECTION_IDS = {

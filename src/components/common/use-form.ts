@@ -8,11 +8,12 @@ import type { ErrorCode } from '@/shared/error-codes';
 type Errors = Record<string, string>;
 
 /**
- * Form state for the auth forms: validates with the shared Zod schema before sending, and maps
- * API errors back onto fields (`fieldFor`) or a message above the form. Attach `formRef` to the
- * form so the first field with an error gets focus.
+ * Form state for forms that post to the API: validates with the shared Zod schema before sending, and maps
+ * API errors back onto fields (`fieldFor`) or a message above the form. Attach `formRef` and
+ * `onInput` to the form: the first field with an error gets focus, and a field's error clears
+ * as soon as it is edited.
  */
-export function useAuthForm<S extends z.ZodType>(
+export function useForm<S extends z.ZodType>(
   schema: S,
   fieldFor: Partial<Record<ErrorCode, string>> = {},
 ) {
@@ -22,19 +23,20 @@ export function useAuthForm<S extends z.ZodType>(
 
   function showFieldErrors(errors: Errors) {
     setFieldErrors(errors);
-    const first = Object.keys(errors)[0];
-    const field = first ? formRef.current?.elements.namedItem(first) : null;
-    if (field instanceof HTMLElement) field.focus();
+    // Focus the first field with an error in page order (errors from checks that span several
+    // fields can arrive after the fields below them).
+    const fields = Array.from(formRef.current?.elements ?? []);
+    const first = fields.find((el) => 'name' in el && (el.name as string) in errors);
+    if (first instanceof HTMLElement) first.focus();
   }
 
-  function validate(values: Record<string, FormDataEntryValue | null>): z.output<S> | null {
+  function validate(values: Record<string, unknown>): z.output<S> | null {
     setFormError(null);
     const result = schema.safeParse(values);
     if (result.success) {
       setFieldErrors({});
       return result.data;
     }
-    // Issues come in schema order, which matches the order of the fields on the form.
     const errors: Errors = {};
     for (const issue of result.error.issues) errors[String(issue.path[0])] ??= issue.message;
     showFieldErrors(errors);
@@ -60,5 +62,17 @@ export function useAuthForm<S extends z.ZodType>(
     else setFormError(error.message);
   }
 
-  return { formRef, fieldErrors, formError, validate, showError };
+  function onInput(event: React.FormEvent<HTMLFormElement>) {
+    const target = event.target;
+    if (!('name' in target) || typeof target.name !== 'string') return;
+    const name = target.name;
+    if (!(name in fieldErrors)) return;
+    setFieldErrors((errors) => {
+      const next = { ...errors };
+      delete next[name];
+      return next;
+    });
+  }
+
+  return { formRef, fieldErrors, formError, validate, showError, onInput };
 }

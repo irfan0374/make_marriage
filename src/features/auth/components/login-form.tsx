@@ -2,13 +2,13 @@
 
 import { Button } from '@/components/ui/button';
 import { useLogin } from '@/features/auth/hooks';
-import { loginSchema } from '@/modules/auth/auth.schemas';
-import { FormAlert, FormField } from './form-field';
-import { useAuthForm } from './use-auth-form';
+import { EMAIL_MAX, loginSchema, PASSWORD_MAX } from '@/modules/auth/auth.schemas';
+import { FormAlert, FormField } from '@/components/common/form-field';
+import { useForm } from '@/components/common/use-form';
 
 export function LoginForm() {
   const mutation = useLogin();
-  const { formRef, fieldErrors, formError, validate, showError } = useAuthForm(loginSchema);
+  const { formRef, fieldErrors, formError, validate, showError, onInput } = useForm(loginSchema);
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -18,13 +18,14 @@ export function LoginForm() {
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-5">
+    <form ref={formRef} onSubmit={onSubmit} onInput={onInput} noValidate className="space-y-5">
       <FormAlert message={formError} />
       <FormField
         label="Email"
         name="email"
         type="email"
         autoComplete="email"
+        maxLength={EMAIL_MAX}
         placeholder="you@example.com"
         error={fieldErrors.email}
       />
@@ -33,6 +34,7 @@ export function LoginForm() {
         name="password"
         type="password"
         autoComplete="current-password"
+        maxLength={PASSWORD_MAX}
         error={fieldErrors.password}
       />
       <Button type="submit" className="h-11 w-full" disabled={mutation.isPending}>

@@ -253,11 +253,12 @@ The tenant root. Every other tenant document points to a wedding through `weddin
 
 | Field | Type | Req | Default | Rules |
 |---|---|---|---|---|
-| `brideName` | string | ✅ | | 1-60 characters |
-| `groomName` | string | ✅ | | 1-60 characters |
-| `weddingDate` | string | ✅ | | `YYYY-MM-DD`. Main wedding date, used for the countdown and retention |
+| `brideName` | string | ✅ | | 1-60 characters, at least one letter |
+| `groomName` | string | ✅ | | 1-60 characters, at least one letter |
+| `weddingDate` | string | ✅ | | `YYYY-MM-DD`. Main wedding date, used for the countdown and retention. From today to 5 years ahead (in the wedding timezone) when the wedding is created |
 | `city` | string | ✅ | | 1-80 characters |
-| `timezone` | string | ✅ | `"Asia/Kolkata"` | Valid IANA timezone |
+| `venue` | string | | `""` | Max 200 characters. Free-text venue entered by the couple. Missing on weddings created before the field existed; read as `""`. The Google Places `location` (Phase 4) is separate and more precise |
+| `timezone` | string | ✅ | `"Asia/Kolkata"` | Valid IANA timezone, in its standard spelling (`Asia/Kolkata`, not `asia/kolkata`) |
 | `sidesEnabled` | bool | ✅ | `false` | Bride side / groom side feature |
 | `status` | enum | ✅ | `"active"` | `active`, `archived` |
 | `archivedAt` | Date | | `null` | |
@@ -334,6 +335,7 @@ The tenant root. Every other tenant document points to a wedding through `weddin
   "groomName": "Irfan",
   "weddingDate": "2028-04-14",
   "city": "Kochi",
+  "venue": "Grand Hyatt, Bolgatty Island",
   "timezone": "Asia/Kolkata",
   "sidesEnabled": true,
   "status": "active",
