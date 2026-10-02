@@ -1,8 +1,10 @@
 'use client';
 
-import { CalendarDays, Mail, MapPin, UserPlus, Users } from 'lucide-react';
+import { CalendarDays, Check, Mail, MapPin, UserPlus, Users, X } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { timezoneLabel } from '@/config/constants';
 import { useWedding } from '@/features/weddings/hooks';
 import type { Wedding } from '@/modules/weddings/weddings.types';
@@ -58,7 +60,43 @@ function Countdown({ wedding }: { wedding: Wedding }) {
   );
 }
 
-export function WeddingOverview({ weddingId }: { weddingId: string }) {
+/**
+ * "Wedding details saved", after Settings sends the couple back here with `?saved=1`. The query
+ * is removed straight away, so a reload or a shared link doesn't show it again.
+ */
+function SavedBanner({ weddingId, show }: { weddingId: string; show: boolean }) {
+  const router = useRouter();
+  const [visible, setVisible] = useState(show);
+  useEffect(() => {
+    if (show) router.replace(`/app/${weddingId}`, { scroll: false });
+  }, [show, weddingId, router]);
+  if (!visible) return null;
+  return (
+    <div
+      role="status"
+      className="bg-success-bg text-success-text rounded-input flex items-center gap-2 px-4 py-3 text-sm"
+    >
+      <Check aria-hidden className="size-4 shrink-0" />
+      <span className="flex-1">Wedding details saved.</span>
+      <button
+        type="button"
+        onClick={() => setVisible(false)}
+        aria-label="Dismiss"
+        className="hover:bg-success-text/10 rounded-full p-1"
+      >
+        <X aria-hidden className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+export function WeddingOverview({
+  weddingId,
+  saved = false,
+}: {
+  weddingId: string;
+  saved?: boolean;
+}) {
   const { data: wedding, error, isPending, refetch } = useWedding(weddingId);
 
   if (isPending) {
@@ -103,6 +141,7 @@ export function WeddingOverview({ weddingId }: { weddingId: string }) {
 
   return (
     <div className="space-y-10">
+      <SavedBanner weddingId={weddingId} show={saved} />
       <section
         className={`${card} flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between md:p-8`}
       >
@@ -181,6 +220,14 @@ export function WeddingOverview({ weddingId }: { weddingId: string }) {
               </div>
             ))}
           </dl>
+          {wedding.me.role === 'admin' && (
+            <Link
+              href={`/app/${wedding.id}/settings`}
+              className={buttonVariants({ variant: 'outline', className: 'mt-5 h-9 w-full' })}
+            >
+              Edit details
+            </Link>
+          )}
         </aside>
       </div>
     </div>

@@ -32,6 +32,29 @@ export function findWedding(weddingId: WeddingId) {
   return weddings().findOne({ _id: weddingId });
 }
 
+/** The wedding's editable details (api-spec §6.3). */
+export type WeddingDetails = Pick<
+  WeddingDocument,
+  'brideName' | 'groomName' | 'weddingDate' | 'city' | 'venue' | 'timezone' | 'sidesEnabled'
+>;
+
+/**
+ * Save changed details and return the updated wedding, or `null` if it's archived (or gone) by
+ * the time of the write: matching on `status` too means a wedding archived a moment ago is never
+ * changed.
+ */
+export function updateWeddingDetails(
+  weddingId: WeddingId,
+  changes: Partial<WeddingDetails>,
+  now: Date,
+) {
+  return weddings().findOneAndUpdate(
+    { _id: weddingId, status: 'active' },
+    { $set: { ...changes, updatedAt: now } },
+    { returnDocument: 'after', includeResultMetadata: false },
+  );
+}
+
 /** Summaries for the user's wedding list. Ids come from the user's own memberships. */
 export function findWeddingSummaries(weddingIds: ObjectId[]) {
   return weddings()

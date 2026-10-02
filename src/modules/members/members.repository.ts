@@ -1,5 +1,5 @@
 import 'server-only';
-import { ObjectId, type ClientSession } from 'mongodb';
+import { MongoServerError, ObjectId, type ClientSession } from 'mongodb';
 import { globalCollection } from '@/lib/db/client';
 import { scopedCollection } from '@/lib/db/tenant';
 import type { WeddingId } from '@/lib/ids';
@@ -8,6 +8,9 @@ import type { MembershipDocument, Role, SideScope } from './members.types';
 
 const scoped = (weddingId: WeddingId) =>
   scopedCollection<MembershipDocument>(MEMBERSHIPS, weddingId);
+
+/** The user is already an admin of another wedding (the one-admin-wedding index). */
+export class AlreadyAdminError extends Error {}
 
 export async function insertMembership(
   weddingId: WeddingId,
@@ -20,20 +23,40 @@ export async function insertMembership(
   },
   session?: ClientSession,
 ): Promise<void> {
-  await scoped(weddingId).insertOne(
-    {
-      _id: new ObjectId(),
-      userId: input.userId,
-      role: input.role,
-      sideScope: input.sideScope,
-      invitedByUserId: input.invitedByUserId,
-      joinedAt: input.now,
-      schemaVersion: 1,
-      createdAt: input.now,
-      updatedAt: input.now,
-    },
-    { session },
+  try {
+    await scoped(weddingId).insertOne(
+      {
+        _id: new ObjectId(),
+        userId: input.userId,
+        role: input.role,
+        sideScope: input.sideScope,
+        invitedByUserId: input.invitedByUserId,
+        joinedAt: input.now,
+        schemaVersion: 1,
+        createdAt: input.now,
+        updatedAt: input.now,
+      },
+      { session },
+    );
+  } catch (error) {
+    if (
+      error instanceof MongoServerError &&
+      error.code === 11000 &&
+      /one_admin_wedding_per_user/.test(error.message)
+    ) {
+      throw new AlreadyAdminError();
+    }
+    throw error;
+  }
+}
+
+/** The wedding this user is an admin of, if any (at most one). */
+export async function findAdminWeddingId(userId: ObjectId): Promise<ObjectId | null> {
+  const membership = await globalCollection<MembershipDocument>(MEMBERSHIPS).findOne(
+    { userId, role: 'admin' },
+    { projection: { weddingId: 1 } },
   );
+  return membership?.weddingId ?? null;
 }
 
 /**

@@ -3,6 +3,7 @@ import 'server-only';
 // Public API of the members module.
 export {
   addFirstAdmin,
+  getAdminWeddingId,
   listUserMemberships,
   requireAdmin,
   resolveWeddingContext,

@@ -1,10 +1,10 @@
 'use client';
 
 import { Menu } from '@base-ui/react/menu';
-import { ChevronDown, LayoutList, LogOut, Plus } from 'lucide-react';
+import { ChevronDown, LayoutList, LogOut, Plus, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useLogout, useLogoutAll } from '@/features/auth/hooks';
-import { useMe } from '@/features/weddings/hooks';
+import { hasOwnWedding, useMe } from '@/features/weddings/hooks';
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -17,15 +17,16 @@ const item =
   'data-[highlighted]:bg-background-alt rounded-input flex cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none';
 
 /**
- * The user menu in every app header: switch or create a wedding, and log out. Inside a wedding
- * and outside one, so "Log out of all devices" and "Create a wedding" are always one click away.
+ * The user menu in every app header: wedding settings (admins, inside a wedding), switch
+ * weddings, create a wedding (only for someone without their own), and log out.
  */
-export function AccountMenu() {
+export function AccountMenu({ settingsHref }: { settingsHref?: string } = {}) {
   const { data: me } = useMe();
   const logout = useLogout();
   const logoutAll = useLogoutAll();
   if (!me) return null;
   const hasSeveral = me.weddings.length > 1;
+  const canCreate = !hasOwnWedding(me);
 
   return (
     <div className="relative ml-auto">
@@ -48,17 +49,25 @@ export function AccountMenu() {
                 <p className="text-text-muted truncate text-xs">{me.user.email}</p>
               </div>
               <div className="bg-border my-1 h-px" />
+              {settingsHref && (
+                <Menu.LinkItem render={<Link href={settingsHref} />} className={item}>
+                  <Settings aria-hidden className="text-primary size-4" />
+                  Wedding settings
+                </Menu.LinkItem>
+              )}
               {hasSeveral && (
                 <Menu.LinkItem render={<Link href="/app" />} className={item}>
                   <LayoutList aria-hidden className="text-primary size-4" />
                   Your weddings
                 </Menu.LinkItem>
               )}
-              <Menu.LinkItem render={<Link href="/app/new" />} className={item}>
-                <Plus aria-hidden className="text-primary size-4" />
-                Create a wedding
-              </Menu.LinkItem>
-              <div className="bg-border my-1 h-px" />
+              {canCreate && (
+                <Menu.LinkItem render={<Link href="/app/new" />} className={item}>
+                  <Plus aria-hidden className="text-primary size-4" />
+                  Create your wedding
+                </Menu.LinkItem>
+              )}
+              {(settingsHref || hasSeveral || canCreate) && <div className="bg-border my-1 h-px" />}
               <Menu.Item onClick={() => logout.mutate()} className={item}>
                 <LogOut aria-hidden className="text-primary size-4" />
                 Log out

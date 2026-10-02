@@ -61,6 +61,22 @@ describe('defineHandler', () => {
     expect(await details('{"name":null,"headcount":1}')).toEqual({ name: 'Must be text.' });
   });
 
+  it('asks for a JSON body when none is sent', async () => {
+    const res = await createThing(
+      new NextRequest('http://localhost/api/things', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: 'http://localhost' },
+      }),
+    );
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: 'Send the request body as a JSON object.',
+    });
+    expect(error.details).toBeUndefined();
+  });
+
   it('rejects unknown fields and $-operators', async () => {
     const res = await createThing(jsonRequest('{"name":"A","headcount":1,"$where":"1"}'));
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');

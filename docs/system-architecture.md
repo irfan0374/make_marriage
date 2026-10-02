@@ -343,7 +343,7 @@ Every private request resolves who the user is, which wedding they're working in
 | Gallery settings and link regeneration | ✅ | ❌ |
 | Archive or unarchive the wedding | ✅ | ❌ |
 
-A wedding has at most 2 Admins and always at least 1.
+A wedding has at most 2 Admins and always at least 1, and a person can be an Admin of only one wedding (their own). Managers can belong to any number of weddings.
 
 ### 7.3 Side scoping
 When bride side / groom side is on, a Manager scoped to one side sees only that side's guests, everywhere: lists, search, exports, sending, RSVP counts and the dashboard. The filter is applied inside the repository layer, so no feature can miss it.

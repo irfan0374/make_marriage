@@ -3,19 +3,22 @@ import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
 import { SESSION_COOKIE_NAME } from '@/config/app';
-import { GALLERY_STORAGE_CAP_BYTES } from '@/config/constants';
+import { GALLERY_STORAGE_CAP_BYTES, WEDDING_TIMEZONES } from '@/config/constants';
 import { withTransaction } from '@/lib/db/transaction';
 import { AppError } from '@/lib/errors';
-import { toObjectId, trustWeddingId } from '@/lib/ids';
+import { toObjectId, trustWeddingId, type WeddingId } from '@/lib/ids';
 import { logger } from '@/lib/logger';
 import { randomToken } from '@/lib/tokens';
 import { requireSession } from '@/modules/auth';
 import {
   addFirstAdmin,
+  getAdminWeddingId,
   listUserMemberships,
+  requireAdmin,
   resolveWeddingContext,
   type WeddingContext,
 } from '@/modules/members';
+import { canonicalTimeZone } from '@/shared/dates';
 import { isReservedSlug, slugWithSuffix, suggestSlug } from '@/shared/slug';
 import { objectIdString } from '@/shared/validation';
 import {
@@ -24,16 +27,20 @@ import {
   findWedding,
   findWeddingSummaries,
   insertWedding,
+  updateWeddingDetails,
+  type WeddingDetails,
 } from './weddings.repository';
+import { canCheckWeddingDate, weddingDateProblem } from './weddings.schemas';
 import type {
   CreateWeddingInput,
   Me,
+  UpdateWeddingInput,
   Wedding,
   WeddingDocument,
   WeddingSummary,
 } from './weddings.types';
 
-// Wedding profile (architecture §4.1). For now: create, read, and the user's wedding list.
+// Wedding profile (architecture §4.1): create, read, edit the details, and the user's wedding list.
 
 export const DEFAULT_INVITATION_MESSAGE =
   'With the blessings of our families, we warmly invite you and your family to celebrate our ' +
@@ -125,7 +132,11 @@ function toWedding(doc: WeddingDocument, context: WeddingContext): Wedding {
     city: doc.city,
     // Weddings created before the venue field existed have none (database-design §7.1).
     venue: doc.venue ?? '',
-    timezone: doc.timezone,
+    // Early test weddings stored some timezones in lowercase; always show the standard spelling.
+    timezone: canonicalTimeZone(
+      doc.timezone,
+      WEDDING_TIMEZONES.map((tz) => tz.value),
+    ),
     sidesEnabled: doc.sidesEnabled,
     status: doc.status,
     archivedAt: doc.archivedAt?.toISOString() ?? null,
@@ -148,6 +159,9 @@ export async function createWedding(
   now = new Date(),
 ): Promise<Wedding> {
   const session = await requireSession(token, now);
+  // Each person is an admin of one wedding only (PRD §4). Checked here for a quick answer; the
+  // database enforces it inside the transaction too.
+  if (await getAdminWeddingId(session.userId)) throw new AppError('ALREADY_HAS_WEDDING');
   const base = suggestSlug(input.brideName, input.groomName, input.weddingDate);
 
   for (let attempt = 1; ; attempt++) {
@@ -180,6 +194,77 @@ export async function getWedding(token: string | undefined, weddingId: ObjectId)
   const doc = await findWedding(context.weddingId);
   if (!doc) throw new AppError('NOT_FOUND');
   return toWedding(doc, context);
+}
+
+/**
+ * The wedding, if it can still be changed: archived weddings are read-only, and every write gets
+ * 409 WEDDING_ARCHIVED (api-spec §3.3). Other modules call this before changing a wedding's data.
+ */
+export async function requireWritableWedding(weddingId: WeddingId): Promise<WeddingDocument> {
+  const doc = await findWedding(weddingId);
+  if (!doc) throw new AppError('NOT_FOUND');
+  if (doc.status === 'archived') throw new AppError('WEDDING_ARCHIVED');
+  return doc;
+}
+
+const DETAIL_FIELDS = [
+  'brideName',
+  'groomName',
+  'weddingDate',
+  'city',
+  'venue',
+  'timezone',
+  'sidesEnabled',
+] as const satisfies readonly (keyof WeddingDetails)[];
+
+/**
+ * PATCH /api/weddings/{weddingId} (api-spec §6.3): change any of the wedding's details.
+ * Admins only (a Manager gets 403); archived weddings get 409. Only fields that differ from the
+ * saved values are written. A new date must be from today to 5 years ahead in the wedding's
+ * (new or current) timezone; a kept date is never re-checked. The website address doesn't
+ * change with the names or date, so links already shared keep working.
+ */
+export async function updateWedding(
+  token: string | undefined,
+  weddingId: ObjectId,
+  input: UpdateWeddingInput,
+  now = new Date(),
+): Promise<Wedding> {
+  const context = await resolveWeddingContext(token, weddingId);
+  requireAdmin(context);
+  const doc = await requireWritableWedding(context.weddingId);
+
+  const saved: WeddingDetails = { ...doc, venue: doc.venue ?? '' };
+  const changes: Partial<Record<keyof WeddingDetails, unknown>> = {};
+  for (const field of DETAIL_FIELDS) {
+    const value = input[field];
+    if (value !== undefined && value !== saved[field]) changes[field] = value;
+  }
+
+  if (typeof changes.weddingDate === 'string') {
+    const timezone = (changes.timezone as string | undefined) ?? saved.timezone;
+    const problem = canCheckWeddingDate(changes.weddingDate, timezone)
+      ? weddingDateProblem(changes.weddingDate, timezone, now)
+      : null;
+    if (problem) {
+      throw new AppError('VALIDATION_ERROR', undefined, {
+        details: [{ path: 'weddingDate', message: problem }],
+      });
+    }
+  }
+
+  if (Object.keys(changes).length === 0) return toWedding(doc, context);
+  const updated = await updateWeddingDetails(
+    context.weddingId,
+    changes as Partial<WeddingDetails>,
+    now,
+  );
+  if (!updated) throw new AppError('WEDDING_ARCHIVED');
+  logger.info('wedding.updated', {
+    weddingId: context.weddingId.toHexString(),
+    fields: Object.keys(changes),
+  });
+  return toWedding(updated, context);
 }
 
 /**
@@ -222,4 +307,19 @@ export async function getMe(token: string | undefined, now = new Date()): Promis
     }))
     .sort((a, b) => a.weddingDate.localeCompare(b.weddingDate));
   return { user: session.user, weddings };
+}
+
+/**
+ * For `/app/new`: the wedding the logged-in user is already an admin of (their own wedding),
+ * `null` if they can create one, or `'unauthenticated'`.
+ */
+export async function getPageOwnWeddingId(): Promise<string | null | 'unauthenticated'> {
+  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+  try {
+    const session = await requireSession(token || undefined);
+    return (await getAdminWeddingId(session.userId))?.toHexString() ?? null;
+  } catch (error) {
+    if (error instanceof AppError && error.code === 'UNAUTHENTICATED') return 'unauthenticated';
+    throw error;
+  }
 }

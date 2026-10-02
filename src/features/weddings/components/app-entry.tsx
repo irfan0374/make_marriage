@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { buttonVariants } from '@/components/ui/button';
-import { useMe } from '@/features/weddings/hooks';
+import { hasOwnWedding, useMe } from '@/features/weddings/hooks';
 import { cn } from '@/shared/cn';
 import { formatDate } from '@/shared/dates';
 import { RoleBadge } from './role-badge';
@@ -76,13 +76,16 @@ export function AppEntry() {
                 </li>
               ))}
             </ul>
-            <Link
-              href="/app/new"
-              className={cn(buttonVariants({ variant: 'outline' }), 'mt-6 h-11 px-5')}
-            >
-              <Plus aria-hidden />
-              Create a wedding
-            </Link>
+            {/* Only for someone without their own wedding, e.g. a Manager in family weddings. */}
+            {!hasOwnWedding(me) && (
+              <Link
+                href="/app/new"
+                className={cn(buttonVariants({ variant: 'outline' }), 'mt-6 h-11 px-5')}
+              >
+                <Plus aria-hidden />
+                Create your wedding
+              </Link>
+            )}
           </>
         )}
       </main>

@@ -435,6 +435,7 @@ db.weddings.updateOne(
 **Rules**
 - One membership per user per wedding.
 - At most 2 `admin` memberships per wedding (checked in the service inside the same transaction that adds one).
+- A user has at most 1 `admin` membership across all weddings: each person is an admin of only their own wedding. Enforced by a unique partial index, so concurrent requests can't both succeed. `manager` memberships are unlimited.
 - A wedding must always keep at least 1 admin. The last admin can't be removed or demoted.
 
 **Indexes**
@@ -443,6 +444,7 @@ db.weddings.updateOne(
 | `{ weddingId: 1, userId: 1 }` | Unique | Membership check on every private request |
 | `{ userId: 1 }` | | "My weddings" list and wedding switcher |
 | `{ weddingId: 1, role: 1 }` | | Admin count, team list |
+| `{ userId: 1 }` named `one_admin_wedding_per_user` | Unique, partial (`role: "admin"`) | One admin wedding per person |
 
 ### 7.3 `memberInvites`
 

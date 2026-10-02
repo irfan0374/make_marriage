@@ -1,7 +1,12 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/lib/errors';
-import { createWeddingHandler, getMeHandler, getWeddingHandler } from './weddings.handlers';
+import {
+  createWeddingHandler,
+  getMeHandler,
+  getWeddingHandler,
+  updateWeddingHandler,
+} from './weddings.handlers';
 import * as service from './weddings.service';
 import { todayIn } from '@/shared/dates';
 
@@ -12,6 +17,7 @@ vi.mock('./weddings.service', () => ({
   createWedding: vi.fn(),
   getWedding: vi.fn(),
   getMe: vi.fn(),
+  updateWedding: vi.fn(),
 }));
 
 const weddingId = '66f1b0000000000000000001';
@@ -113,5 +119,48 @@ describe('GET /api/me', () => {
     );
     expect(await res.json()).toEqual({ data: me });
     expect(service.getMe).toHaveBeenCalledWith('raw-token');
+  });
+});
+
+describe('PATCH /api/weddings/{weddingId}', () => {
+  const patch = (body: unknown, origin = 'http://localhost') =>
+    updateWeddingHandler(
+      new NextRequest(`http://localhost/api/weddings/${weddingId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+        headers: { 'content-type': 'application/json', origin, cookie },
+      }),
+      { params: Promise.resolve({ weddingId }) },
+    );
+
+  it('passes the parsed changes to the service', async () => {
+    vi.mocked(service.updateWedding).mockResolvedValueOnce(wedding as never);
+    const res = await patch({ city: ' Thrissur ', timezone: 'Asia/Dubai' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ data: wedding });
+    const [token, id, input] = vi.mocked(service.updateWedding).mock.calls[0]!;
+    expect(token).toBe('raw-token');
+    expect(id.toHexString()).toBe(weddingId);
+    expect(input).toEqual({ city: 'Thrissur', timezone: 'Asia/Dubai' });
+  });
+
+  it('rejects invalid and unknown fields without calling the service', async () => {
+    const res = await patch({ city: '', guestTags: [] });
+    expect(res.status).toBe(400);
+    expect(service.updateWedding).not.toHaveBeenCalled();
+  });
+
+  it('passes through 403 for a Manager and 409 for an archived wedding', async () => {
+    vi.mocked(service.updateWedding).mockRejectedValueOnce(new AppError('FORBIDDEN'));
+    expect((await patch({ city: 'Thrissur' })).status).toBe(403);
+    vi.mocked(service.updateWedding).mockRejectedValueOnce(new AppError('WEDDING_ARCHIVED'));
+    const res = await patch({ city: 'Thrissur' });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe('WEDDING_ARCHIVED');
+  });
+
+  it('rejects requests from another site', async () => {
+    expect((await patch({ city: 'Thrissur' }, 'https://evil.example')).status).toBe(403);
+    expect(service.updateWedding).not.toHaveBeenCalled();
   });
 });

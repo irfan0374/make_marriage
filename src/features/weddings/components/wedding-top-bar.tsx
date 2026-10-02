@@ -37,7 +37,9 @@ export function WeddingTopBar({ weddingId }: { weddingId: string }) {
             </p>
           ))}
 
-        <AccountMenu />
+        <AccountMenu
+          settingsHref={wedding?.me.role === 'admin' ? `/app/${weddingId}/settings` : undefined}
+        />
       </div>
     </header>
   );

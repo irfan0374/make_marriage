@@ -11,7 +11,9 @@ export async function generateMetadata({
   return { title: `${wedding.brideName} & ${wedding.groomName}` };
 }
 
-export default async function Page({ params }: PageProps<'/app/[weddingId]'>) {
+export default async function Page({ params, searchParams }: PageProps<'/app/[weddingId]'>) {
   const { weddingId } = await params;
-  return <WeddingOverview weddingId={weddingId} />;
+  // `?saved=1`: just back from Settings after saving.
+  const saved = (await searchParams).saved === '1';
+  return <WeddingOverview weddingId={weddingId} saved={saved} />;
 }

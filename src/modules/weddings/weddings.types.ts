@@ -2,9 +2,10 @@ import type { ObjectId } from 'mongodb';
 import type { z } from 'zod';
 import type { PublicUser } from '@/modules/auth/auth.types';
 import type { Role, SideScope } from '@/modules/members/members.types';
-import type { createWeddingSchema } from './weddings.schemas';
+import type { createWeddingSchema, updateWeddingSchema } from './weddings.schemas';
 
 export type CreateWeddingInput = z.output<typeof createWeddingSchema>;
+export type UpdateWeddingInput = z.output<typeof updateWeddingSchema>;
 export type WeddingStatus = 'active' | 'archived';
 
 export interface WeddingLocation {

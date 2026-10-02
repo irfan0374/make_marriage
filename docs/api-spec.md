@@ -450,9 +450,11 @@ Request:
   "sidesEnabled": true
 }
 ```
-Response `201`: `{ "data": <Wedding> }`
+Response `201`: `{ "data": <Wedding> }`. Errors: `VALIDATION_ERROR`, `ALREADY_HAS_WEDDING` (409).
 
-Rules: `brideName` and `groomName` 1-60 characters with at least one letter (any script), `city` 1-80, `venue` optional free text up to 200 (default `""`), `timezone` optional valid IANA timezone (default `Asia/Kolkata`; stored in its standard spelling, so `asia/kolkata` becomes `Asia/Kolkata`), `weddingDate` from today to 5 years ahead in that timezone (`VALIDATION_ERROR` otherwise), `sidesEnabled` optional (default `false`). One person may create several weddings.
+Rules: `brideName` and `groomName` 1-60 characters with at least one letter (any script), `city` 1-80, `venue` optional free text up to 200 (default `""`), `timezone` optional valid IANA timezone (default `Asia/Kolkata`; stored in its standard spelling, so `asia/kolkata` becomes `Asia/Kolkata`), `weddingDate` from today to 5 years ahead in that timezone (`VALIDATION_ERROR` otherwise), `sidesEnabled` optional (default `false`).
+
+Each person can be an admin of only one wedding: a caller who is already an admin of a wedding gets `409 ALREADY_HAS_WEDDING`. Being a Manager in other weddings doesn't count.
 
 Server-side defaults: timezone `Asia/Kolkata`, invitation message, website settings (unpublished, suggested slug `{bride}-{groom}-{dd}-{mon}-{yyyy}` with `-2`, `-3`... if taken), gallery token, 3 GB storage cap. The wedding and the caller's admin membership are created in one transaction.
 
@@ -479,6 +481,11 @@ Request (any subset):
 Response `200`: `{ "data": <Wedding> }`
 
 Rules:
+- Admins only: a Manager gets `403 FORBIDDEN`, a non-member `404 NOT_FOUND`. An archived wedding returns `409 WEDDING_ARCHIVED`.
+- Field rules are the same as §6.1. Unknown fields return `VALIDATION_ERROR`; only fields that differ from the saved values are written.
+- A **changed** `weddingDate` must be from today to 5 years ahead in the wedding's timezone (the new one if `timezone` is changed in the same request). An unchanged date is never re-checked, so a wedding that has already happened can still be edited.
+- Changing the names or date does **not** change the website address (`website.slug`), so links already shared keep working. The address is changed only through §17.4.
+- `customExpenseCategories` and `guestTags` are accepted once the expenses and guests modules are built; until then they are rejected as unknown fields.
 - Turning `sidesEnabled` off keeps each household's `side` value but hides it everywhere, and Managers' side scopes stop applying.
 - Removing a tag from `guestTags` removes it from all households.
 - Removing a custom category that is used by expenses returns `409 CATEGORY_IN_USE`.
@@ -523,7 +530,7 @@ Request:
 
 Response `201`: the pending invite.
 
-Errors: `ALREADY_MEMBER` (409), `INVITE_PENDING` (409), `ADMIN_LIMIT_REACHED` (409), `EMAIL_SEND_FAILED` (502, invite saved, can be resent).
+Errors: `ALREADY_MEMBER` (409), `INVITE_PENDING` (409), `ADMIN_LIMIT_REACHED` (409), `ALREADY_HAS_WEDDING` (409, role `admin` for someone who is already an admin of another wedding), `EMAIL_SEND_FAILED` (502, invite saved, can be resent).
 
 ### 7.3 `POST /api/weddings/{weddingId}/members/invites/{inviteId}/resend`
 **Access:** Admin. Sends the email again with a new link and a fresh 7-day expiry. Response `200`.
@@ -538,7 +545,7 @@ Request: `{ "role": "manager", "sideScope": "groom" }`
 
 Response `200`: `<Member>`
 
-Errors: `ADMIN_LIMIT_REACHED`, `LAST_ADMIN` (409, can't demote the last admin).
+Errors: `ADMIN_LIMIT_REACHED`, `ALREADY_HAS_WEDDING` (409, promoting someone who is already an admin of another wedding), `LAST_ADMIN` (409, can't demote the last admin).
 
 ### 7.6 `DELETE /api/weddings/{weddingId}/members/{memberId}`
 **Access:** Admin. Removes the member. Their tasks become unassigned. Response `204`.
@@ -562,7 +569,7 @@ Errors: `INVITE_INVALID` (404, covers expired, cancelled and used).
 
 Response `200`: `{ "data": { "weddingId": "66f1b0..." } }`
 
-Errors: `INVITE_INVALID`, `INVITE_EMAIL_MISMATCH` (403), `ALREADY_MEMBER`, `ADMIN_LIMIT_REACHED`.
+Errors: `INVITE_INVALID`, `INVITE_EMAIL_MISMATCH` (403), `ALREADY_MEMBER`, `ADMIN_LIMIT_REACHED`, `ALREADY_HAS_WEDDING` (admin invite, but the user is already an admin of another wedding).
 
 ---
 
@@ -1678,6 +1685,7 @@ Response `503` if the database is unreachable.
 | `ALREADY_MEMBER` | 409 | Person is already a member |
 | `INVITE_PENDING` | 409 | A pending invite already exists for this email |
 | `ADMIN_LIMIT_REACHED` | 409 | Wedding already has 2 admins |
+| `ALREADY_HAS_WEDDING` | 409 | The user is already an admin of a wedding; each person can be an admin of one wedding only |
 | `LAST_ADMIN` | 409 | Action would leave the wedding without an admin |
 | `WEDDING_ARCHIVED` | 409 | Wedding is read-only |
 | `RSVP_CLOSED` | 409 | Deadline passed or wedding archived |

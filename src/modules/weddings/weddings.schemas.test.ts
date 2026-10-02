@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createWeddingSchema } from './weddings.schemas';
+import { createWeddingSchema, updateWeddingSchema, weddingDateProblem } from './weddings.schemas';
 
 const valid = {
   brideName: ' Nafiya ',
@@ -98,5 +98,50 @@ describe('createWeddingSchema', () => {
 
   it('rejects unknown fields', () => {
     expect(errors({ ...valid, location: 'Kochi' })?.[0]?.[0]).toBe('');
+  });
+});
+
+describe('updateWeddingSchema', () => {
+  const update = (input: unknown) => updateWeddingSchema.safeParse(input);
+
+  it('accepts any subset, trimmed, with no defaults filled in', () => {
+    expect(update({}).data).toEqual({});
+    expect(update({ city: ' Thrissur ', sidesEnabled: false }).data).toEqual({
+      city: 'Thrissur',
+      sidesEnabled: false,
+    });
+    expect(update({ timezone: 'asia/dubai' }).data).toEqual({ timezone: 'Asia/Dubai' });
+  });
+
+  it('applies the same field rules as creating', () => {
+    const issues = update({
+      brideName: '',
+      city: 'x'.repeat(81),
+      timezone: 'Mars/Olympus',
+    }).error?.issues.map((i) => [i.path.join('.'), i.message]);
+    expect(issues).toEqual([
+      ['brideName', "Enter the bride's name"],
+      ['city', 'Use at most 80 characters'],
+      ['timezone', 'Choose a valid timezone'],
+    ]);
+  });
+
+  it('rejects fields that are not editable yet', () => {
+    expect(update({ guestTags: ['Office'] }).success).toBe(false);
+    expect(update({ status: 'archived' }).success).toBe(false);
+  });
+});
+
+describe('weddingDateProblem', () => {
+  it('allows today to 5 years ahead, in the given timezone', () => {
+    const now = new Date('2026-10-01T06:00:00Z');
+    expect(weddingDateProblem('2026-10-01', 'Asia/Kolkata', now)).toBeNull();
+    expect(weddingDateProblem('2031-10-01', 'Asia/Kolkata', now)).toBeNull();
+    expect(weddingDateProblem('2026-09-30', 'Asia/Kolkata', now)).toBe(
+      'Pick today or a later date',
+    );
+    expect(weddingDateProblem('2031-10-02', 'Asia/Kolkata', now)).toBe(
+      'Pick a date within the next 5 years',
+    );
   });
 });

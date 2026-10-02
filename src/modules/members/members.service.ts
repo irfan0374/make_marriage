@@ -3,7 +3,13 @@ import type { ClientSession, ObjectId } from 'mongodb';
 import { AppError } from '@/lib/errors';
 import { trustWeddingId, type WeddingId } from '@/lib/ids';
 import { requireSession, type PublicUser } from '@/modules/auth';
-import { findMembership, findUserMemberships, insertMembership } from './members.repository';
+import {
+  AlreadyAdminError,
+  findAdminWeddingId,
+  findMembership,
+  findUserMemberships,
+  insertMembership,
+} from './members.repository';
 import type { Role, SideScope } from './members.types';
 
 // Team members (architecture §7). For now: the creator's admin membership and the membership
@@ -44,18 +50,32 @@ export function requireAdmin(context: WeddingContext): void {
   if (context.role !== 'admin') throw new AppError('FORBIDDEN');
 }
 
-/** The creator of a new wedding becomes its first admin (in the create-wedding transaction). */
-export function addFirstAdmin(
+/**
+ * The creator of a new wedding becomes its first admin (in the create-wedding transaction).
+ * Someone who is already an admin of a wedding gets 409 ALREADY_HAS_WEDDING: each person is an
+ * admin of one wedding only. The database enforces it, so two quick requests can't both pass.
+ */
+export async function addFirstAdmin(
   weddingId: WeddingId,
   userId: ObjectId,
   now: Date,
   session: ClientSession,
 ): Promise<void> {
-  return insertMembership(
-    weddingId,
-    { userId, role: 'admin', sideScope: 'both', invitedByUserId: null, now },
-    session,
-  );
+  try {
+    await insertMembership(
+      weddingId,
+      { userId, role: 'admin', sideScope: 'both', invitedByUserId: null, now },
+      session,
+    );
+  } catch (error) {
+    if (error instanceof AlreadyAdminError) throw new AppError('ALREADY_HAS_WEDDING');
+    throw error;
+  }
+}
+
+/** The wedding this user is an admin of (their own wedding), or `null`. */
+export function getAdminWeddingId(userId: ObjectId): Promise<ObjectId | null> {
+  return findAdminWeddingId(userId);
 }
 
 export async function listUserMemberships(userId: ObjectId) {

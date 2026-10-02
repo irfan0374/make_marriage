@@ -14,6 +14,14 @@ export const membersCollectionSpecs: CollectionSpec[] = [
       { key: { userId: 1 } },
       // Admin count and the team list.
       { key: { weddingId: 1, role: 1 } },
+      // A person is an admin of at most one wedding: the bride or groom of their own wedding
+      // (PRD §4). They can still be a Manager in any number of weddings.
+      {
+        key: { userId: 1 },
+        name: 'one_admin_wedding_per_user',
+        unique: true,
+        partialFilterExpression: { role: 'admin' },
+      },
     ],
     validator: {
       $jsonSchema: {

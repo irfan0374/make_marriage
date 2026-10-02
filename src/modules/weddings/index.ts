@@ -1,7 +1,12 @@
 import 'server-only';
 
 // Public API of the weddings module.
-export { createWeddingHandler, getMeHandler, getWeddingHandler } from './weddings.handlers';
+export {
+  createWeddingHandler,
+  getMeHandler,
+  getWeddingHandler,
+  updateWeddingHandler,
+} from './weddings.handlers';
 export { weddingsCollectionSpecs } from './weddings.indexes';
-export { getPageWedding } from './weddings.service';
+export { getPageOwnWeddingId, getPageWedding, requireWritableWedding } from './weddings.service';
 export type { Me, Wedding, WeddingSummary } from './weddings.types';

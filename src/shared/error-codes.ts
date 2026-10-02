@@ -33,6 +33,10 @@ export const ERROR_CODES = {
   ALREADY_MEMBER: { status: 409, message: 'This person is already a member.' },
   INVITE_PENDING: { status: 409, message: 'An invite is already pending for this email.' },
   ADMIN_LIMIT_REACHED: { status: 409, message: 'A wedding can have at most 2 admins.' },
+  ALREADY_HAS_WEDDING: {
+    status: 409,
+    message: 'You already have a wedding. Each person can be an admin of one wedding.',
+  },
   LAST_ADMIN: { status: 409, message: 'A wedding must keep at least one admin.' },
   WEDDING_ARCHIVED: { status: 409, message: 'This wedding is archived and read-only.' },
   RSVP_CLOSED: { status: 409, message: 'RSVPs are closed.' },

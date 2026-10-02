@@ -30,7 +30,7 @@ export function useForm<S extends z.ZodType>(
     if (first instanceof HTMLElement) first.focus();
   }
 
-  function validate(values: Record<string, unknown>): z.output<S> | null {
+  function validate(values: object): z.output<S> | null {
     setFormError(null);
     const result = schema.safeParse(values);
     if (result.success) {

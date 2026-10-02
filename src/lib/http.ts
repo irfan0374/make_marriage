@@ -158,6 +158,14 @@ function parseWith<S extends Schema>(schema: S, value: unknown): z.output<S> {
   return result.data;
 }
 
+/** A missing body gets one clear message instead of a "required" error with no field name. */
+function parseBody<S extends Schema>(schema: S, value: unknown): z.output<S> {
+  if (value === undefined) {
+    throw new AppError('VALIDATION_ERROR', 'Send the request body as a JSON object.');
+  }
+  return parseWith(schema, value);
+}
+
 function parseParams<S extends Schema>(schema: S, value: unknown): z.output<S> {
   const result = schema.safeParse(value);
   // A malformed id in the path can't name anything the caller may see (api-spec §3.3).
@@ -188,7 +196,7 @@ export function defineHandler<S extends HandlerSchemas>(
       const query = options.query
         ? parseWith(options.query, Object.fromEntries(new URL(request.url).searchParams))
         : undefined;
-      const body = options.body ? parseWith(options.body, await readJsonBody(request)) : undefined;
+      const body = options.body ? parseBody(options.body, await readJsonBody(request)) : undefined;
 
       response = await fn({ request, requestId, params, query, body } as HandlerInput<S>);
     } catch (error) {
