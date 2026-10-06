@@ -2,10 +2,17 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { LoginPage } from '@/features/auth/components/login-page';
 import { getPageSession } from '@/modules/auth';
+import { emailField } from '@/modules/auth/auth.schemas';
+import { safeNextPath } from '@/shared/next-path';
 
 export const metadata: Metadata = { title: 'Log in' };
 
-export default async function Page() {
-  if (await getPageSession()) redirect('/app');
-  return <LoginPage />;
+// `?next=` brings people back after logging in (e.g. to the invite they were joining), and
+// `?email=` fills in the email the invite was sent to. Both are checked before use.
+export default async function Page({ searchParams }: PageProps<'/login'>) {
+  const query = await searchParams;
+  const next = safeNextPath(query.next);
+  if (await getPageSession()) redirect(next ?? '/app');
+  const email = emailField.safeParse(query.email);
+  return <LoginPage next={next} email={email.success ? email.data : null} />;
 }

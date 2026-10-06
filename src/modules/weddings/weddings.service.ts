@@ -159,9 +159,9 @@ export async function createWedding(
   now = new Date(),
 ): Promise<Wedding> {
   const session = await requireSession(token, now);
-  // Each person is an admin of one wedding only (PRD §4). Checked here for a quick answer; the
-  // database enforces it inside the transaction too.
-  if (await getAdminWeddingId(session.userId)) throw new AppError('ALREADY_HAS_WEDDING');
+  // Only the couple creates a wedding (PRD §4): an admin has theirs already (also enforced by the
+  // database inside the transaction), and a Manager on any wedding team can't create one.
+  await assertCanCreateWedding(session.userId);
   const base = suggestSlug(input.brideName, input.groomName, input.weddingDate);
 
   for (let attempt = 1; ; attempt++) {
@@ -310,16 +310,51 @@ export async function getMe(token: string | undefined, now = new Date()): Promis
 }
 
 /**
- * For `/app/new`: the wedding the logged-in user is already an admin of (their own wedding),
- * `null` if they can create one, or `'unauthenticated'`.
+ * Only someone on no wedding team may create a wedding (PRD §4): 409 ALREADY_HAS_WEDDING for an
+ * admin (they have their own), 409 ALREADY_ON_A_TEAM for a Manager on someone's wedding.
  */
-export async function getPageOwnWeddingId(): Promise<string | null | 'unauthenticated'> {
+async function assertCanCreateWedding(userId: ObjectId): Promise<void> {
+  if (await getAdminWeddingId(userId)) throw new AppError('ALREADY_HAS_WEDDING');
+  if ((await listUserMemberships(userId)).length > 0) throw new AppError('ALREADY_ON_A_TEAM');
+}
+
+/**
+ * For `/app/new`: whether the logged-in user may create a wedding, or `'unauthenticated'`.
+ * Everyone else is sent to their weddings instead of the form.
+ */
+export async function getPageCanCreateWedding(): Promise<boolean | 'unauthenticated'> {
   const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
   try {
     const session = await requireSession(token || undefined);
-    return (await getAdminWeddingId(session.userId))?.toHexString() ?? null;
+    await assertCanCreateWedding(session.userId);
+    return true;
   } catch (error) {
     if (error instanceof AppError && error.code === 'UNAUTHENTICATED') return 'unauthenticated';
+    if (
+      error instanceof AppError &&
+      (error.code === 'ALREADY_HAS_WEDDING' || error.code === 'ALREADY_ON_A_TEAM')
+    ) {
+      return false;
+    }
     throw error;
   }
+}
+
+/**
+ * The couple's names, sides setting and status, for other modules that show which wedding
+ * something belongs to (e.g. the join page). `null` if the wedding is gone.
+ */
+export async function getWeddingBasics(weddingId: WeddingId) {
+  const doc = await findWedding(weddingId);
+  if (!doc) return null;
+  return {
+    brideName: doc.brideName,
+    groomName: doc.groomName,
+    sidesEnabled: doc.sidesEnabled,
+    status: doc.status,
+    timezone: canonicalTimeZone(
+      doc.timezone,
+      WEDDING_TIMEZONES.map((tz) => tz.value),
+    ),
+  };
 }

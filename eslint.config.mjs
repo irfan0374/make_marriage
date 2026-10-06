@@ -106,6 +106,11 @@ const eslintConfig = defineConfig([
     files: ['**/*.test.ts', 'tests/**/*.ts', 'scripts/**/*.ts'],
     rules: { 'no-restricted-imports': 'off', '@typescript-eslint/no-restricted-imports': 'off' },
   },
+  {
+    // Emails are whole HTML documents rendered by React Email, not Next.js pages.
+    files: ['src/emails/**/*.tsx'],
+    rules: { '@next/next/no-head-element': 'off' },
+  },
   globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'coverage/**']),
 ]);
 

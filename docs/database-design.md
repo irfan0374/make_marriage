@@ -189,7 +189,7 @@ People who log in: the couple and family members. Guests never have a user recor
 | Index | Type | Serves |
 |---|---|---|
 | `{ tokenHash: 1 }` | Unique | Session lookup on every request |
-| `{ userId: 1 }` | | Log out of all devices |
+| `{ userId: 1 }` | | Ending every session on password reset |
 | `{ expiresAt: 1 }` | TTL, `expireAfterSeconds: 0` | Automatic cleanup |
 
 ### 6.3 `passwordResets`
@@ -435,7 +435,7 @@ db.weddings.updateOne(
 **Rules**
 - One membership per user per wedding.
 - At most 2 `admin` memberships per wedding (checked in the service inside the same transaction that adds one).
-- A user has at most 1 `admin` membership across all weddings: each person is an admin of only their own wedding. Enforced by a unique partial index, so concurrent requests can't both succeed. `manager` memberships are unlimited.
+- A user has at most 1 `admin` membership across all weddings: each person is an admin of only their own wedding. Enforced by a unique partial index, so concurrent requests can't both succeed. `manager` memberships are unlimited, but a user with any membership can't create a wedding (checked in the service).
 - A wedding must always keep at least 1 admin. The last admin can't be removed or demoted.
 
 **Indexes**
@@ -454,8 +454,8 @@ db.weddings.updateOne(
 | `email` | string | ✅ | | Lowercased |
 | `role` | enum | ✅ | | `admin`, `manager` |
 | `sideScope` | enum | ✅ | `"both"` | |
-| `tokenHash` | string | ✅ | | SHA-256 hex |
-| `status` | enum | ✅ | `"pending"` | `pending`, `accepted`, `cancelled`, `expired` |
+| `tokenHash` | string | ✅ | | SHA-256 hex of the 43-character link token. The raw link is shown to the admin once (on invite or renew) and never stored |
+| `status` | enum | ✅ | `"pending"` | `pending`, `accepted`, `cancelled`, `expired`. A pending invite past `expiresAt` is treated as expired when read (no job needed); `expired` is stored when a new invite replaces it |
 | `expiresAt` | Date | ✅ | now + 7 days | |
 | `invitedByUserId` | ObjectId | ✅ | | |
 | `acceptedByUserId` | ObjectId | | `null` | |

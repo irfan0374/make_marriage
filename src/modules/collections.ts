@@ -3,6 +3,8 @@ import type { CollectionSpec } from '@/lib/db/indexes';
 import { rateLimitsSpec } from '@/lib/db/rate-limits.repository';
 import { authCollectionSpecs } from '@/modules/auth';
 import { membersCollectionSpecs } from '@/modules/members';
+import { notificationsCollectionSpecs } from '@/modules/notifications';
+import { teamCollectionSpecs } from '@/modules/team';
 import { weddingsCollectionSpecs } from '@/modules/weddings';
 
 /**
@@ -14,4 +16,6 @@ export const collectionSpecs: CollectionSpec[] = [
   ...authCollectionSpecs,
   ...weddingsCollectionSpecs,
   ...membersCollectionSpecs,
+  ...teamCollectionSpecs,
+  ...notificationsCollectionSpecs,
 ];

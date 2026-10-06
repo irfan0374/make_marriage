@@ -30,6 +30,9 @@ export default defineConfig({
             APP_URL: 'https://app.example',
             MONGODB_URI: 'mongodb://127.0.0.1:27017',
             MONGODB_DB_NAME: 'unit',
+            // Tests never send email: src/lib/email.ts keeps messages in memory under NODE_ENV=test.
+            RESEND_API_KEY: 're_test_placeholder',
+            EMAIL_FROM: 'Make My Marriage <invites@example.com>',
           },
         },
       },

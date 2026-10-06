@@ -33,6 +33,11 @@ export const ERROR_CODES = {
   ALREADY_MEMBER: { status: 409, message: 'This person is already a member.' },
   INVITE_PENDING: { status: 409, message: 'An invite is already pending for this email.' },
   ADMIN_LIMIT_REACHED: { status: 409, message: 'A wedding can have at most 2 admins.' },
+  ALREADY_ON_A_TEAM: {
+    status: 409,
+    message:
+      "You're on a wedding team as a family member, so this account can't create a wedding. To plan your own wedding, sign up with a different email.",
+  },
   ALREADY_HAS_WEDDING: {
     status: 409,
     message: 'You already have a wedding. Each person can be an admin of one wedding.',

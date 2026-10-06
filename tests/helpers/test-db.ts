@@ -11,6 +11,9 @@ process.env.MONGODB_URI = process.env.TEST_MONGODB_URI;
 process.env.MONGODB_DB_NAME = dbName;
 process.env.MONGODB_MAX_POOL_SIZE = '2';
 process.env.APP_URL ??= 'http://localhost:3000';
+// Never real email in tests: src/lib/email.ts keeps messages in memory under NODE_ENV=test.
+process.env.RESEND_API_KEY = 're_test_placeholder';
+process.env.EMAIL_FROM = 'Make My Marriage <invites@example.com>';
 
 afterAll(async () => {
   const { getDb, closeMongoClient } = await import('@/lib/db/client');

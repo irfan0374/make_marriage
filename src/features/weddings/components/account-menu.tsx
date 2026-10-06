@@ -1,10 +1,10 @@
 'use client';
 
 import { Menu } from '@base-ui/react/menu';
-import { ChevronDown, LayoutList, LogOut, Plus, Settings } from 'lucide-react';
+import { ChevronDown, LayoutList, LogOut, Settings } from 'lucide-react';
 import Link from 'next/link';
-import { useLogout, useLogoutAll } from '@/features/auth/hooks';
-import { hasOwnWedding, useMe } from '@/features/weddings/hooks';
+import { useLogout } from '@/features/auth/hooks';
+import { useMe } from '@/features/weddings/hooks';
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -18,15 +18,14 @@ const item =
 
 /**
  * The user menu in every app header: wedding settings (admins, inside a wedding), switch
- * weddings, create a wedding (only for someone without their own), and log out.
+ * weddings, and log out. Creating a wedding isn't offered here: only someone on no wedding team
+ * can, and the app takes them to the create page directly (PRD §4).
  */
 export function AccountMenu({ settingsHref }: { settingsHref?: string } = {}) {
   const { data: me } = useMe();
   const logout = useLogout();
-  const logoutAll = useLogoutAll();
   if (!me) return null;
   const hasSeveral = me.weddings.length > 1;
-  const canCreate = !hasOwnWedding(me);
 
   return (
     <div className="relative ml-auto">
@@ -61,25 +60,16 @@ export function AccountMenu({ settingsHref }: { settingsHref?: string } = {}) {
                   Your weddings
                 </Menu.LinkItem>
               )}
-              {canCreate && (
-                <Menu.LinkItem render={<Link href="/app/new" />} className={item}>
-                  <Plus aria-hidden className="text-primary size-4" />
-                  Create your wedding
-                </Menu.LinkItem>
-              )}
-              {(settingsHref || hasSeveral || canCreate) && <div className="bg-border my-1 h-px" />}
+              {(settingsHref || hasSeveral) && <div className="bg-border my-1 h-px" />}
               <Menu.Item onClick={() => logout.mutate()} className={item}>
                 <LogOut aria-hidden className="text-primary size-4" />
                 Log out
-              </Menu.Item>
-              <Menu.Item onClick={() => logoutAll.mutate()} className={`${item} text-text-muted`}>
-                Log out of all devices
               </Menu.Item>
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>
       </Menu.Root>
-      {(logout.isError || logoutAll.isError) && (
+      {logout.isError && (
         <p
           role="alert"
           className="bg-danger-bg text-danger-text rounded-input absolute top-full right-0 mt-2 px-3 py-1.5 text-xs whitespace-nowrap"

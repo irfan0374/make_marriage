@@ -41,6 +41,13 @@ export function findUserByEmail(email: string) {
   return users().findOne({ email });
 }
 
+/** Several users at once (for team lists). `passwordHash` is never read here. */
+export function findUsersByIds(ids: ObjectId[]) {
+  return users()
+    .find({ _id: { $in: ids } }, { projection: { email: 1, name: 1 } })
+    .toArray();
+}
+
 export function findUserById(id: ObjectId) {
   return users().findOne({ _id: id });
 }
@@ -66,6 +73,7 @@ export async function deleteSession(tokenHash: string): Promise<void> {
   await sessions().deleteOne({ tokenHash });
 }
 
+/** End every session of a user. For password reset (architecture §6.2); no endpoint calls it. */
 export async function deleteUserSessions(userId: ObjectId): Promise<void> {
   await sessions().deleteMany({ userId });
 }

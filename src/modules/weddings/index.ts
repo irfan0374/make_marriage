@@ -8,5 +8,10 @@ export {
   updateWeddingHandler,
 } from './weddings.handlers';
 export { weddingsCollectionSpecs } from './weddings.indexes';
-export { getPageOwnWeddingId, getPageWedding, requireWritableWedding } from './weddings.service';
+export {
+  getPageCanCreateWedding,
+  getPageWedding,
+  getWeddingBasics,
+  requireWritableWedding,
+} from './weddings.service';
 export type { Me, Wedding, WeddingSummary } from './weddings.types';

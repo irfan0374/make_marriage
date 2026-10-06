@@ -1,14 +1,21 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { login, logout, logoutAll, signup } from '@/features/auth/api';
+import { login, logout, signup } from '@/features/auth/api';
 import { ApiError } from '@/shared/api-client';
 
-/** After signing up or logging in, go to the app; refresh so server pages see the new cookie. */
-function useGoTo(path: string) {
+/**
+ * After logging in, signing up or logging out: forget everything loaded for the previous
+ * account (who you are, weddings, team), then go on. Without this, the next account on the
+ * same device briefly sees the previous one's data and roles until a reload. `refresh` makes
+ * server-rendered pages read the new cookie too.
+ */
+function useSwitchAccount(path: string) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   return () => {
+    queryClient.clear();
     router.replace(path);
     router.refresh();
   };
@@ -25,22 +32,19 @@ function ignoreLoggedOut(request: () => Promise<void>) {
   };
 }
 
-export function useSignup() {
-  const onSuccess = useGoTo('/app');
+/** `next`: a page checked with `safeNextPath`, e.g. the invite being joined. */
+export function useSignup(next: string | null = null) {
+  const onSuccess = useSwitchAccount(next ?? '/app');
   return useMutation({ mutationFn: signup, onSuccess });
 }
 
-export function useLogin() {
-  const onSuccess = useGoTo('/app');
+export function useLogin(next: string | null = null) {
+  const onSuccess = useSwitchAccount(next ?? '/app');
   return useMutation({ mutationFn: login, onSuccess });
 }
 
-export function useLogout() {
-  const onSuccess = useGoTo('/login');
+/** `then`: where to go afterwards, e.g. back to log in with another account. */
+export function useLogout(then = '/login') {
+  const onSuccess = useSwitchAccount(then);
   return useMutation({ mutationFn: ignoreLoggedOut(logout), onSuccess });
-}
-
-export function useLogoutAll() {
-  const onSuccess = useGoTo('/login');
-  return useMutation({ mutationFn: ignoreLoggedOut(logoutAll), onSuccess });
 }

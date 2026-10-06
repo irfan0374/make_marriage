@@ -5,8 +5,12 @@ import Link from 'next/link';
 import { Logo } from '@/components/common/logo';
 import { useMe, useWedding } from '@/features/weddings/hooks';
 import { AccountMenu } from './account-menu';
+import { WeddingMobileNav } from './wedding-nav';
 
-/** Top bar inside a wedding: logo, which wedding this is (switchable), and the user menu. */
+/**
+ * Top bar inside a wedding: which wedding this is (switchable) and the user menu. On phones it
+ * also has the menu button and logo; on desktop those are in the sidebar.
+ */
 export function WeddingTopBar({ weddingId }: { weddingId: string }) {
   const { data: me } = useMe();
   const { data: wedding } = useWedding(weddingId);
@@ -15,9 +19,10 @@ export function WeddingTopBar({ weddingId }: { weddingId: string }) {
 
   return (
     <header className="border-border border-b">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-5 md:px-8">
-        <Logo href="/app" height={32} eager className="hidden sm:inline-flex" />
-        <Logo href="/app" variant="mark" height={32} eager className="sm:hidden" />
+      <div className="flex h-16 w-full items-center gap-4 px-5 md:px-8">
+        <WeddingMobileNav weddingId={weddingId} />
+        <Logo href="/app" height={30} eager className="hidden sm:inline-flex lg:hidden" />
+        <Logo href="/app" variant="mark" height={30} eager className="sm:hidden" />
 
         {weddingName &&
           (canSwitch ? (

@@ -6,8 +6,11 @@ import { EMAIL_MAX, NAME_MAX, PASSWORD_MAX, signupSchema } from '@/modules/auth/
 import { FormAlert, FormField } from '@/components/common/form-field';
 import { useForm } from '@/components/common/use-form';
 
-export function SignupForm() {
-  const mutation = useSignup();
+export function SignupForm({
+  next = null,
+  email,
+}: { next?: string | null; email?: string | null } = {}) {
+  const mutation = useSignup(next);
   const { formRef, fieldErrors, formError, validate, showError, onInput } = useForm(signupSchema, {
     EMAIL_TAKEN: 'email',
     WEAK_PASSWORD: 'password',
@@ -42,6 +45,7 @@ export function SignupForm() {
         autoComplete="email"
         maxLength={EMAIL_MAX}
         placeholder="you@example.com"
+        defaultValue={email ?? undefined}
         error={fieldErrors.email}
       />
       <FormField

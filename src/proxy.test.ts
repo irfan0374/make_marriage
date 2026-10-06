@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { proxy } from './proxy';
 
 describe('proxy (/app gate)', () => {
-  it('redirects to /login without a session cookie', () => {
-    const res = proxy(new NextRequest('http://localhost/app'));
+  it('redirects to /login without a session cookie, remembering the page', () => {
+    const res = proxy(new NextRequest('http://localhost/app/66f1b0000000000000000001/team'));
     expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('http://localhost/login');
+    expect(res.headers.get('location')).toBe(
+      'http://localhost/login?next=%2Fapp%2F66f1b0000000000000000001%2Fteam',
+    );
   });
 
   it('lets the request through and slides the cookie 30 days forward', () => {

@@ -5,7 +5,12 @@ import { SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from '@/config/app';
 // the API still validate the session itself.
 export function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  if (!token) return NextResponse.redirect(new URL('/login', request.url));
+  if (!token) {
+    // Come back to this page after logging in.
+    const login = new URL('/login', request.url);
+    login.searchParams.set('next', request.nextUrl.pathname);
+    return NextResponse.redirect(login);
+  }
 
   // Sessions extend while active: every app page load pushes the cookie's expiry 30 days out.
   // The database session slides in step (at most once a day) when the page reads it.

@@ -1,12 +1,10 @@
 'use client';
 
-import { ChevronRight, Plus } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { buttonVariants } from '@/components/ui/button';
-import { hasOwnWedding, useMe } from '@/features/weddings/hooks';
-import { cn } from '@/shared/cn';
+import { useMe } from '@/features/weddings/hooks';
 import { formatDate } from '@/shared/dates';
 import { RoleBadge } from './role-badge';
 import { SimpleHeader } from './simple-header';
@@ -76,16 +74,6 @@ export function AppEntry() {
                 </li>
               ))}
             </ul>
-            {/* Only for someone without their own wedding, e.g. a Manager in family weddings. */}
-            {!hasOwnWedding(me) && (
-              <Link
-                href="/app/new"
-                className={cn(buttonVariants({ variant: 'outline' }), 'mt-6 h-11 px-5')}
-              >
-                <Plus aria-hidden />
-                Create your wedding
-              </Link>
-            )}
           </>
         )}
       </main>

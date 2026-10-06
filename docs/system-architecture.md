@@ -129,7 +129,8 @@ flowchart LR
 |---|---|
 | `auth` | Sign-up, login, sessions, forgot password |
 | `weddings` | Wedding profile, settings, archive |
-| `members` | Team members, roles, side scope, member invites |
+| `members` | Memberships and the wedding context check (who belongs to which wedding, with which role and side) |
+| `team` | Member invites and team management: invite, join, renew or cancel links, change roles. Uses `members`, `weddings`, `auth` and `notifications`; kept separate so `members` stays below `weddings` |
 | `events` | Wedding events and timeline |
 | `households` | Guest families, import, export, search |
 | `invitations` | Sending invitations, guest link access, RSVP |
@@ -311,7 +312,7 @@ events/
 ### 6.1 Login and sessions
 - Email and password login. Passwords hashed with Argon2id.
 - A random session ID is stored in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie. The database stores only a hash of it.
-- Sessions last 30 days and extend while the user is active. "Log out of all devices" ends every session.
+- Sessions last 30 days and extend while the user is active. Logging out ends that device's session; a password reset ends every session of the account. (There is no "log out of all devices" option.)
 - Login errors are generic, so the app never reveals which emails have accounts.
 - No email verification in v1.
 
@@ -343,7 +344,7 @@ Every private request resolves who the user is, which wedding they're working in
 | Gallery settings and link regeneration | ✅ | ❌ |
 | Archive or unarchive the wedding | ✅ | ❌ |
 
-A wedding has at most 2 Admins and always at least 1, and a person can be an Admin of only one wedding (their own). Managers can belong to any number of weddings.
+A wedding has at most 2 Admins and always at least 1, and a person can be an Admin of only one wedding (their own). Managers can belong to any number of weddings, but only someone on no wedding team can create a wedding.
 
 ### 7.3 Side scoping
 When bride side / groom side is on, a Manager scoped to one side sees only that side's guests, everywhere: lists, search, exports, sending, RSVP counts and the dashboard. The filter is applied inside the repository layer, so no feature can miss it.
@@ -565,7 +566,7 @@ Passwords, tokens and session IDs are never logged. Vercel Hobby keeps logs only
 3. Merging to `main` deploys to production.
 4. The index script runs after every deploy.
 
-**Configuration:** all secrets and settings (database, R2, Resend, cron secret, Google key, daily email limit) come from environment variables, validated with Zod at startup in `src/lib/env.ts`. `.env.example` lists every variable the app will ever need, grouped by service, with the phase that needs it. Only the variables needed now (app and database) are required; the app won't start without them. Future ones (Resend, R2, cron secret, Google Places) are optional in the schema and become required when their feature is built; until then, code that needs one calls `requireEnv(...)`, which fails clearly at the point of use.
+**Configuration:** all secrets and settings (database, R2, Resend, cron secret, Google key, daily email limit) come from environment variables, validated with Zod at startup in `src/lib/env.ts`. `.env.example` lists every variable the app will ever need, grouped by service, with the phase that needs it. Only the variables needed now (app, database, and Resend since member invites) are required; the app won't start without them. Future ones (Resend webhook secret, R2, cron secret, Google Places) are optional in the schema and become required when their feature is built; until then, code that needs one calls `requireEnv(...)`, which fails clearly at the point of use.
 
 ---
 

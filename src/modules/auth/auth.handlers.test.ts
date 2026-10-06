@@ -8,7 +8,6 @@ vi.mock('./auth.service', () => ({
   signup: vi.fn(),
   login: vi.fn(),
   logout: vi.fn(),
-  logoutAll: vi.fn(),
 }));
 
 const user = { id: '66f1a2b3c4d5e6f708091011', email: 'irfan@example.com', name: 'Irfan' };

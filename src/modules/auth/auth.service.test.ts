@@ -4,14 +4,7 @@ import { AppError } from '@/lib/errors';
 import { enforceRateLimits } from '@/lib/rate-limit';
 import { sha256Hex } from '@/lib/tokens';
 import * as repo from './auth.repository';
-import {
-  getSession,
-  login,
-  logoutAll,
-  requireSession,
-  SESSION_TTL_MS,
-  signup,
-} from './auth.service';
+import { getSession, login, requireSession, SESSION_TTL_MS, signup } from './auth.service';
 import type { SessionDocument, UserDocument } from './auth.types';
 
 vi.mock('./auth.repository', async (importOriginal) => {
@@ -219,13 +212,5 @@ describe('sessions', () => {
 
   it('requireSession throws UNAUTHENTICATED without a valid session', async () => {
     await expect(requireSession(undefined, now)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
-  });
-
-  it('logoutAll ends every session of the user', async () => {
-    const user = userDoc();
-    vi.mocked(repo.findActiveSession).mockResolvedValueOnce(sessionDoc(now, user._id));
-    vi.mocked(repo.findUserById).mockResolvedValueOnce(user);
-    await logoutAll('token', now);
-    expect(repo.deleteUserSessions).toHaveBeenCalledWith(user._id);
   });
 });

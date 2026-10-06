@@ -1,4 +1,3 @@
-import { BackToWeddings } from './back-to-weddings';
 import { CreateWeddingForm } from './create-wedding-form';
 import { SimpleHeader } from './simple-header';
 
@@ -7,7 +6,6 @@ export function CreateWeddingPage() {
     <div className="flex flex-1 flex-col">
       <SimpleHeader />
       <main className="flex flex-1 flex-col items-center px-5 py-10 md:py-16">
-        <BackToWeddings />
         <div className="border-border bg-surface rounded-card w-full max-w-xl border p-6 shadow-sm md:p-10">
           <h1 className="text-3xl">Let&apos;s set up your wedding</h1>
           <p className="text-text-muted mt-2 text-sm">

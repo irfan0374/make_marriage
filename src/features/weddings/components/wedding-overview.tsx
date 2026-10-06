@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { timezoneLabel } from '@/config/constants';
+import { useTeam } from '@/features/team/hooks';
 import { useWedding } from '@/features/weddings/hooks';
 import type { Wedding } from '@/modules/weddings/weddings.types';
 import { ApiError } from '@/shared/api-client';
@@ -15,23 +16,29 @@ import { RoleBadge } from './role-badge';
 // The wedding's home page until the Phase 2 dashboard. Built from the Stitch
 // "Wedding overview" screen.
 
+type StepKey = 'events' | 'guests' | 'invitation' | 'team';
+
 const SETUP_STEPS = [
   {
+    key: 'events' as StepKey,
     icon: CalendarDays,
     title: 'Add your events',
     description: 'Mehendi, Haldi, Sangeet, Wedding, Reception or your own.',
   },
   {
+    key: 'guests' as StepKey,
     icon: Users,
     title: 'Add guest families',
     description: 'Add families one by one or import a spreadsheet.',
   },
   {
+    key: 'invitation' as StepKey,
     icon: Mail,
     title: 'Upload your invitation',
     description: 'Your invite image or video, and a message for guests.',
   },
   {
+    key: 'team' as StepKey,
     icon: UserPlus,
     title: 'Invite your family',
     description: 'Give your partner, parents and siblings access.',
@@ -98,6 +105,7 @@ export function WeddingOverview({
   saved?: boolean;
 }) {
   const { data: wedding, error, isPending, refetch } = useWedding(weddingId);
+  const { data: team } = useTeam(weddingId);
 
   if (isPending) {
     return (
@@ -130,6 +138,20 @@ export function WeddingOverview({
       </div>
     );
   }
+
+  // Steps whose features exist link to them; the rest show "Coming soon" until they're built.
+  const isAdmin = wedding.me.role === 'admin';
+  const steps: Record<StepKey, { done: boolean; href?: string; action?: string }> = {
+    events: { done: false },
+    guests: { done: false },
+    invitation: { done: false },
+    team: {
+      done: (team?.members.length ?? 0) > 1,
+      href: `/app/${weddingId}/team`,
+      action: isAdmin ? 'Invite' : 'View team',
+    },
+  };
+  const doneCount = Object.values(steps).filter((s) => s.done).length;
 
   const details = [
     { label: 'Date', value: formatDate(wedding.weddingDate) },
@@ -179,33 +201,61 @@ export function WeddingOverview({
             <div className="border-border border-b px-5 py-4">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium">Getting started</span>
-                <span className="text-text-muted">0 of {SETUP_STEPS.length} done</span>
+                <span className="text-text-muted">
+                  {doneCount} of {SETUP_STEPS.length} done
+                </span>
               </div>
               <div
-                className="bg-primary-tint mt-2 h-1.5 rounded-full"
+                className="bg-primary-tint mt-2 h-1.5 overflow-hidden rounded-full"
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={SETUP_STEPS.length}
-                aria-valuenow={0}
+                aria-valuenow={doneCount}
                 aria-label="Setup progress"
-              />
+              >
+                <div
+                  className="bg-primary h-full rounded-full transition-[width]"
+                  style={{ width: `${(doneCount / SETUP_STEPS.length) * 100}%` }}
+                />
+              </div>
             </div>
             <ul className="divide-border divide-y">
-              {SETUP_STEPS.map(({ icon: Icon, title, description }) => (
-                <li key={title} className="flex items-center gap-4 px-5 py-4">
-                  <span className="bg-primary-tint text-primary flex size-10 shrink-0 items-center justify-center rounded-full">
-                    <Icon aria-hidden className="size-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{title}</p>
-                    <p className="text-text-muted text-xs">{description}</p>
-                  </div>
-                  {/* These open once their features are built (events, guests, invitations, team). */}
-                  <Button variant="outline" className="h-9 shrink-0 px-4" disabled>
-                    Coming soon
-                  </Button>
-                </li>
-              ))}
+              {SETUP_STEPS.map(({ key, icon: Icon, title, description }) => {
+                const step = steps[key];
+                return (
+                  <li key={key} className="flex items-center gap-4 px-5 py-4">
+                    <span className="bg-primary-tint text-primary flex size-10 shrink-0 items-center justify-center rounded-full">
+                      {step.done ? (
+                        <Check aria-hidden className="size-5" />
+                      ) : (
+                        <Icon aria-hidden className="size-5" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">
+                        {title}
+                        {step.done && <span className="sr-only"> (done)</span>}
+                      </p>
+                      <p className="text-text-muted text-xs">{description}</p>
+                    </div>
+                    {step.href ? (
+                      <Link
+                        href={step.href}
+                        className={buttonVariants({
+                          variant: 'outline',
+                          className: 'h-9 shrink-0 px-4',
+                        })}
+                      >
+                        {step.action}
+                      </Link>
+                    ) : (
+                      <Button variant="outline" className="h-9 shrink-0 px-4" disabled>
+                        Coming soon
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </section>

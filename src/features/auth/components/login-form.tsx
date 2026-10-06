@@ -6,8 +6,11 @@ import { EMAIL_MAX, loginSchema, PASSWORD_MAX } from '@/modules/auth/auth.schema
 import { FormAlert, FormField } from '@/components/common/form-field';
 import { useForm } from '@/components/common/use-form';
 
-export function LoginForm() {
-  const mutation = useLogin();
+export function LoginForm({
+  next = null,
+  email,
+}: { next?: string | null; email?: string | null } = {}) {
+  const mutation = useLogin(next);
   const { formRef, fieldErrors, formError, validate, showError, onInput } = useForm(loginSchema);
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -27,6 +30,7 @@ export function LoginForm() {
         autoComplete="email"
         maxLength={EMAIL_MAX}
         placeholder="you@example.com"
+        defaultValue={email ?? undefined}
         error={fieldErrors.email}
       />
       <FormField

@@ -229,11 +229,14 @@ describe('weddings (Atlas test database)', () => {
     expect(ids).toBe(1);
   });
 
-  it('still lets a Manager in other weddings create their own', async () => {
+  it("doesn't let a Manager on someone's wedding create one (only the couple creates)", async () => {
     const helper = await newUser('Helper');
     const family = (await (await create(await newUser('Family'))).json()).data;
     await addManager(family.id, helper);
-    expect((await create(helper, { ...input, brideName: 'Helper' })).status).toBe(201);
+    const res = await create(helper, { ...input, brideName: 'Helper' });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe('ALREADY_ON_A_TEAM');
+    expect(await getDb().collection('weddings').countDocuments({ brideName: 'Helper' })).toBe(0);
   });
 
   it('rejects a past date and a logged-out caller', async () => {

@@ -49,7 +49,7 @@ If the code needs to differ from a doc, stop and ask. When a decision changes, u
 - Response envelope: `{ data, meta }` for success, `{ error: { code, message, details, requestId } }` for errors, using the codes in `docs/api-spec.md`.
 - Money as integer paise. Calendar dates as `YYYY-MM-DD`, times as `HH:mm`, timestamps as UTC `Date`.
 - Design system (architecture §18): colours are CSS variables in `src/app/globals.css` mapped to Tailwind and shadcn/ui tokens; components never use hex values. Fraunces for headings, Inter for body. Light mode only.
-- Environment variables are validated with Zod at startup in `src/lib/env.ts`. `.env.example` lists every variable, grouped by service with the phase that needs it. Only app and database variables are required now; future ones (Resend, R2, cron, Google Places) are optional until their feature is built, and code that needs one calls `requireEnv(...)`. When a feature ships, make its variables required.
+- Environment variables are validated with Zod at startup in `src/lib/env.ts`. `.env.example` lists every variable, grouped by service with the phase that needs it. Only app, database and Resend (`RESEND_API_KEY`, `EMAIL_FROM`) variables are required now; future ones (Resend webhook secret, R2, cron, Google Places) are optional until their feature is built, and code that needs one calls `requireEnv(...)`. When a feature ships, make its variables required.
 - Tenant repositories use `scopedCollection(name, weddingId)` from `src/lib/db/tenant.ts`, never a raw collection.
 - Integration tests use a dedicated Atlas test database (`TEST_MONGODB_URI`), never the dev or production database.
 

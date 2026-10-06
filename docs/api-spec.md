@@ -136,6 +136,7 @@ Rate-limited endpoints return `429 RATE_LIMITED` with a `Retry-After` header (se
 | `POST /api/auth/forgot-password` | 3 per hour per email |
 | `GET /api/public/invitations/{token}` and `POST .../opened` | 60 per minute per token (shared) |
 | `PUT /api/public/invitations/{token}/rsvp` | 10 per minute per token |
+| `POST /api/weddings/{id}/members/invites` and `.../resend` | 20 per wedding per hour (shared; each can send an email) |
 | `POST /api/public/gallery/{token}/uploads` | 30 per 10 min per token and device |
 | `GET /api/public/gallery/{token}/photos` | 120 per minute per token and device |
 | `POST /api/weddings/{id}/places/vendor-search` | 50 per wedding per month (`429 PLACES_QUOTA_REACHED`) |
@@ -389,8 +390,8 @@ Errors: `INVALID_CREDENTIALS` (401, same message whether the email exists or not
 ### 5.3 `POST /api/auth/logout`
 **Access:** Session. Ends the current session and clears the cookie. Response `204`.
 
-### 5.4 `POST /api/auth/logout-all`
-**Access:** Session. Ends every session for the user, including this one. Response `204`.
+### 5.4 Removed: `POST /api/auth/logout-all`
+Removed on 6 Oct 2026 ("Log out of all devices" isn't offered). Logging out (5.3) ends the current session; a password reset (5.6) still ends every session of the account.
 
 ### 5.5 `POST /api/auth/forgot-password`
 **Access:** Public
@@ -450,11 +451,11 @@ Request:
   "sidesEnabled": true
 }
 ```
-Response `201`: `{ "data": <Wedding> }`. Errors: `VALIDATION_ERROR`, `ALREADY_HAS_WEDDING` (409).
+Response `201`: `{ "data": <Wedding> }`. Errors: `VALIDATION_ERROR`, `ALREADY_HAS_WEDDING` (409), `ALREADY_ON_A_TEAM` (409).
 
 Rules: `brideName` and `groomName` 1-60 characters with at least one letter (any script), `city` 1-80, `venue` optional free text up to 200 (default `""`), `timezone` optional valid IANA timezone (default `Asia/Kolkata`; stored in its standard spelling, so `asia/kolkata` becomes `Asia/Kolkata`), `weddingDate` from today to 5 years ahead in that timezone (`VALIDATION_ERROR` otherwise), `sidesEnabled` optional (default `false`).
 
-Each person can be an admin of only one wedding: a caller who is already an admin of a wedding gets `409 ALREADY_HAS_WEDDING`. Being a Manager in other weddings doesn't count.
+Only the couple creates a wedding, so only someone on **no** wedding team may call this: an admin of a wedding gets `409 ALREADY_HAS_WEDDING` (each person is an admin of one wedding only), and a Manager on any wedding gets `409 ALREADY_ON_A_TEAM` (to plan their own wedding they sign up with a different email).
 
 Server-side defaults: timezone `Asia/Kolkata`, invitation message, website settings (unpublished, suggested slug `{bride}-{groom}-{dd}-{mon}-{yyyy}` with `-2`, `-3`... if taken), gallery token, 3 GB storage cap. The wedding and the caller's admin membership are created in one transaction.
 
@@ -509,15 +510,15 @@ Response `200`:
   "data": {
     "members": [ <Member> ],
     "pendingInvites": [
-      { "id": "66f5...", "email": "uncle@example.com", "role": "manager", "sideScope": "bride", "expiresAt": "2026-10-01T09:00:00.000Z" }
+      { "id": "66f5...", "email": "uncle@example.com", "role": "manager", "sideScope": "bride", "expiresAt": "2026-10-01T09:00:00.000Z", "expired": false }
     ]
   }
 }
 ```
-Managers see the member list but not pending invites.
+Managers see the member list; `pendingInvites` is `null` for them. Pending invites past their 7 days are listed with `"expired": true` until renewed (7.3) or cancelled (7.4).
 
 ### 7.2 `POST /api/weddings/{weddingId}/members/invites`
-**Access:** Admin. Sends a member invite email immediately.
+**Access:** Admin. Creates a pending invite and emails the join link immediately (Resend).
 
 Request:
 ```json
@@ -528,29 +529,45 @@ Request:
 | `role` | `admin` or `manager`. Only 2 admins allowed |
 | `sideScope` | Required if sides are enabled. Forced to `both` for admins |
 
-Response `201`: the pending invite.
+Response `201`:
+```json
+{
+  "data": {
+    "invite": { "id": "66f5...", "email": "uncle@example.com", "role": "manager", "sideScope": "bride", "expiresAt": "...", "expired": false },
+    "inviteLink": "https://<app-domain>/join/<43-character token>",
+    "emailSent": true
+  }
+}
+```
+- `inviteLink` is returned **only here and in 7.3**: the database stores only its SHA-256 hash, so it can't be shown again. The admin can copy it or share it on WhatsApp.
+- If the email can't be sent, the invite is still saved and the response is still `201`, with `"emailSent": false`, so the admin can share the link themselves. (This replaces an earlier `EMAIL_SEND_FAILED` response: with a link shown only once, an error would lose it.)
+- An expired pending invite for the same email is replaced.
+- Pending admin invites count toward the 2-admin limit. Whether the invitee is an admin of another wedding is **not** checked here (that would reveal other weddings); it's checked when they accept (7.9).
+- Rate limit: 20 invites and new links per wedding per hour (§3.4).
 
-Errors: `ALREADY_MEMBER` (409), `INVITE_PENDING` (409), `ADMIN_LIMIT_REACHED` (409), `ALREADY_HAS_WEDDING` (409, role `admin` for someone who is already an admin of another wedding), `EMAIL_SEND_FAILED` (502, invite saved, can be resent).
+Errors: `ALREADY_MEMBER` (409, already on this wedding's team), `INVITE_PENDING` (409), `ADMIN_LIMIT_REACHED` (409), `FORBIDDEN` (Manager), `WEDDING_ARCHIVED` (409), `RATE_LIMITED`.
 
 ### 7.3 `POST /api/weddings/{weddingId}/members/invites/{inviteId}/resend`
-**Access:** Admin. Sends the email again with a new link and a fresh 7-day expiry. Response `200`.
+**Access:** Admin. "Get new link": replaces the link (the old one stops working immediately), sets a fresh 7-day expiry, and emails the new link. Works for expired invites too. An expired Admin invite no longer counts toward the 2-admin limit, so renewing one checks the limit again. Response `200`: same shape as 7.2. Errors: `NOT_FOUND` (not a pending invite of this wedding), `ADMIN_LIMIT_REACHED` (409), `RATE_LIMITED`.
 
 ### 7.4 `DELETE /api/weddings/{weddingId}/members/invites/{inviteId}`
-**Access:** Admin. Cancels a pending invite. Response `204`.
+**Access:** Admin. Cancels a pending invite; its link stops working. Response `204`. Errors: `NOT_FOUND` (not a pending invite of this wedding).
 
 ### 7.5 `PATCH /api/weddings/{weddingId}/members/{memberId}`
 **Access:** Admin
 
 Request: `{ "role": "manager", "sideScope": "groom" }`
 
+Either field may be omitted. Admins always have `sideScope: "both"`. A change applies on the member's next request. A promotion follows the same 2-admin rule as 7.2: pending Admin invites that can still be accepted count toward the limit.
+
 Response `200`: `<Member>`
 
 Errors: `ADMIN_LIMIT_REACHED`, `ALREADY_HAS_WEDDING` (409, promoting someone who is already an admin of another wedding), `LAST_ADMIN` (409, can't demote the last admin).
 
 ### 7.6 `DELETE /api/weddings/{weddingId}/members/{memberId}`
-**Access:** Admin. Removes the member. Their tasks become unassigned. Response `204`.
+**Access:** Admin. Removes the member; they lose access on their next request (their sessions stay, for other weddings). Either admin may remove the other, but a wedding always keeps at least one admin. Their tasks become unassigned (once tasks exist). Invites they sent stay valid. They can be invited again later. The Team page doesn't offer removing yourself; that's 7.7. Response `204`.
 
-Errors: `LAST_ADMIN`.
+Errors: `LAST_ADMIN` (409), `NOT_FOUND` (not a member of this wedding), `FORBIDDEN` (Manager), `WEDDING_ARCHIVED` (409).
 
 ### 7.7 `POST /api/weddings/{weddingId}/members/leave`
 **Access:** Member. The caller leaves the wedding. Response `204`. Errors: `LAST_ADMIN`.
@@ -560,16 +577,18 @@ Errors: `LAST_ADMIN`.
 
 Response `200`:
 ```json
-{ "data": { "weddingName": "Nafiya & Irfan", "invitedEmail": "uncle@example.com", "role": "manager", "expiresAt": "2026-10-01T09:00:00.000Z" } }
+{ "data": { "weddingName": "Nafiya & Irfan", "invitedEmail": "uncle@example.com", "invitedByName": "Nafiya", "role": "manager", "sideScope": "bride", "expiresAt": "2026-10-01T09:00:00.000Z" } }
 ```
-Errors: `INVITE_INVALID` (404, covers expired, cancelled and used).
+`sideScope` is `null` for admin invites and when the wedding has sides turned off.
+
+Errors: `INVITE_INVALID` (404). For a link that existed, `details.reason` says why it no longer works: `expired`, `cancelled` or `used`, so the join page can explain. Only someone holding the link sees this. An unknown or replaced link has no `details`.
 
 ### 7.9 `POST /api/member-invites/{token}/accept`
 **Access:** Session. The logged-in user's email must match the invited email.
 
 Response `200`: `{ "data": { "weddingId": "66f1b0..." } }`
 
-Errors: `INVITE_INVALID`, `INVITE_EMAIL_MISMATCH` (403), `ALREADY_MEMBER`, `ADMIN_LIMIT_REACHED`, `ALREADY_HAS_WEDDING` (admin invite, but the user is already an admin of another wedding).
+Errors: `INVITE_INVALID` (as 7.8), `INVITE_EMAIL_MISMATCH` (403, `details.invitedEmail`), `ALREADY_MEMBER` (409, `details.weddingId`), `ADMIN_LIMIT_REACHED`, `ALREADY_HAS_WEDDING` (admin invite, but the user is already an admin of another wedding), `WEDDING_ARCHIVED`. Joining adds the membership and marks the invite used in one transaction.
 
 ---
 
@@ -1685,6 +1704,7 @@ Response `503` if the database is unreachable.
 | `ALREADY_MEMBER` | 409 | Person is already a member |
 | `INVITE_PENDING` | 409 | A pending invite already exists for this email |
 | `ADMIN_LIMIT_REACHED` | 409 | Wedding already has 2 admins |
+| `ALREADY_ON_A_TEAM` | 409 | The user is a Manager on a wedding team, so this account can't create a wedding |
 | `ALREADY_HAS_WEDDING` | 409 | The user is already an admin of a wedding; each person can be an admin of one wedding only |
 | `LAST_ADMIN` | 409 | Action would leave the wedding without an admin |
 | `WEDDING_ARCHIVED` | 409 | Wedding is read-only |
@@ -1712,7 +1732,6 @@ Response `503` if the database is unreachable.
 | POST | `/api/auth/signup` | Public |
 | POST | `/api/auth/login` | Public |
 | POST | `/api/auth/logout` | Session |
-| POST | `/api/auth/logout-all` | Session |
 | POST | `/api/auth/forgot-password` | Public |
 | POST | `/api/auth/reset-password` | Public |
 | GET, PATCH | `/api/me` | Session |

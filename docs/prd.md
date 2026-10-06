@@ -79,7 +79,7 @@ Each wedding member has one role: **Admin** or **Manager**. There are no per-mod
 ---
 
 ## 4. Assumptions and constraints
-- Each person can be an **Admin of only one wedding**: their own, as the bride or groom. Only the couple creates a wedding; either partner can add the other as co-admin. A person can still be a **Manager in any number of weddings** (for example a relative helping two families) and switch between them. Someone who is a Manager elsewhere can still create their own wedding.
+- Each person can be an **Admin of only one wedding**: their own, as the bride or groom. Only the couple creates a wedding; either partner can add the other as co-admin. A person can still be a **Manager in any number of weddings** (for example a relative helping two families) and switch between them. A Manager can't create a wedding with that account: only the couple creates one. To plan their own wedding later, a family member signs up with a different email.
 - India-focused: currency is INR, default timezone is Asia/Kolkata, and the UI is English in v1.
 - A guest's email is optional. Every household always has a copyable personal link.
 - Email is the only sending channel in v1.
@@ -97,9 +97,9 @@ Each wedding member has one role: **Admin** or **Manager**. There are no per-mod
 | ID | Requirement | Priority |
 |---|---|---|
 | AUTH-1 | Sign up and log in with email and password. Forgot password sends a single-use reset link. | P0 |
-| AUTH-2 | After signing up, the user creates a wedding and becomes its admin. A person who is already an admin of a wedding cannot create another. | P0 |
+| AUTH-2 | After signing up, the user creates a wedding and becomes its admin. Only someone on no wedding team can create one: an admin can't create a second, and a Manager can't create one. | P0 |
 | AUTH-3 | An admin can add a second admin (the partner) by email. Someone who is already an admin of another wedding cannot become an admin here. | P0 |
-| AUTH-4 | An admin can invite family members as Managers by email. The invitee opens the link, signs up or logs in with that email, and joins. | P0 |
+| AUTH-4 | An admin can invite family members as Managers by email. The invitee opens the link, signs up or logs in with that email, and joins. The link is also shown once to the admin to copy or share on WhatsApp. | P0 |
 | AUTH-5 | Role (Admin or Manager) and side scope are set at invite time and editable later. At most 2 admins, always at least 1. | P0 |
 | AUTH-6 | Optional bride side / groom side toggle for the wedding. | P0 |
 | AUTH-7 | When the toggle is on, a Manager can be scoped to Bride side, Groom side, or Both. | P0 |

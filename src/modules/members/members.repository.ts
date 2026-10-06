@@ -12,6 +12,17 @@ const scoped = (weddingId: WeddingId) =>
 /** The user is already an admin of another wedding (the one-admin-wedding index). */
 export class AlreadyAdminError extends Error {}
 
+/** The user already has a membership in this wedding (the weddingId + userId index). */
+export class AlreadyMemberError extends Error {}
+
+function rethrowDuplicate(error: unknown): never {
+  if (error instanceof MongoServerError && error.code === 11000) {
+    if (/one_admin_wedding_per_user/.test(error.message)) throw new AlreadyAdminError();
+    if (/weddingId_1_userId_1/.test(error.message)) throw new AlreadyMemberError();
+  }
+  throw error;
+}
+
 export async function insertMembership(
   weddingId: WeddingId,
   input: {
@@ -39,14 +50,40 @@ export async function insertMembership(
       { session },
     );
   } catch (error) {
-    if (
-      error instanceof MongoServerError &&
-      error.code === 11000 &&
-      /one_admin_wedding_per_user/.test(error.message)
-    ) {
-      throw new AlreadyAdminError();
-    }
-    throw error;
+    rethrowDuplicate(error);
+  }
+}
+
+/** The wedding's team, earliest joined first. */
+export function listMemberships(weddingId: WeddingId) {
+  return scoped(weddingId)
+    .find({}, { sort: { joinedAt: 1, _id: 1 } })
+    .toArray();
+}
+
+export function findMembershipById(weddingId: WeddingId, memberId: ObjectId) {
+  return scoped(weddingId).findOne({ _id: memberId });
+}
+
+export function countAdmins(weddingId: WeddingId, session?: ClientSession) {
+  return scoped(weddingId).countDocuments({ role: 'admin' }, { session });
+}
+
+export async function updateMembership(
+  weddingId: WeddingId,
+  memberId: ObjectId,
+  changes: { role: Role; sideScope: SideScope },
+  now: Date,
+  session?: ClientSession,
+) {
+  try {
+    return await scoped(weddingId).findOneAndUpdate(
+      { _id: memberId },
+      { $set: { ...changes, updatedAt: now } },
+      { returnDocument: 'after', session },
+    );
+  } catch (error) {
+    rethrowDuplicate(error);
   }
 }
 
@@ -73,4 +110,14 @@ export function findUserMemberships(userId: ObjectId) {
   return globalCollection<MembershipDocument>(MEMBERSHIPS)
     .find({ userId }, { projection: { weddingId: 1, role: 1, sideScope: 1 } })
     .toArray();
+}
+
+/** Delete one membership of this wedding; `false` if it wasn't there. */
+export async function deleteMembership(
+  weddingId: WeddingId,
+  memberId: ObjectId,
+  session?: ClientSession,
+): Promise<boolean> {
+  const result = await scoped(weddingId).deleteOne({ _id: memberId }, { session });
+  return result.deletedCount === 1;
 }

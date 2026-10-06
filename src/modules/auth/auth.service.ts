@@ -9,12 +9,12 @@ import { enforceRateLimits, HOUR, MINUTE } from '@/lib/rate-limit';
 import { randomToken, sha256Hex } from '@/lib/tokens';
 import {
   deleteSession,
-  deleteUserSessions,
   DuplicateEmailError,
   extendSession,
   findActiveSession,
   findUserByEmail,
   findUserById,
+  findUsersByIds,
   insertSession,
   insertUser,
   recordLogin,
@@ -235,13 +235,25 @@ export async function logout(token: string | undefined): Promise<void> {
   if (token) await deleteSession(sha256Hex(token));
 }
 
-export async function logoutAll(token: string | undefined, now = new Date()): Promise<void> {
-  const session = await requireSession(token, now);
-  await deleteUserSessions(session.userId);
-}
-
 /** The logged-in session for a server-rendered page, or null. */
 export async function getPageSession() {
   const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
   return getSession(token || undefined);
+}
+
+/** Public details of several users, e.g. the members of a wedding team. */
+export async function getUsersByIds(ids: ObjectId[]): Promise<Map<string, PublicUser>> {
+  if (ids.length === 0) return new Map();
+  const users = await findUsersByIds(ids);
+  return new Map(
+    users.map((u) => [
+      u._id.toHexString(),
+      { id: u._id.toHexString(), email: u.email, name: u.name },
+    ]),
+  );
+}
+
+/** The account id for an email (already lowercased), or `null` if nobody has signed up with it. */
+export async function findUserIdByEmail(email: string): Promise<ObjectId | null> {
+  return (await findUserByEmail(email))?._id ?? null;
 }

@@ -5,10 +5,12 @@ const valid = {
   APP_URL: 'http://localhost:3000',
   MONGODB_URI: 'mongodb+srv://cluster0.example.mongodb.net',
   MONGODB_DB_NAME: 'make_marriage_dev',
+  RESEND_API_KEY: 're_test_key',
+  EMAIL_FROM: 'Make My Marriage <invites@example.com>',
 };
 
 describe('parseEnv', () => {
-  it('boots with only the required app and database variables', () => {
+  it('boots with only the required app, database and email variables', () => {
     const env = parseEnv(valid);
     expect(env).toMatchObject({
       ...valid,
@@ -17,27 +19,32 @@ describe('parseEnv', () => {
       LOG_LEVEL: 'info',
       EMAIL_DAILY_LIMIT: 100,
     });
-    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.RESEND_WEBHOOK_SECRET).toBeUndefined();
     expect(env.R2_BUCKET).toBeUndefined();
     expect(env.CRON_SECRET).toBeUndefined();
     expect(env.GOOGLE_PLACES_API_KEY).toBeUndefined();
   });
 
+  it('requires the Resend key and sender', () => {
+    expect(() => parseEnv({ ...valid, RESEND_API_KEY: undefined })).toThrow(/RESEND_API_KEY/);
+    expect(() => parseEnv({ ...valid, EMAIL_FROM: undefined })).toThrow(/EMAIL_FROM/);
+  });
+
   it('treats empty optional variables (KEY= from .env.example) as not set', () => {
-    const env = parseEnv({ ...valid, RESEND_API_KEY: '', R2_BUCKET: '', CRON_SECRET: '' });
-    expect(env.RESEND_API_KEY).toBeUndefined();
+    const env = parseEnv({ ...valid, RESEND_WEBHOOK_SECRET: '', R2_BUCKET: '', CRON_SECRET: '' });
+    expect(env.RESEND_WEBHOOK_SECRET).toBeUndefined();
     expect(env.R2_BUCKET).toBeUndefined();
     expect(env.CRON_SECRET).toBeUndefined();
   });
 
-  it('validates optional variables when they are set', () => {
+  it('validates variables when they are set', () => {
     expect(() => parseEnv({ ...valid, CRON_SECRET: 'too-short-secret-value' })).toThrow(
       /CRON_SECRET/,
     );
     expect(() => parseEnv({ ...valid, EMAIL_FROM: 'not an address' })).toThrow(/EMAIL_FROM/);
     expect(() => parseEnv({ ...valid, R2_BUCKET: 'Bad_Bucket' })).toThrow(/R2_BUCKET/);
-    expect(parseEnv({ ...valid, EMAIL_FROM: 'Wedding <hello@example.com>' }).EMAIL_FROM).toBe(
-      'Wedding <hello@example.com>',
+    expect(parseEnv({ ...valid, EMAIL_FROM: 'hello@example.com' }).EMAIL_FROM).toBe(
+      'hello@example.com',
     );
   });
 
@@ -72,22 +79,22 @@ describe('requireEnv', () => {
   }
 
   it('returns the requested variables when set', () => {
-    stubEnv({ RESEND_API_KEY: 're_test_key', EMAIL_FROM: 'hello@example.com' });
-    expect(requireEnv('RESEND_API_KEY', 'EMAIL_FROM')).toEqual({
-      RESEND_API_KEY: 're_test_key',
-      EMAIL_FROM: 'hello@example.com',
+    stubEnv({ R2_BUCKET: 'make-marriage-dev', CRON_SECRET: 'x'.repeat(32) });
+    expect(requireEnv('R2_BUCKET', 'CRON_SECRET')).toEqual({
+      R2_BUCKET: 'make-marriage-dev',
+      CRON_SECRET: 'x'.repeat(32),
     });
   });
 
   it('names the missing variables and never prints values', () => {
-    stubEnv({ RESEND_API_KEY: 're_secret_value', R2_BUCKET: '' });
-    expect(() => requireEnv('RESEND_API_KEY', 'EMAIL_FROM', 'R2_BUCKET')).toThrow(
-      'EMAIL_FROM, R2_BUCKET are required for this feature but not set. See .env.example.',
+    stubEnv({ CRON_SECRET: 'secret-value-that-is-long-enough-123', R2_BUCKET: '' });
+    expect(() => requireEnv('CRON_SECRET', 'R2_BUCKET', 'GOOGLE_PLACES_API_KEY')).toThrow(
+      'R2_BUCKET, GOOGLE_PLACES_API_KEY are required for this feature but not set. See .env.example.',
     );
     try {
-      requireEnv('EMAIL_FROM', 'RESEND_API_KEY');
+      requireEnv('R2_BUCKET', 'CRON_SECRET');
     } catch (error) {
-      expect((error as Error).message).not.toContain('re_secret_value');
+      expect((error as Error).message).not.toContain('secret-value-that-is-long-enough-123');
     }
   });
 });

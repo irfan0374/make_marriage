@@ -22,17 +22,13 @@ const envSchema = z.object({
   MONGODB_DB_NAME: z.string().regex(/^[A-Za-z0-9_-]{1,63}$/, 'Must be a valid database name'),
   MONGODB_MAX_POOL_SIZE: z.coerce.number().int().min(1).max(100).default(5),
 
-  // --- Resend email: becomes required in Phase 1 (password reset, member invites, invitations) ---
-  RESEND_API_KEY: optional(z.string().min(1)),
+  // --- Resend email (required since member invites) ---
+  RESEND_API_KEY: z.string().min(1, 'Set your Resend API key'),
+  EMAIL_FROM: z
+    .string()
+    .regex(/^(.+<[^<>\s@]+@[^<>\s@]+>|[^<>\s@]+@[^<>\s@]+)$/, 'Must be "Name <email>" or an email'),
+  // Delivery and bounce webhooks: becomes required with guest invitations.
   RESEND_WEBHOOK_SECRET: optional(z.string().min(1)),
-  EMAIL_FROM: optional(
-    z
-      .string()
-      .regex(
-        /^(.+<[^<>\s@]+@[^<>\s@]+>|[^<>\s@]+@[^<>\s@]+)$/,
-        'Must be "Name <email>" or an email',
-      ),
-  ),
   EMAIL_DAILY_LIMIT: z.coerce.number().int().min(1).default(100),
 
   // --- Cloudflare R2: becomes required in Phase 1 (invitation media), used by receipts and gallery ---
@@ -83,7 +79,7 @@ export function resetEnvCache(): void {
 type OptionalKey = { [K in keyof Env]-?: undefined extends Env[K] ? K : never }[keyof Env];
 
 /**
- * Read optional variables a feature can't run without, e.g. `requireEnv('RESEND_API_KEY', 'EMAIL_FROM')`.
+ * Read optional variables a feature can't run without, e.g. `requireEnv('R2_BUCKET')`.
  * Throws a clear error naming what's missing (never values) at the point of use.
  */
 export function requireEnv<K extends OptionalKey>(
