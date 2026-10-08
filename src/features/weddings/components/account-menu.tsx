@@ -1,12 +1,12 @@
 'use client';
 
 import { Menu } from '@base-ui/react/menu';
-import { ChevronDown, LayoutList, LogOut, Settings } from 'lucide-react';
+import { ChevronDown, LayoutList, LogOut, Settings, User } from 'lucide-react';
 import Link from 'next/link';
 import { useLogout } from '@/features/auth/hooks';
 import { useMe } from '@/features/weddings/hooks';
 
-function initials(name: string): string {
+export function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : ''))
     .toUpperCase()
@@ -21,25 +21,41 @@ const item =
  * weddings, and log out. Creating a wedding isn't offered here: only someone on no wedding team
  * can, and the app takes them to the create page directly (PRD §4).
  */
-export function AccountMenu({ settingsHref }: { settingsHref?: string } = {}) {
+export function AccountMenu({
+  settingsHref,
+  compact = false,
+}: {
+  settingsHref?: string;
+  /** Just a round avatar button (the wedding top bar, Stitch "Dashboard"). */
+  compact?: boolean;
+} = {}) {
   const { data: me } = useMe();
   const logout = useLogout();
   if (!me) return null;
   const hasSeveral = me.weddings.length > 1;
 
   return (
-    <div className="relative ml-auto">
+    <div className={compact ? 'relative' : 'relative ml-auto'}>
       <Menu.Root>
-        <Menu.Trigger
-          aria-label={`Account menu for ${me.user.name}`}
-          className="hover:bg-background-alt focus-visible:ring-primary/25 flex items-center gap-2 rounded-full py-1 pr-2 pl-1 outline-none focus-visible:ring-3"
-        >
-          <span className="bg-primary-tint text-primary flex size-8 items-center justify-center rounded-full text-xs font-medium">
-            {initials(me.user.name)}
-          </span>
-          <span className="hidden text-sm font-medium sm:inline">{me.user.name}</span>
-          <ChevronDown aria-hidden className="text-text-muted size-4" />
-        </Menu.Trigger>
+        {compact ? (
+          <Menu.Trigger
+            aria-label={`Account menu for ${me.user.name}`}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary/25 flex size-8 items-center justify-center rounded-full outline-none focus-visible:ring-3"
+          >
+            <User aria-hidden className="size-4.5" />
+          </Menu.Trigger>
+        ) : (
+          <Menu.Trigger
+            aria-label={`Account menu for ${me.user.name}`}
+            className="hover:bg-background-alt focus-visible:ring-primary/25 flex items-center gap-2 rounded-full py-1 pr-2 pl-1 outline-none focus-visible:ring-3"
+          >
+            <span className="bg-primary-tint text-primary flex size-8 items-center justify-center rounded-full text-xs font-medium">
+              {initials(me.user.name)}
+            </span>
+            <span className="hidden text-sm font-medium sm:inline">{me.user.name}</span>
+            <ChevronDown aria-hidden className="text-text-muted size-4" />
+          </Menu.Trigger>
+        )}
         <Menu.Portal>
           <Menu.Positioner align="end" sideOffset={8}>
             <Menu.Popup className="border-border bg-surface rounded-card min-w-56 border p-1.5 shadow-lg outline-none">

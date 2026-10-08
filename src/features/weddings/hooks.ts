@@ -39,7 +39,7 @@ export function useCreateWedding() {
 }
 
 /**
- * Save changed wedding details. The cache gets the saved wedding, so the overview and top bar
+ * Save changed wedding details. The cache gets the saved wedding, so the dashboard and top bar
  * update at once; `refresh` re-renders the server parts (the page title).
  */
 export function useUpdateWedding(weddingId: string) {

@@ -15,9 +15,7 @@ export default async function Layout({ children, params }: LayoutProps<'/app/[we
       <WeddingSidebar weddingId={weddingId} />
       <div className="flex min-w-0 flex-1 flex-col">
         <WeddingTopBar weddingId={weddingId} />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 md:px-8 md:py-12">
-          {children}
-        </main>
+        <main className="mx-auto w-full max-w-310 flex-1 px-5 py-8 md:px-8">{children}</main>
       </div>
     </div>
   );

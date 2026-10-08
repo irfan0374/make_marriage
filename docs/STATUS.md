@@ -2,7 +2,7 @@
 
 Where the build stands right now. Update this file in the same commit as any change that finishes, starts or blocks a piece of work. The specs live in the other `docs/` files; this file only tracks progress.
 
-**Last updated:** 6 Oct 2026
+**Last updated:** 8 Oct 2026
 
 ## Current phase
 Phase 1 (Core). **Auth step 1a and wedding onboarding step 1 (create a wedding) are built.**
@@ -29,16 +29,17 @@ Phase 1 (Core). **Auth step 1a and wedding onboarding step 1 (create a wedding) 
 | 6 Oct 2026 | Only the couple creates a wedding; no "log out of all devices" | Decisions: a Manager on any wedding team can't create a wedding (409 `ALREADY_ON_A_TEAM`; they'd sign up with another email); `/app/new` sends them to their weddings and no "Create your wedding" link is shown. "Log out of all devices" removed from the menu, and `POST /api/auth/logout-all` removed; ending all sessions stays internal for password reset. Docs: PRD §4/AUTH-2, architecture §6.1/§7.2, DB §6.2/§7.2, API §5.4/§6.1/§22 |
 | 6 Oct 2026 | Fix: switching accounts showed the previous account | The browser's data cache (who you are, weddings, team) wasn't cleared on log in, sign up or log out, so the next account on the same device saw the previous one's data until a reload. Now cleared on all three. The server always checked the real account; no data was exposed |
 | 6 Oct 2026 | Remove a team member | `DELETE /api/weddings/{id}/members/{memberId}` (admins only; last admin protected; access ends on the next request; can be re-invited). "Remove" button with confirmation on each member row except your own (PRD AUTH-8, API §7.6) |
+| 8 Oct 2026 | Dashboard shell (Stitch "Dashboard" layout) | The overview is replaced by the Stitch dashboard (PRD §5.5), laid out as the Stitch screen: greeting with the first name and a framed countdown (days, date, city); "Finish setting up" as chips with progress and a dismiss (remembered per browser), only "Invite your family" live and counted from real team size; four stat cards showing real zeros; two columns with Upcoming events and RSVP by event (left) and Tasks due soon, Spending by category and Quick actions (right), each with an empty state until its feature ships. No sample numbers and no budget. App shell restyled to match: sidebar with a divider before Team/Settings and the signed-in person, their role and log out at the bottom; top bar with the wedding name pill, "Send invitations" and an avatar account menu. Decision: every section is listed, with unbuilt ones faded and tagged "Soon" (sidebar, checklist, card links, quick actions, Send invitations). Fraunces kept for headings (Stitch uses Playfair) |
 
 ## Next
-1. **Events module** (PRD §5.2): plan approved earlier (drag-and-drop with `@dnd-kit`, Quick add, Sort by date); add Events to the sidebar.
+1. **Events module** (PRD §5.2): plan approved earlier (drag-and-drop with `@dnd-kit`, Quick add, Sort by date); link Events in the sidebar, fill the dashboard's "Upcoming events" card and the "Add events" step.
 2. **Guests (households)**, then **invitations and RSVP** (PRD §5.3–5.4).
 3. **Forgot and reset password** (auth step 1b) now that email works, plus `PATCH /api/me` and leave wedding (API §7.7).
 
 ## Open items
 - **Test database shares the dev cluster:** tests only create and drop `test_*` databases. A separate Atlas user or cluster would be safer before real data arrives.
 - **Pages not built yet:** `/privacy` and `/forgot-password`. The Privacy links (homepage footer, login and sign-up pages) are removed until the page exists; add them back with it. The login page has no "Forgot password?" link until step 1b.
-- **Rest of the Settings screen:** guest tags, expense categories, archive/unarchive and the vendor search radius come with their features. The overview checklist buttons show "Coming soon" until their features exist.
+- **Rest of the Settings screen:** guest tags, expense categories, archive/unarchive and the vendor search radius come with their features. Dashboard cards, checklist steps, quick actions and sidebar items show "Soon" until their features exist; wire each one up as its feature ships.
 - **Stitch screens made through the API don't appear on the canvas:** "Onboarding: Create your wedding" and "Wedding overview" exist in the project (fetchable by id) but aren't placed on the canvas. Generate future screens from Stitch's own chat if they need editing there.
 - **Stitch designs:** the Stitch project also has screens for the dashboard, events, guests, invitations, tasks, expenses, vendors, website, gallery, team, settings and login. Use them as the visual reference when building each feature.
 - **Doc gaps to settle:** video invitation thumbnail; households with no side when sides are turned on; daily digest listed in Phase 2 but deferred in NOTIF-5; `website_cover` upload being Admin-only; search-engine indexing missing from the Admin-only row in architecture §7.2; doc version numbers out of sync; floral theme and red accent.

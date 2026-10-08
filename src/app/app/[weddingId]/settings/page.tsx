@@ -11,7 +11,7 @@ export async function generateMetadata({
   return { title: `Settings · ${wedding.brideName} & ${wedding.groomName}` };
 }
 
-// Admins only (PRD §3.2). Managers are sent back to the overview instead of seeing a form they
+// Admins only (PRD §3.2). Managers are sent back to the dashboard instead of seeing a form they
 // can't save; the API refuses their changes with 403 either way.
 export default async function Page({ params }: PageProps<'/app/[weddingId]/settings'>) {
   const { weddingId } = await params;

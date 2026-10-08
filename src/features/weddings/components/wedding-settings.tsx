@@ -83,8 +83,8 @@ function SettingsForm({ wedding, onDiscard }: { wedding: Wedding; onDiscard: () 
     setEdits((e) => ({ ...e, ...patch }));
   }
 
-  // Saved: back to the overview, which confirms it (`?saved=1`). `replace` swaps out the extra
-  // history entry the unsaved-changes guard added, so Back from the overview isn't doubled.
+  // Saved: back to the dashboard, which confirms it (`?saved=1`). `replace` swaps out the extra
+  // history entry the unsaved-changes guard added, so Back from the dashboard isn't doubled.
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const input = validate(changes);
@@ -193,7 +193,7 @@ export function WeddingSettings({ weddingId }: { weddingId: string }) {
         className="text-text-muted hover:text-text inline-flex items-center gap-1.5 text-sm"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Back to overview
+        Back to dashboard
       </Link>
       {isPending ? (
         <p role="status" className="text-text-muted py-20 text-center">
