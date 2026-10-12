@@ -4,7 +4,6 @@ import { Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { FormAlert, FormField, FormSelect, FormTextarea } from '@/components/common/form-field';
 import { useForm } from '@/components/common/use-form';
-import { useUnsavedChanges } from '@/components/common/use-unsaved-changes';
 import { Button } from '@/components/ui/button';
 import { useCreateTask, useUpdateTask } from '@/features/tasks/hooks';
 import { timeAgo } from '@/features/tasks/task-groups';
@@ -105,17 +104,10 @@ export function TaskPanel({
   );
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  const dirty = changedFields(values, saved).length > 0;
-  useUnsavedChanges(dirty && !pending, { guardBack: false });
 
   useEffect(() => panelRef.current?.focus({ preventScroll: true }), []);
 
   const set = (patch: Partial<Values>) => setValues((v) => ({ ...v, ...patch }));
-
-  function close() {
-    if (dirty && !window.confirm('Discard your changes to this task?')) return;
-    onClose();
-  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -157,8 +149,7 @@ export function TaskPanel({
       tabIndex={-1}
       role="region"
       aria-labelledby={titleId}
-      data-task-panel-dirty={dirty}
-      onKeyDown={(e) => e.key === 'Escape' && close()}
+      onKeyDown={(e) => e.key === 'Escape' && onClose()}
       className={cn(
         'bg-surface flex flex-col outline-none',
         'max-lg:fixed max-lg:inset-0 max-lg:z-50',
@@ -182,7 +173,7 @@ export function TaskPanel({
         </div>
         <button
           type="button"
-          onClick={close}
+          onClick={onClose}
           aria-label="Close"
           className="text-text-muted hover:text-text hover:bg-background -mr-2 rounded-full p-2"
         >
@@ -326,7 +317,7 @@ export function TaskPanel({
               Delete task
             </button>
           ) : (
-            <Button type="button" variant="ghost" className="h-11 px-4" onClick={close}>
+            <Button type="button" variant="ghost" className="h-11 px-4" onClick={onClose}>
               Cancel
             </Button>
           )}

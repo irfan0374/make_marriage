@@ -3,7 +3,7 @@ import { ObjectId, type ClientSession } from 'mongodb';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
 import { SESSION_COOKIE_NAME } from '@/config/app';
-import { GALLERY_STORAGE_CAP_BYTES, WEDDING_TIMEZONES } from '@/config/constants';
+import { GALLERY_STORAGE_CAP_BYTES, MAX_GUEST_TAGS, WEDDING_TIMEZONES } from '@/config/constants';
 import { withTransaction } from '@/lib/db/transaction';
 import { AppError } from '@/lib/errors';
 import { toObjectId, trustWeddingId, type WeddingId } from '@/lib/ids';
@@ -28,6 +28,7 @@ import {
   lockTaskWrites,
   findWeddingSummaries,
   insertWedding,
+  setGuestTags,
   updateWeddingDetails,
   type WeddingDetails,
 } from './weddings.repository';
@@ -367,4 +368,28 @@ export async function lockWeddingTasks(weddingId: WeddingId, session: ClientSess
   if (!wedding) throw new AppError('NOT_FOUND');
   if (wedding.status === 'archived') throw new AppError('WEDDING_ARCHIVED');
   return wedding;
+}
+
+/**
+ * Make sure every tag in `tags` is on the wedding's tag list, adding new ones (anyone on the team
+ * may create a tag while saving a family). Matching ignores case, so "vip" reuses "VIP". Returns
+ * the tags in their saved spelling. Call under `lockWeddingTasks` with its wedding document.
+ */
+export async function ensureGuestTags(
+  wedding: Pick<WeddingDocument, '_id' | 'guestTags'>,
+  tags: string[],
+  session: ClientSession,
+): Promise<string[]> {
+  const known = new Map(wedding.guestTags.map((t) => [t.toLowerCase(), t]));
+  const added = tags.filter((t) => !known.has(t.toLowerCase()));
+  if (added.length > 0) {
+    if (known.size + added.length > MAX_GUEST_TAGS) {
+      throw new AppError('VALIDATION_ERROR', undefined, {
+        details: [{ path: 'tags', message: `A wedding can have at most ${MAX_GUEST_TAGS} tags` }],
+      });
+    }
+    for (const tag of added) known.set(tag.toLowerCase(), tag);
+    await setGuestTags(trustWeddingId(wedding._id), [...known.values()], session);
+  }
+  return tags.map((t) => known.get(t.toLowerCase())!);
 }

@@ -93,3 +93,8 @@ export function lockTaskWrites(weddingId: WeddingId, session: ClientSession) {
     { session, returnDocument: 'after', includeResultMetadata: false },
   );
 }
+
+/** Replace the wedding's guest tag list (called under the wedding lock). */
+export function setGuestTags(weddingId: WeddingId, guestTags: string[], session: ClientSession) {
+  return weddings().updateOne({ _id: weddingId }, { $set: { guestTags } }, { session });
+}

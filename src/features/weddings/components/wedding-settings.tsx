@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { FormAlert } from '@/components/common/form-field';
 import { useForm } from '@/components/common/use-form';
-import { useUnsavedChanges } from '@/components/common/use-unsaved-changes';
 import { Button } from '@/components/ui/button';
 import { MAX_WEDDING_YEARS_AHEAD } from '@/config/constants';
 import { useUpdateWedding, useWedding } from '@/features/weddings/hooks';
@@ -73,8 +72,6 @@ function SettingsForm({ wedding, onDiscard }: { wedding: Wedding; onDiscard: () 
 
   const changes = changedFields(values, original);
   const dirty = Object.keys(changes).length > 0;
-  // Ask before leaving with unsaved edits, but not while saving or on the way back afterwards.
-  useUnsavedChanges(dirty && !mutation.isPending && !mutation.isSuccess);
   const today = todayIn(values.timezone);
   // A date already in the past stays as it is; a new one can't be earlier than today.
   const dateMin = original.weddingDate < today ? undefined : today;
@@ -83,8 +80,8 @@ function SettingsForm({ wedding, onDiscard }: { wedding: Wedding; onDiscard: () 
     setEdits((e) => ({ ...e, ...patch }));
   }
 
-  // Saved: back to the dashboard, which confirms it (`?saved=1`). `replace` swaps out the extra
-  // history entry the unsaved-changes guard added, so Back from the dashboard isn't doubled.
+  // Saved: back to the dashboard, which confirms it (`?saved=1`). `replace`, so Back from the
+  // dashboard doesn't reopen the form that was just saved.
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const input = validate(changes);

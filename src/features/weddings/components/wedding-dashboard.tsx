@@ -21,6 +21,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react
 import { SoonTag } from '@/components/common/soon-tag';
 import { dateTile, upcomingEvents } from '@/features/events/event-timing';
 import { useEvents } from '@/features/events/hooks';
+import { useHouseholdSummary } from '@/features/guests/hooks';
 import { dueLabel, tasksDueSoon } from '@/features/tasks/task-groups';
 import { PriorityBadge } from '@/features/tasks/components/task-row';
 import { useTasks } from '@/features/tasks/hooks';
@@ -159,17 +160,19 @@ function SetupCard({
   weddingId,
   teamSize,
   eventCount,
+  guestCount,
 }: {
   weddingId: string;
   teamSize: number;
   eventCount: number;
+  guestCount: number;
 }) {
   const dismissed = useSyncExternalStore(
     subscribeDismiss,
     () => hiddenThisVisit.has(weddingId) || readDismissed(weddingId),
     () => false,
   );
-  const steps = setupSteps({ weddingId, teamSize, eventCount });
+  const steps = setupSteps({ weddingId, teamSize, eventCount, guestCount });
   const done = steps.filter((s) => s.done).length;
   const percent = Math.round((done / steps.length) * 100);
   if (dismissed || done === steps.length) return null;
@@ -497,6 +500,7 @@ export function WeddingDashboard({
   const { data: wedding, error, isPending, refetch } = useWedding(weddingId);
   const { data: team } = useTeam(weddingId);
   const { data: events } = useEvents(weddingId);
+  const { data: guests } = useHouseholdSummary(weddingId);
   const { data: tasks } = useTasks(weddingId);
   const { data: me } = useMe();
 
@@ -543,13 +547,22 @@ export function WeddingDashboard({
         weddingId={weddingId}
         teamSize={team?.members.length ?? 1}
         eventCount={events?.length ?? 0}
+        guestCount={guests?.households ?? 0}
       />
 
       <section
         aria-label="Summary"
         className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
       >
-        <StatCard label="Families invited" value="0" footer="No guests added yet" />
+        <StatCard
+          label="Families invited"
+          value={(guests?.households ?? 0).toLocaleString('en-IN')}
+          footer={
+            guests && guests.households > 0
+              ? `${guests.people.toLocaleString('en-IN')} people · across ${guests.events.length} ${guests.events.length === 1 ? 'event' : 'events'}`
+              : 'No guests added yet'
+          }
+        />
         <StatCard label="Replied" value="0" footer="No invitations sent yet" />
         <StatCard label="Guests attending" value="0" footer="No replies yet" />
         <StatCard label="Total spent" value="₹0" footer="No expenses logged yet" />
@@ -609,7 +622,7 @@ export function WeddingDashboard({
               {isAdmin && (
                 <QuickAction href={`${base}/settings`} icon={Settings} label="Wedding details" />
               )}
-              <QuickAction href={null} icon={Users} label="Add guests" />
+              <QuickAction href={`${base}/guests`} icon={Users} label="Add guests" />
               <QuickAction href={null} icon={Receipt} label="Add expense" />
               <QuickAction href={`${base}/tasks`} icon={ListChecks} label="Add task" />
               <QuickAction href={null} icon={QrCode} label="Share gallery QR" />

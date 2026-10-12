@@ -51,6 +51,10 @@ export const ERROR_CODES = {
   CONFIRMATION_REQUIRED: { status: 409, message: 'Please confirm this action.' },
   EVENT_LIMIT_REACHED: { status: 409, message: 'A wedding can have at most 50 events.' },
   TASK_LIMIT_REACHED: { status: 409, message: 'A wedding can have at most 500 tasks.' },
+  HOUSEHOLD_LIMIT_REACHED: {
+    status: 409,
+    message: 'A wedding can have at most 2,000 guest families.',
+  },
   VENDOR_ALREADY_SAVED: { status: 409, message: 'This vendor is already saved.' },
   ATTACHMENT_LIMIT_REACHED: { status: 409, message: 'A vendor can have at most 10 attachments.' },
   FILE_TOO_LARGE: { status: 413, message: 'The file is too large.' },

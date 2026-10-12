@@ -4,7 +4,6 @@ import { Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { FormAlert, FormField, FormTextarea } from '@/components/common/form-field';
 import { useForm } from '@/components/common/use-form';
-import { useUnsavedChanges } from '@/components/common/use-unsaved-changes';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useCreateEvent, useUpdateEvent } from '@/features/events/hooks';
@@ -111,18 +110,11 @@ export function EventPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const websiteId = useId();
-  const dirty = changedFields(values, saved).length > 0;
-  useUnsavedChanges(dirty && !pending, { guardBack: false });
 
   // Move focus into the panel when it opens or switches event, for keyboard and screen readers.
   useEffect(() => panelRef.current?.focus({ preventScroll: true }), []);
 
   const set = (patch: Partial<Values>) => setValues((v) => ({ ...v, ...patch }));
-
-  function close() {
-    if (dirty && !window.confirm('Discard your changes to this event?')) return;
-    onClose();
-  }
 
   function chooseType(key: EventPresetKey) {
     const preset = EVENT_PRESETS.find((p) => p.key === key);
@@ -173,9 +165,8 @@ export function EventPanel({
       ref={panelRef}
       tabIndex={-1}
       role="region"
-      data-event-panel-dirty={dirty}
       aria-labelledby={titleId}
-      onKeyDown={(e) => e.key === 'Escape' && close()}
+      onKeyDown={(e) => e.key === 'Escape' && onClose()}
       className={cn(
         'bg-surface flex flex-col outline-none',
         // Phones and tablets: a full-screen sheet. Desktop: beside the timeline, below the top bar.
@@ -190,7 +181,7 @@ export function EventPanel({
         </h2>
         <button
           type="button"
-          onClick={close}
+          onClick={onClose}
           aria-label="Close"
           className="text-text-muted hover:text-text hover:bg-background -mr-2 rounded-full p-2"
         >
@@ -353,7 +344,7 @@ export function EventPanel({
                 Delete event
               </button>
             ) : (
-              <Button type="button" variant="ghost" className="h-11 px-4" onClick={close}>
+              <Button type="button" variant="ghost" className="h-11 px-4" onClick={onClose}>
                 Cancel
               </Button>
             )}

@@ -53,11 +53,17 @@ export function useUpdateEvent(weddingId: string) {
 }
 
 export function useDeleteEvent(weddingId: string) {
-  const onSettled = useRefreshEvents(weddingId);
+  const refreshEvents = useRefreshEvents(weddingId);
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ eventId, confirm }: { eventId: string; confirm?: boolean }) =>
       deleteEvent(weddingId, eventId, confirm),
-    onSettled,
+    // The event comes off families and tasks too.
+    onSettled: () => {
+      void refreshEvents();
+      void queryClient.invalidateQueries({ queryKey: ['weddings', weddingId, 'households'] });
+      void queryClient.invalidateQueries({ queryKey: ['weddings', weddingId, 'tasks'] });
+    },
   });
 }
 

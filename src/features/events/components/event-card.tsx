@@ -2,7 +2,7 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Clock, GripVertical, Navigation, Pencil } from 'lucide-react';
+import { Clock, GripVertical, Navigation, Pencil, Users } from 'lucide-react';
 import { whenText, type EventStatus } from '@/features/events/event-timing';
 import type { WeddingEvent } from '@/modules/events/events.types';
 import { cn } from '@/shared/cn';
@@ -29,6 +29,7 @@ export function EventCard({
   event,
   number,
   status,
+  invited,
   editing,
   canDrag,
   onEdit,
@@ -36,6 +37,8 @@ export function EventCard({
   event: WeddingEvent;
   number: number;
   status: EventStatus | undefined;
+  /** Families and people invited to it (Guests); omitted when none. */
+  invited?: { households: number; people: number };
   editing: boolean;
   canDrag: boolean;
   onEdit: () => void;
@@ -176,15 +179,34 @@ export function EventCard({
           </button>
         )}
 
-        {status && (
-          <p
-            className={cn(
-              'mt-4 text-right text-xs font-medium',
-              status === 'next' ? 'text-pending-text' : 'text-text-muted',
+        {(invited || status) && (
+          <div className="mt-4 flex items-center justify-between gap-3 text-xs">
+            {invited ? (
+              <p className="text-text-muted flex items-center gap-1.5">
+                <Users aria-hidden className="size-3.5" />
+                Invited families{' '}
+                <strong className="text-text font-semibold">
+                  {invited.households.toLocaleString('en-IN')}
+                </strong>
+                <span aria-hidden>·</span> People{' '}
+                <strong className="text-text font-semibold">
+                  {invited.people.toLocaleString('en-IN')}
+                </strong>
+              </p>
+            ) : (
+              <span />
             )}
-          >
-            {status === 'next' ? 'Next up' : 'Completed'}
-          </p>
+            {status && (
+              <p
+                className={cn(
+                  'font-medium',
+                  status === 'next' ? 'text-pending-text' : 'text-text-muted',
+                )}
+              >
+                {status === 'next' ? 'Next up' : 'Completed'}
+              </p>
+            )}
+          </div>
         )}
       </article>
     </li>

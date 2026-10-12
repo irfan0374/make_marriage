@@ -507,9 +507,9 @@ An invited family or group. Holds its invited events and RSVP replies.
 | `members` | object[] | ✅ | `[]` | Max 30. Each `{ name: string (1-80) }` |
 | `headcount` | int | ✅ | members count, or 1 | 1-50 |
 | `email` | string | | `null` | Lowercased, valid email |
-| `phone` | string | | `null` | Digits with optional leading `+`, 7-15 digits |
+| `phone` | string | | `null` | Stored as `+` and 7-15 digits; a 10-digit number without `+` is taken as Indian (`+91`) |
 | `side` | enum | | `null` | `bride`, `groom`. Required when sides are enabled |
-| `tags` | string[] | ✅ | `[]` | Each must exist in `weddings.guestTags` |
+| `tags` | string[] | ✅ | `[]` | Max 20. Each is also on `weddings.guestTags`; saving a family with a new tag adds it there (same transaction) |
 | `notes` | string | | `""` | Max 1,000 characters |
 | `searchText` | string | ✅ | computed | Lowercased display name, member names, email and phone, for search |
 | `token` | string | ✅ | generated | 22-character random token, unique |
@@ -525,6 +525,9 @@ An invited family or group. Holds its invited events and RSVP replies.
 | `reminderCount` | int | ✅ | `0` | |
 | `remindersOptOut` | bool | ✅ | `false` | Guest clicked "stop reminders" |
 | `importBatchId` | string | | `null` | Set for households created by a CSV import |
+| `createdByUserId` | ObjectId | ✅ | | Who added the family |
+| `editedByUserId` | ObjectId | ✅ | creator | Last person to create or change it (not cleanups) |
+| `editedAt` | Date | ✅ | `createdAt` | When that change was made |
 
 **`invitedEvents[]`**
 
@@ -610,6 +613,9 @@ An invited family or group. Holds its invited events and RSVP replies.
 | `{ weddingId: 1, "invitedEvents.eventId": 1 }` | Multikey | Households invited to an event, RSVP summary |
 | `{ weddingId: 1, tags: 1 }` | Multikey | Tag filter |
 | `{ weddingId: 1, email: 1 }` | | Duplicate warning, bounce matching |
+| `{ weddingId: 1, phone: 1 }` | | Duplicate warning |
+
+At most 2,000 households per wedding (api-spec §9.2). Household writes run under the same per-wedding lock as task writes and event deletion, so an event can't be deleted while a family is being invited to it.
 
 **Search:** filter by `weddingId` (and `side` when scoped), then a case-insensitive regex on `searchText`. For a few hundred households per wedding this is fast without a text index.
 

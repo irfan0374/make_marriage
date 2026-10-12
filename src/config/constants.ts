@@ -32,3 +32,9 @@ export const MAX_EVENTS_PER_WEDDING = 50;
 
 /** At most this many tasks per wedding (api-spec §12.2). */
 export const MAX_TASKS_PER_WEDDING = 500;
+
+/** At most this many guest families per wedding (api-spec §9.2); weddings usually have 100–400. */
+export const MAX_HOUSEHOLDS_PER_WEDDING = 2000;
+
+/** At most this many guest tags per wedding (database-design §7.1). */
+export const MAX_GUEST_TAGS = 50;

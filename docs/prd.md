@@ -126,7 +126,7 @@ A **household** is a family or group that receives one invitation.
 
 | ID | Requirement | Priority |
 |---|---|---|
-| GUEST-1 | Household fields: display name (e.g. "Sharma family"), member names, headcount (defaults to member count, editable), email (optional), phone (optional), side (if enabled), tags, notes. | P0 |
+| GUEST-1 | Household fields: display name (e.g. "Sharma family"), member names, headcount (defaults to member count, editable), email (optional), phone (optional), side (if enabled), tags, notes. Any team member can create a new tag while adding a family; it joins the wedding's tag list. | P0 |
 | GUEST-2 | Assign events per household (multi-select, plus an "all events" shortcut). | P0 |
 | GUEST-3 | Import from CSV or Excel with column mapping, a preview, row-level error reporting, and a downloadable template. | P0 |
 | GUEST-4 | Search, filter (side, tag, event, invite status, RSVP status) and sort. | P0 |

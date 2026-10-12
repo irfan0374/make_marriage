@@ -227,9 +227,6 @@ export function TasksPage({ weddingId }: { weddingId: string }) {
   const editingId = panel?.kind === 'edit' ? panel.task.id : null;
 
   function openPanel(mode: TaskPanelMode) {
-    if (panel && document.querySelector('[data-task-panel-dirty="true"]')) {
-      if (!window.confirm('Discard your changes to this task?')) return;
-    }
     setPanel(mode);
   }
 

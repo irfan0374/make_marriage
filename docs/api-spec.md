@@ -255,10 +255,14 @@ API responses never include password hashes, session or token hashes, or interna
   "responseStatus": "complete",
   "emailBounced": false,
   "reminderCount": 0,
+  "createdBy": { "userId": "66f1a1...", "name": "Riya" },
+  "editedBy": { "userId": "66f1a3...", "name": "Ahmed" },
+  "editedAt": "2026-09-25T10:30:00.000Z",
   "createdAt": "2026-09-24T07:00:00.000Z",
   "updatedAt": "2028-02-02T12:00:00.000Z"
 }
 ```
+`editedBy` / `editedAt` are the last person to create or change the family (not cleanups). Until Invitations is built, the API returns the guest-list fields only: `inviteLink`, `sentAt`, `openedAt`, `emailBounced`, `reminderCount` and the RSVP `note`/`recordedBy`/dates arrive with it.
 
 ### 4.7 Task
 ```json
@@ -690,6 +694,8 @@ Response `200`: `{ "data": [ <Event> ] }`. Errors: `CONFLICT` (409) if the list 
 
 Response `200`: `{ "data": [ <Household> ], "meta": { "nextCursor": "...", "total": 312 } }`
 
+A side-scoped Manager's list is always limited to their side; a `side` filter can narrow it but never widen it. `tags` matches any of the given tags, ignoring case. `limit` is up to 100 (default 50). `rsvpForEvent`/`rsvpStatus` and `emailBounced` are accepted once Invitations is built.
+
 ### 9.2 `POST /api/weddings/{weddingId}/households`
 **Access:** Member
 
@@ -712,17 +718,12 @@ Request:
 | `displayName` | Required, 1-100 |
 | `headcount` | 1-50. Defaults to the number of members, or 1 |
 | `side` | Required if sides are enabled. A side-scoped Manager can only use their own side |
-| `tags` | Must exist in the wedding's `guestTags` |
+| `tags` | Up to 20, each 1-30 characters. Tags not yet on the wedding's `guestTags` are added to it (any member may create a tag; at most 50 per wedding). Matching ignores case, so "vip" reuses "VIP" |
 | `invitedEvents[].headcount` | 1 to `headcount`. Defaults to `headcount` if omitted |
 
-Response `201`:
-```json
-{
-  "data": <Household>,
-  "meta": { "possibleDuplicates": [ { "id": "66f1c0...099", "displayName": "Sharma Family" } ] }
-}
-```
-Duplicates are a warning only. The household is still created.
+Phone numbers are stored as `+<digits>`; a 10-digit number without `+` is taken as Indian (`+91`). A wedding can have at most 2,000 families.
+
+Response `201`: `<Household>`. Errors: `HOUSEHOLD_LIMIT_REACHED` (409). Possible duplicates are checked before saving with §9.14 (a warning only; the family is still created).
 
 ### 9.3 `GET /api/weddings/{weddingId}/households/{householdId}`
 **Access:** Member (side-scoped). Response `200`: `<Household>` plus `meta.emailHistory` (last 10 emails: template, status, sentAt).
@@ -827,6 +828,16 @@ Request:
 Response `200`: `<Household>` (with `recordedBy: "host"` on that RSVP)
 
 Errors: `NOT_INVITED_TO_EVENT` (400), `HEADCOUNT_EXCEEDED` (400).
+
+### 9.14 `GET /api/weddings/{weddingId}/households/duplicates`
+**Access:** Member (side-scoped). Families that may be the same one (PRD GUEST-7): same phone, same email, or the same name (ignoring case). Query: `displayName`, `email`, `phone`, `excludeId` (the family being edited).
+
+Response `200`: `{ "data": [ { "id": "66f1c0...099", "displayName": "Sharma family", "side": "bride", "reason": "phone" } ] }` (at most 5).
+
+### 9.15 `GET /api/weddings/{weddingId}/households/summary`
+**Access:** Member (side-scoped). Totals for the guest list header and event cards (PRD GUEST-5).
+
+Response `200`: `{ "data": { "households": 312, "people": 1034, "events": [ { "eventId": "66f1d0...02", "households": 120, "people": 340 } ], "sideScope": null } }`. `sideScope` is the side the caller is limited to, or `null`.
 
 ### 9.13 `DELETE /api/weddings/{weddingId}/households/{householdId}/rsvps/{eventId}`
 **Access:** Member (side-scoped). Clears an RSVP back to pending. Response `204`.
@@ -1725,6 +1736,7 @@ Response `503` if the database is unreachable.
 | `CONFIRMATION_REQUIRED` | 409 | Resend with `confirm=true` |
 | `EVENT_LIMIT_REACHED` | 409 | A wedding already has 50 events |
 | `TASK_LIMIT_REACHED` | 409 | A wedding already has 500 tasks |
+| `HOUSEHOLD_LIMIT_REACHED` | 409 | A wedding already has 2,000 guest families |
 | `VENDOR_ALREADY_SAVED` | 409 | This Google place is already in the vendor list |
 | `ATTACHMENT_LIMIT_REACHED` | 409 | Vendor already has 10 attachments |
 | `FILE_TOO_LARGE` | 413 | File above the size limit |

@@ -22,6 +22,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { eventStatuses, isInDateOrder, sortByDate } from '@/features/events/event-timing';
 import { useEvents, useReorderEvents } from '@/features/events/hooks';
+import { useHouseholdSummary } from '@/features/guests/hooks';
 import { useWedding } from '@/features/weddings/hooks';
 import { EVENT_PRESETS } from '@/modules/events/events.schemas';
 import type { EventPresetKey, WeddingEvent } from '@/modules/events/events.types';
@@ -94,6 +95,7 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
   const { data: wedding } = useWedding(weddingId);
   const { data: events, error, isPending, refetch } = useEvents(weddingId);
   const reorder = useReorderEvents(weddingId);
+  const { data: guestTotals } = useHouseholdSummary(weddingId);
   const [panel, setPanel] = useState<PanelMode | null>(null);
   const [quickAdd, setQuickAdd] = useState(false);
   const [deleting, setDeleting] = useState<WeddingEvent | null>(null);
@@ -144,11 +146,7 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
     reorder.mutate(arrayMove(events, from, to));
   }
 
-  /** Open the panel; switching away from unsaved edits is checked by the panel's own close. */
   function openPanel(mode: PanelMode) {
-    if (panel && document.querySelector('[data-event-panel-dirty="true"]')) {
-      if (!window.confirm('Discard your changes to this event?')) return;
-    }
     setPanel(mode);
   }
 
@@ -266,6 +264,7 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
                     event={event}
                     number={index + 1}
                     status={statuses.get(event.id)}
+                    invited={guestTotals?.events.find((t) => t.eventId === event.id)}
                     editing={editingId === event.id}
                     canDrag={canReorder}
                     onEdit={() => openPanel({ kind: 'edit', event })}
