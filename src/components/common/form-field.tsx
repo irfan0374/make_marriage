@@ -113,3 +113,41 @@ export function FormAlert({ message }: { message: string | null }) {
     </p>
   );
 }
+
+type TextareaProps = Omit<React.ComponentProps<'textarea'>, 'id'> & {
+  label: string;
+  error?: string;
+  hint?: string;
+};
+
+/** A multi-line field styled like `Input`. */
+export function FormTextarea({ label, error, hint, className, ...props }: TextareaProps) {
+  const id = useId();
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <textarea
+        id={id}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        className={cn(
+          'border-border bg-surface text-text placeholder:text-text-muted rounded-input block w-full resize-y border px-3.5 py-2.5 text-sm transition-colors outline-none',
+          'focus-visible:border-primary focus-visible:ring-primary/15 focus-visible:ring-3',
+          'aria-invalid:border-danger-text aria-invalid:ring-danger-text/10 disabled:opacity-50',
+          className,
+        )}
+        {...props}
+      />
+      {error ? (
+        <p id={`${id}-error`} className="text-danger-text text-xs">
+          {error}
+        </p>
+      ) : hint ? (
+        <p id={`${id}-hint`} className="text-text-muted text-xs">
+          {hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}

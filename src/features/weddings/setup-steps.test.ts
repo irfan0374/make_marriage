@@ -3,7 +3,7 @@ import { firstName, greetingFor, setupSteps } from './setup-steps';
 
 describe('setupSteps', () => {
   it('lists the six steps, with only built features linked', () => {
-    const steps = setupSteps({ weddingId: 'w1', teamSize: 1 });
+    const steps = setupSteps({ weddingId: 'w1', teamSize: 1, eventCount: 0 });
     expect(steps.map((s) => s.title)).toEqual([
       'Add events',
       'Add guests',
@@ -12,13 +12,23 @@ describe('setupSteps', () => {
       'Invite your family',
       'Publish website',
     ]);
-    expect(steps.filter((s) => s.href).map((s) => s.href)).toEqual(['/app/w1/team']);
+    expect(steps.filter((s) => s.href).map((s) => s.href)).toEqual([
+      '/app/w1/events',
+      '/app/w1/team',
+    ]);
     expect(steps.some((s) => s.done)).toBe(false);
   });
 
   it('counts the family step as done once someone has joined', () => {
-    const team = setupSteps({ weddingId: 'w1', teamSize: 2 }).find((s) => s.key === 'team');
+    const team = setupSteps({ weddingId: 'w1', teamSize: 2, eventCount: 0 }).find(
+      (s) => s.key === 'team',
+    );
     expect(team?.done).toBe(true);
+  });
+
+  it('counts events as done once one is added', () => {
+    const steps = setupSteps({ weddingId: 'w1', teamSize: 1, eventCount: 1 });
+    expect(steps.find((s) => s.key === 'events')?.done).toBe(true);
   });
 });
 

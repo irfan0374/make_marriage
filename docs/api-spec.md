@@ -618,7 +618,9 @@ Request:
   "showOnWebsite": true
 }
 ```
-Required: `name`, `date`, `startTime`. New events are added at the end of the order.
+Required: `name`, `date`, `startTime`. New events are added at the end of the order. An `endTime` earlier than `startTime` means the event runs past midnight; the same time is rejected. A wedding can have at most 50 events.
+
+Response errors: `EVENT_LIMIT_REACHED` (409).
 
 Response `201`: `<Event>`
 
@@ -629,7 +631,7 @@ Request:
 ```json
 { "events": [ { "presetKey": "mehendi", "date": "2028-04-12", "startTime": "17:00" }, { "presetKey": "wedding", "date": "2028-04-14", "startTime": "11:00" } ] }
 ```
-Response `201`: `{ "data": [ <Event> ] }`
+Response `201`: `{ "data": [ <Event> ] }`. Errors: `EVENT_LIMIT_REACHED` (409) if the new events would take the wedding past 50.
 
 ### 8.4 `PATCH /api/weddings/{weddingId}/events/{eventId}`
 **Access:** Member. Any subset of the create fields.
@@ -657,7 +659,7 @@ Response `204`. Errors: `CONFIRMATION_REQUIRED` (409, with `details.affectedHous
 
 Request: `{ "eventIds": ["66f1d0...03", "66f1d0...02", "66f1d0...05"] }` (must contain every event exactly once)
 
-Response `200`: `{ "data": [ <Event> ] }`
+Response `200`: `{ "data": [ <Event> ] }`. Errors: `CONFLICT` (409) if the list doesn't match the wedding's current events (someone added or deleted one meanwhile).
 
 ---
 
@@ -1713,6 +1715,7 @@ Response `503` if the database is unreachable.
 | `CATEGORY_IN_USE` | 409 | Custom category still used by expenses |
 | `HEADCOUNT_BELOW_RSVP` | 409 | New headcount is lower than an existing RSVP |
 | `CONFIRMATION_REQUIRED` | 409 | Resend with `confirm=true` |
+| `EVENT_LIMIT_REACHED` | 409 | A wedding already has 50 events |
 | `VENDOR_ALREADY_SAVED` | 409 | This Google place is already in the vendor list |
 | `ATTACHMENT_LIMIT_REACHED` | 409 | Vendor already has 10 attachments |
 | `FILE_TOO_LARGE` | 413 | File above the size limit |

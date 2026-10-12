@@ -126,6 +126,22 @@ export function scopedCollection<T extends TenantDocument>(name: string, wedding
         includeResultMetadata: false,
       });
     },
+    /**
+     * Several `updateOne`s in one round trip (e.g. saving a new order). Only updates are allowed,
+     * and each filter is scoped and each update checked exactly like `updateOne`.
+     */
+    bulkUpdateOne: (
+      operations: { filter: Filter<T>; update: UpdateFilter<T> }[],
+      options?: BulkWriteOptions,
+    ) => {
+      for (const { update } of operations) assertUpdateKeepsTenant(update);
+      return collection.bulkWrite(
+        operations.map(({ filter, update }) => ({
+          updateOne: { filter: scope(filter), update },
+        })),
+        options,
+      );
+    },
     deleteOne: (filter: Filter<T>, options?: DeleteOptions) =>
       collection.deleteOne(scope(filter), options),
     deleteMany: (filter: Filter<T>, options?: DeleteOptions) =>

@@ -8,9 +8,10 @@ const GUARD = '__unsavedChangesGuard';
 /**
  * Ask before leaving a page with unsaved changes: links inside the app (including the logo and
  * menu items), the browser's Back button, and closing or reloading the tab. Pass `false` while
- * saving, so the redirect after a successful save isn't questioned.
+ * saving, so the redirect after a successful save isn't questioned. `guardBack: false` skips the
+ * Back button, for edits in a panel on a page that stays open after saving.
  */
-export function useUnsavedChanges(dirty: boolean): void {
+export function useUnsavedChanges(dirty: boolean, { guardBack = true } = {}): void {
   useEffect(() => {
     if (!dirty) return;
 
@@ -48,7 +49,7 @@ export function useUnsavedChanges(dirty: boolean): void {
         '',
         window.location.href,
       );
-    if (!window.history.state?.[GUARD]) pushGuard();
+    if (guardBack && !window.history.state?.[GUARD]) pushGuard();
     const onPopState = () => {
       if (window.confirm(MESSAGE)) {
         window.removeEventListener('popstate', onPopState);
@@ -60,11 +61,11 @@ export function useUnsavedChanges(dirty: boolean): void {
 
     window.addEventListener('beforeunload', onBeforeUnload);
     document.addEventListener('click', onClick, true);
-    window.addEventListener('popstate', onPopState);
+    if (guardBack) window.addEventListener('popstate', onPopState);
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('click', onClick, true);
       window.removeEventListener('popstate', onPopState);
     };
-  }, [dirty]);
+  }, [dirty, guardBack]);
 }

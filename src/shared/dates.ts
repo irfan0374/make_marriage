@@ -72,3 +72,10 @@ export function formatLongDate(date: string): string {
   );
   return `${weekday}, ${formatDate(date)}`;
 }
+
+/** "16:00" → "4:00 PM" (12-hour, as Indian families write times). */
+export function formatTime(time: string): string {
+  const [h = 0, m = 0] = time.split(':').map(Number);
+  const suffix = h < 12 ? 'AM' : 'PM';
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${suffix}`;
+}

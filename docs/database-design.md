@@ -486,6 +486,8 @@ db.weddings.updateOne(
 | `showOnWebsite` | bool | ✅ | `true` | |
 | `order` | int | ✅ | | Display order, starting at 0 |
 
+At most 50 events per wedding (api-spec §8.2).
+
 **Indexes**
 | Index | Type | Serves |
 |---|---|---|

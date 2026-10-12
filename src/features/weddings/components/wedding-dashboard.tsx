@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  ArrowRight,
   CalendarDays,
   Check,
   ListChecks,
@@ -18,13 +19,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { SoonTag } from '@/components/common/soon-tag';
+import { dateTile, upcomingEvents } from '@/features/events/event-timing';
+import { useEvents } from '@/features/events/hooks';
 import { useTeam } from '@/features/team/hooks';
 import { useMe, useWedding } from '@/features/weddings/hooks';
 import { firstName, greetingFor, setupSteps } from '@/features/weddings/setup-steps';
+import type { WeddingEvent } from '@/modules/events/events.types';
 import type { Wedding } from '@/modules/weddings/weddings.types';
 import { ApiError } from '@/shared/api-client';
 import { cn } from '@/shared/cn';
-import { daysUntil, formatDate } from '@/shared/dates';
+import { daysUntil, formatDate, formatTime, todayIn } from '@/shared/dates';
 
 // The wedding's dashboard, laid out as the Stitch "Dashboard" screen (PRD §5.5). Every number is
 // real: until a feature exists its card shows zero or an empty state, never sample data. As
@@ -147,13 +151,21 @@ function dismiss(weddingId: string) {
 }
 const hiddenThisVisit = new Set<string>();
 
-function SetupCard({ weddingId, teamSize }: { weddingId: string; teamSize: number }) {
+function SetupCard({
+  weddingId,
+  teamSize,
+  eventCount,
+}: {
+  weddingId: string;
+  teamSize: number;
+  eventCount: number;
+}) {
   const dismissed = useSyncExternalStore(
     subscribeDismiss,
     () => hiddenThisVisit.has(weddingId) || readDismissed(weddingId),
     () => false,
   );
-  const steps = setupSteps({ weddingId, teamSize });
+  const steps = setupSteps({ weddingId, teamSize, eventCount });
   const done = steps.filter((s) => s.done).length;
   const percent = Math.round((done / steps.length) * 100);
   if (dismissed || done === steps.length) return null;
@@ -253,7 +265,18 @@ function StatCard({ label, value, footer }: { label: string; value: string; foot
 }
 
 /** "View all events →" in a card header; faded with "Soon" until that page exists. */
-function ViewAll({ label }: { label: string }) {
+function ViewAll({ label, href }: { label: string; href?: string }) {
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="text-primary flex shrink-0 items-center gap-1 text-xs font-semibold whitespace-nowrap hover:underline"
+      >
+        {label}
+        <ArrowRight aria-hidden className="size-3.5" />
+      </Link>
+    );
+  }
   return (
     <span aria-disabled="true" className="relative shrink-0 cursor-default">
       <span className="text-primary text-xs font-semibold whitespace-nowrap opacity-50">
@@ -261,6 +284,57 @@ function ViewAll({ label }: { label: string }) {
       </span>
       <SoonTag className="absolute -top-4 -right-2" />
     </span>
+  );
+}
+
+/** The next three events from today, with date tiles (Stitch "Dashboard"). */
+function UpcomingEvents({
+  weddingId,
+  events,
+  today,
+}: {
+  weddingId: string;
+  events: WeddingEvent[] | undefined;
+  today: string;
+}) {
+  if (!events) return <p className="text-text-muted py-10 text-center text-sm">Loading…</p>;
+  const upcoming = upcomingEvents(events, today);
+  if (upcoming.length === 0) {
+    return events.length === 0 ? (
+      <EmptyState
+        icon={CalendarDays}
+        text="Your Mehendi, Haldi, Sangeet and wedding day will show here once you add events."
+        action={{ href: `/app/${weddingId}/events`, label: 'Add events' }}
+      />
+    ) : (
+      <EmptyState icon={CalendarDays} text="All your events have happened. What a celebration!" />
+    );
+  }
+  return (
+    <ul className="divide-border/60 divide-y">
+      {upcoming.map((event) => {
+        const tile = dateTile(event.date);
+        return (
+          <li key={event.id} className="flex items-center gap-4 py-4 last:pb-0">
+            <span className="bg-background border-border rounded-input flex size-12 shrink-0 flex-col items-center justify-center border text-center">
+              <span className="font-heading text-primary text-base leading-none font-semibold">
+                {tile.day}
+              </span>
+              <span className="text-text-muted mt-0.5 text-[9px] font-semibold tracking-wider">
+                {tile.month}
+              </span>
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{event.name}</p>
+              <p className="text-text-muted mt-0.5 truncate text-xs">
+                {formatTime(event.startTime)}
+                {event.venueName ? ` · ${event.venueName}` : ''}
+              </p>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -284,13 +358,29 @@ function DashCard({
   );
 }
 
-function EmptyState({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
+function EmptyState({
+  icon: Icon,
+  text,
+  action,
+}: {
+  icon: LucideIcon;
+  text: string;
+  action?: { href: string; label: string };
+}) {
   return (
     <div className="flex flex-col items-center gap-3 py-10 text-center">
       <span className="bg-background border-border text-primary rounded-input flex size-12 items-center justify-center border">
         <Icon aria-hidden className="size-5" />
       </span>
       <p className="text-text-muted max-w-xs text-sm">{text}</p>
+      {action && (
+        <Link
+          href={action.href}
+          className="text-primary text-sm font-semibold underline-offset-4 hover:underline"
+        >
+          {action.label}
+        </Link>
+      )}
     </div>
   );
 }
@@ -348,6 +438,7 @@ export function WeddingDashboard({
 }) {
   const { data: wedding, error, isPending, refetch } = useWedding(weddingId);
   const { data: team } = useTeam(weddingId);
+  const { data: events } = useEvents(weddingId);
   const { data: me } = useMe();
 
   if (isPending) {
@@ -389,7 +480,11 @@ export function WeddingDashboard({
     <div className="flex w-full flex-col pb-16">
       <SavedBanner weddingId={weddingId} show={saved} />
       <Welcome wedding={wedding} name={me?.user.name} />
-      <SetupCard weddingId={weddingId} teamSize={team?.members.length ?? 1} />
+      <SetupCard
+        weddingId={weddingId}
+        teamSize={team?.members.length ?? 1}
+        eventCount={events?.length ?? 0}
+      />
 
       <section
         aria-label="Summary"
@@ -403,10 +498,14 @@ export function WeddingDashboard({
 
       <div className="grid grid-cols-1 gap-7 lg:grid-cols-12">
         <div className="flex flex-col gap-7 lg:col-span-7">
-          <DashCard title="Upcoming events" action={<ViewAll label="View all events" />}>
-            <EmptyState
-              icon={CalendarDays}
-              text="Your Mehendi, Haldi, Sangeet and wedding day will show here once you add events."
+          <DashCard
+            title="Upcoming events"
+            action={<ViewAll label="View all events" href={`${base}/events`} />}
+          >
+            <UpcomingEvents
+              weddingId={weddingId}
+              events={events}
+              today={todayIn(wedding.timezone)}
             />
           </DashCard>
           <DashCard title="RSVP by event" action={<RsvpLegend />}>

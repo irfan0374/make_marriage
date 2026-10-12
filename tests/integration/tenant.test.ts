@@ -60,6 +60,20 @@ describe('scopedCollection against a real database', () => {
     expect(await thingsB().findOne({ _id: bThingId })).toMatchObject({ name: 'b1' });
   });
 
+  it('bulk updates only its own wedding, and never moves a document', async () => {
+    const [a1] = await thingsA().find({ name: 'a1' }).toArray();
+    const result = await thingsA().bulkUpdateOne([
+      { filter: { _id: a1!._id }, update: { $set: { count: 100 } } },
+      { filter: { _id: bThingId }, update: { $set: { name: 'hacked' } } },
+    ]);
+    expect(result.matchedCount).toBe(1);
+    expect(await thingsA().findOne({ name: 'a1' })).toMatchObject({ count: 100 });
+    expect(await thingsB().findOne({ _id: bThingId })).toMatchObject({ name: 'b1' });
+    expect(() =>
+      thingsA().bulkUpdateOne([{ filter: {}, update: { $set: { weddingId: weddingB } } }]),
+    ).toThrow(/Tenant update/);
+  });
+
   it('refuses to move a document to another wedding', async () => {
     expect(() => thingsA().updateMany({}, { $set: { weddingId: weddingB } })).toThrow(
       /Tenant update/,

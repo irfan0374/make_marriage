@@ -15,13 +15,14 @@ export interface SetupFacts {
   weddingId: string;
   /** People on the team, including the couple. */
   teamSize: number;
+  eventCount: number;
 }
 
 /** In the order a couple usually goes: events, guests, the invite, family, the website. */
-export function setupSteps({ weddingId, teamSize }: SetupFacts): SetupStep[] {
+export function setupSteps({ weddingId, teamSize, eventCount }: SetupFacts): SetupStep[] {
   const base = `/app/${weddingId}`;
   return [
-    { key: 'events', title: 'Add events', done: false, href: null },
+    { key: 'events', title: 'Add events', done: eventCount > 0, href: `${base}/events` },
     { key: 'guests', title: 'Add guests', done: false, href: null },
     { key: 'invitation', title: 'Upload invitation', done: false, href: null },
     { key: 'send', title: 'Send invitations', done: false, href: null },
