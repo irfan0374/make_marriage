@@ -21,10 +21,14 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react
 import { SoonTag } from '@/components/common/soon-tag';
 import { dateTile, upcomingEvents } from '@/features/events/event-timing';
 import { useEvents } from '@/features/events/hooks';
+import { dueLabel, tasksDueSoon } from '@/features/tasks/task-groups';
+import { PriorityBadge } from '@/features/tasks/components/task-row';
+import { useTasks } from '@/features/tasks/hooks';
 import { useTeam } from '@/features/team/hooks';
 import { useMe, useWedding } from '@/features/weddings/hooks';
 import { firstName, greetingFor, setupSteps } from '@/features/weddings/setup-steps';
 import type { WeddingEvent } from '@/modules/events/events.types';
+import type { Task } from '@/modules/tasks/tasks.types';
 import type { Wedding } from '@/modules/weddings/weddings.types';
 import { ApiError } from '@/shared/api-client';
 import { cn } from '@/shared/cn';
@@ -338,6 +342,60 @@ function UpcomingEvents({
   );
 }
 
+/** Overdue and this week's open tasks, with who has them (Stitch "Dashboard"). */
+function TasksDueSoon({
+  weddingId,
+  tasks,
+  today,
+  timeZone,
+}: {
+  weddingId: string;
+  tasks: Task[] | undefined;
+  today: string;
+  timeZone: string;
+}) {
+  if (!tasks) return <p className="text-text-muted py-10 text-center text-sm">Loading…</p>;
+  const soon = tasksDueSoon(tasks, today);
+  if (soon.length === 0) {
+    return tasks.length === 0 ? (
+      <EmptyState
+        icon={ListTodo}
+        text="Tasks that are overdue or due this week will show here."
+        action={{ href: `/app/${weddingId}/tasks`, label: 'Add tasks' }}
+      />
+    ) : (
+      <EmptyState icon={ListTodo} text="Nothing overdue or due this week. Nice work!" />
+    );
+  }
+  return (
+    <ul className="divide-border/50 divide-y">
+      {soon.map((task) => {
+        const due = dueLabel(task, today, timeZone);
+        const overdue = due?.tone === 'overdue';
+        return (
+          <li key={task.id} className="flex items-center justify-between gap-3 py-3 last:pb-0">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <span className="truncate">{task.title}</span>
+                {task.priority === 'high' && <PriorityBadge priority="high" />}
+              </p>
+              <p className="text-text-muted text-xs">{task.assignee?.name ?? 'Unassigned'}</p>
+            </div>
+            <span
+              className={cn(
+                'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap',
+                overdue ? 'bg-danger-bg text-danger-text' : 'bg-pending-bg text-pending-text',
+              )}
+            >
+              {overdue ? 'Overdue' : task.dueDate === today ? 'Today' : 'This week'}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function DashCard({
   title,
   action,
@@ -439,6 +497,7 @@ export function WeddingDashboard({
   const { data: wedding, error, isPending, refetch } = useWedding(weddingId);
   const { data: team } = useTeam(weddingId);
   const { data: events } = useEvents(weddingId);
+  const { data: tasks } = useTasks(weddingId);
   const { data: me } = useMe();
 
   if (isPending) {
@@ -517,10 +576,15 @@ export function WeddingDashboard({
         </div>
 
         <div className="flex flex-col gap-7 lg:col-span-5">
-          <DashCard title="Tasks due soon" action={<ViewAll label="View all tasks" />}>
-            <EmptyState
-              icon={ListTodo}
-              text="Tasks that are overdue or due this week will show here."
+          <DashCard
+            title="Tasks due soon"
+            action={<ViewAll label="View all tasks" href={`${base}/tasks`} />}
+          >
+            <TasksDueSoon
+              weddingId={weddingId}
+              tasks={tasks}
+              today={todayIn(wedding.timezone)}
+              timeZone={wedding.timezone}
             />
           </DashCard>
           <DashCard title="Spending by category" action={<ViewAll label="View expenses" />}>
@@ -547,7 +611,7 @@ export function WeddingDashboard({
               )}
               <QuickAction href={null} icon={Users} label="Add guests" />
               <QuickAction href={null} icon={Receipt} label="Add expense" />
-              <QuickAction href={null} icon={ListChecks} label="Add task" />
+              <QuickAction href={`${base}/tasks`} icon={ListChecks} label="Add task" />
               <QuickAction href={null} icon={QrCode} label="Share gallery QR" />
             </div>
           </section>

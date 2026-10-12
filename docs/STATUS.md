@@ -2,10 +2,10 @@
 
 Where the build stands right now. Update this file in the same commit as any change that finishes, starts or blocks a piece of work. The specs live in the other `docs/` files; this file only tracks progress.
 
-**Last updated:** 8 Oct 2026
+**Last updated:** 13 Oct 2026
 
 ## Current phase
-Phase 1 (Core). **Auth step 1a, onboarding, team, the dashboard shell and Events are built.**
+Phase 1 (Core). **Auth step 1a, onboarding, team, the dashboard shell, Events and Tasks are built.** (Tasks is from Phase 2, built early by decision.)
 
 ## Done
 | Date | What | Notes |
@@ -31,10 +31,15 @@ Phase 1 (Core). **Auth step 1a, onboarding, team, the dashboard shell and Events
 | 6 Oct 2026 | Remove a team member | `DELETE /api/weddings/{id}/members/{memberId}` (admins only; last admin protected; access ends on the next request; can be re-invited). "Remove" button with confirmation on each member row except your own (PRD AUTH-8, API §7.6) |
 | 8 Oct 2026 | Dashboard shell (Stitch "Dashboard" layout) | The overview is replaced by the Stitch dashboard (PRD §5.5), laid out as the Stitch screen: greeting with the first name and a framed countdown (days, date, city); "Finish setting up" as chips with progress and a dismiss (remembered per browser), only "Invite your family" live and counted from real team size; four stat cards showing real zeros; two columns with Upcoming events and RSVP by event (left) and Tasks due soon, Spending by category and Quick actions (right), each with an empty state until its feature ships. No sample numbers and no budget. App shell restyled to match: sidebar with a divider before Team/Settings and the signed-in person, their role and log out at the bottom; top bar with the wedding name pill, "Send invitations" and an avatar account menu. Decision: every section is listed, with unbuilt ones faded and tagged "Soon" (sidebar, checklist, card links, quick actions, Send invitations). Fraunces kept for headings (Stitch uses Playfair) |
 | 8 Oct 2026 | Events (PRD SETUP-2 to SETUP-5) | New `events` module: list, add, quick-add presets, edit, delete (asks to confirm once families are invited) and reorder (api-spec §8). Every member, Admin or Manager, can plan events; archived weddings are read-only; non-members get 404. At most 50 events per wedding (`EVENT_LIMIT_REACHED`); an end time earlier than the start means past midnight; map links must be https; a stale reorder is a CONFLICT. `/app/{id}/events` from the Stitch Events, Add event, Empty, Quick add and Delete screens: numbered timeline, drag (mouse, touch or keyboard) to reorder, Sort by date, a side panel for New/Edit (full-screen sheet on phones) with type chips and a warning before losing changes, "Completed" / "Next up" from the wedding's timezone. Sidebar Events is live; the dashboard shows the next three events and ticks "Add events". Docs: api-spec §8.2/§8.3/§8.6/§22, DB §7.4. Package: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` |
+| 13 Oct 2026 | Tasks (PRD TASK-1, 2, 3, 5) | New `tasks` module (api-spec §12): list with status, assignee (`me`/`none`/person), event and due filters and cursor pages; add, edit, delete; Done sets `completedAt`. Every member can plan tasks; the assignee must be on the team (`ASSIGNEE_NOT_MEMBER`) and the event this wedding's; archived weddings read-only; at most 500 tasks (`TASK_LIMIT_REACHED`). Assigning a task to someone else emails them (`task_assigned`, logged; not for yourself). Starter checklist of 15 tasks with due dates counted back from the wedding (never before today), "Already added" via `starterKey`. New `cleanup` module owns deleting an event (tasks lose the event in the same transaction); removing a team member unassigns their tasks in the removal transaction (DB §8). `/app/{id}/tasks` from the Stitch Tasks, Edit task, Empty, No results, Starter checklist and Delete screens: stat cards, All/My/Overdue, assignee and event filters, search, Overdue / This week / Later / Done groups, tick or status menu to update, side panel (full-screen on phones). Sidebar Tasks is live; the dashboard shows tasks due soon and "Add task" works. Docs: api-spec §4.7/§12/§22, DB §7.6, architecture §4.1 (`cleanup`) |
+| 13 Oct 2026 | Task priority and "last updated" | Decision: tasks get a priority (High / Medium / Low, default Medium; older tasks read as Medium) and show who last changed them and when (`editedByUserId`, `editedAt`; set by people's edits, not by cleanups). `GET /tasks?priority=`; coloured badge on each row, Priority filter, High first inside each due group, Priority selector in the panel, "Updated by Ahmed · 2 hours ago" on rows and "Last updated" in the panel; dashboard marks High tasks. Docs: PRD TASK-1/TASK-2, api-spec §4.7/§12.1/§12.2, DB §7.6 |
+
+| 13 Oct 2026 | Tasks review fixes | Transactional per-wedding task writes and event/member cleanup; atomic capacity check; unique starter keys and concurrent-import regression coverage; serialized status saves and per-task rollback; status and due-date filters added to Tasks. |
 
 ## Next
 1. **Guests (households)**, then **invitations and RSVP** (PRD §5.3–5.4). When they land: connect the event delete confirmation and the "Let families know?" dialog (api-spec §8.4, §10.8; Stitch screen ready), and show "Invited families · Attending" on event cards.
-2. **Forgot and reset password** (auth step 1b) now that email works, plus `PATCH /api/me` and leave wedding (API §7.7).
+2. **Task due-date reminders** (NOTIF-4): needs the background job runner (cron route + `jobs`).
+3. **Forgot and reset password** (auth step 1b) now that email works, plus `PATCH /api/me` and leave wedding (API §7.7).
 
 ## Open items
 - **Test database shares the dev cluster:** tests only create and drop `test_*` databases. A separate Atlas user or cluster would be safer before real data arrives.

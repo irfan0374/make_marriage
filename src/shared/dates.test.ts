@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addDays,
+  addMonths,
   addYears,
   canonicalTimeZone,
   daysUntil,
@@ -53,5 +55,18 @@ describe('canonicalTimeZone', () => {
     expect(canonicalTimeZone('europe/london')).toBe('Europe/London');
     expect(canonicalTimeZone('asia/kolkata', ['Asia/Kolkata'])).toBe('Asia/Kolkata');
     expect(canonicalTimeZone('UTC')).toBe('UTC');
+  });
+});
+
+describe('addMonths and addDays', () => {
+  it('moves by months, keeping the day or using the month end', () => {
+    expect(addMonths('2028-04-14', -10)).toBe('2027-06-14');
+    expect(addMonths('2028-03-31', -1)).toBe('2028-02-29');
+    expect(addMonths('2027-12-31', 2)).toBe('2028-02-29');
+  });
+
+  it('moves by days across months and years', () => {
+    expect(addDays('2027-12-30', 6)).toBe('2028-01-05');
+    expect(addDays('2028-03-01', -1)).toBe('2028-02-29');
   });
 });

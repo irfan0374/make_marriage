@@ -27,7 +27,8 @@ import {
   type WeddingContext,
 } from '@/modules/members';
 import { sendEmail } from '@/modules/notifications';
-import { getWeddingBasics, requireWritableWedding } from '@/modules/weddings';
+import { unassignTasksOf } from '@/modules/tasks';
+import { getWeddingBasics, requireWritableWedding, lockWeddingTasks } from '@/modules/weddings';
 import { formatDate, todayIn } from '@/shared/dates';
 import {
   closeInvite,
@@ -364,6 +365,7 @@ export async function removeMember(
 ): Promise<void> {
   const { context } = await requireTeamAdmin(token, weddingId);
   await withTransaction(async (session) => {
+    await lockWeddingTasks(context.weddingId, session);
     const member = await getMember(context.weddingId, memberId);
     if (!member) throw new AppError('NOT_FOUND');
     if (member.role === 'admin' && (await countWeddingAdmins(context.weddingId, session)) <= 1) {
@@ -372,6 +374,8 @@ export async function removeMember(
     if (!(await removeMembership(context.weddingId, memberId, session))) {
       throw new AppError('NOT_FOUND');
     }
+    // Their tasks stay on the list, unassigned (database-design §8).
+    await unassignTasksOf(context.weddingId, member.userId, session);
   });
   logger.info('team.member_removed', {
     weddingId: context.weddingId.toHexString(),

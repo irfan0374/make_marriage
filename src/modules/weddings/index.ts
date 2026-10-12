@@ -13,5 +13,6 @@ export {
   getPageWedding,
   getWeddingBasics,
   requireWritableWedding,
+  lockWeddingTasks,
 } from './weddings.service';
 export type { Me, Wedding, WeddingSummary } from './weddings.types';

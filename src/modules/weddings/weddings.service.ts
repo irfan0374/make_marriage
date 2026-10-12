@@ -1,5 +1,5 @@
 import 'server-only';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type ClientSession } from 'mongodb';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
 import { SESSION_COOKIE_NAME } from '@/config/app';
@@ -25,6 +25,7 @@ import {
   DuplicateSlugError,
   findSlugsLike,
   findWedding,
+  lockTaskWrites,
   findWeddingSummaries,
   insertWedding,
   updateWeddingDetails,
@@ -350,6 +351,7 @@ export async function getWeddingBasics(weddingId: WeddingId) {
   return {
     brideName: doc.brideName,
     groomName: doc.groomName,
+    weddingDate: doc.weddingDate,
     sidesEnabled: doc.sidesEnabled,
     status: doc.status,
     timezone: canonicalTimeZone(
@@ -357,4 +359,12 @@ export async function getWeddingBasics(weddingId: WeddingId) {
       WEDDING_TIMEZONES.map((tz) => tz.value),
     ),
   };
+}
+
+/** Acquire before any task write or event/member cleanup; retried transactions recheck links. */
+export async function lockWeddingTasks(weddingId: WeddingId, session: ClientSession) {
+  const wedding = await lockTaskWrites(weddingId, session);
+  if (!wedding) throw new AppError('NOT_FOUND');
+  if (wedding.status === 'archived') throw new AppError('WEDDING_ARCHIVED');
+  return wedding;
 }

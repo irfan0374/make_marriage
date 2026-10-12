@@ -4,10 +4,10 @@ import 'server-only';
 export {
   addPresetEventsHandler,
   createEventHandler,
-  deleteEventHandler,
   listEventsHandler,
   reorderEventsHandler,
   updateEventHandler,
 } from './events.handlers';
 export { eventsCollectionSpecs } from './events.indexes';
+export { deleteEventRecord, getEvent } from './events.service';
 export type { EventChangeMeta, WeddingEvent } from './events.types';

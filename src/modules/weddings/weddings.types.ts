@@ -31,6 +31,7 @@ export interface WeddingDocument {
   venue?: string;
   timezone: string;
   sidesEnabled: boolean;
+  taskWriteVersion?: number;
   status: WeddingStatus;
   archivedAt: Date | null;
   createdByUserId: ObjectId;

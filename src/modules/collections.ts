@@ -5,6 +5,7 @@ import { authCollectionSpecs } from '@/modules/auth';
 import { eventsCollectionSpecs } from '@/modules/events';
 import { membersCollectionSpecs } from '@/modules/members';
 import { notificationsCollectionSpecs } from '@/modules/notifications';
+import { tasksCollectionSpecs } from '@/modules/tasks';
 import { teamCollectionSpecs } from '@/modules/team';
 import { weddingsCollectionSpecs } from '@/modules/weddings';
 
@@ -19,5 +20,6 @@ export const collectionSpecs: CollectionSpec[] = [
   ...membersCollectionSpecs,
   ...teamCollectionSpecs,
   ...eventsCollectionSpecs,
+  ...tasksCollectionSpecs,
   ...notificationsCollectionSpecs,
 ];

@@ -4,7 +4,6 @@ import { AppError } from '@/lib/errors';
 import {
   addPresetEventsHandler,
   createEventHandler,
-  deleteEventHandler,
   listEventsHandler,
   reorderEventsHandler,
   updateEventHandler,
@@ -17,7 +16,6 @@ import * as service from './events.service';
 vi.mock('./events.service', () => ({
   addPresetEvents: vi.fn(),
   createEvent: vi.fn(),
-  deleteEvent: vi.fn(),
   listEvents: vi.fn(),
   reorderEvents: vi.fn(),
   updateEvent: vi.fn(),
@@ -156,35 +154,6 @@ describe('PATCH events/{eventId}', () => {
     expect((await patch({})).status).toBe(400);
     expect((await patch({ name: 'X' }, 'nope')).status).toBe(404);
     expect(service.updateEvent).not.toHaveBeenCalled();
-  });
-});
-
-describe('DELETE events/{eventId}', () => {
-  const remove = (query = '') =>
-    deleteEventHandler(
-      request('DELETE', `${base}/${eventId}${query}`),
-      params({ weddingId, eventId }),
-    );
-
-  it('reads ?confirm=true, defaulting to false', async () => {
-    expect((await remove()).status).toBe(204);
-    expect((await remove('?confirm=true')).status).toBe(204);
-    expect(vi.mocked(service.deleteEvent).mock.calls.map((call) => call[3])).toEqual([false, true]);
-  });
-
-  it('refuses other query values', async () => {
-    expect((await remove('?confirm=yes')).status).toBe(400);
-    expect((await remove('?force=true')).status).toBe(400);
-    expect(service.deleteEvent).not.toHaveBeenCalled();
-  });
-
-  it('passes through the confirmation request', async () => {
-    vi.mocked(service.deleteEvent).mockRejectedValueOnce(
-      new AppError('CONFIRMATION_REQUIRED', undefined, { details: { affectedHouseholds: 3 } }),
-    );
-    const res = await remove();
-    expect(res.status).toBe(409);
-    expect((await res.json()).error.details).toEqual({ affectedHouseholds: 3 });
   });
 });
 

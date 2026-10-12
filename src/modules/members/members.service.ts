@@ -110,8 +110,12 @@ export function getMember(weddingId: WeddingId, memberId: ObjectId) {
   return findMembershipById(weddingId, memberId);
 }
 
-export async function isMember(weddingId: WeddingId, userId: ObjectId): Promise<boolean> {
-  return (await findMembership(userId, weddingId)) !== null;
+export async function isMember(
+  weddingId: WeddingId,
+  userId: ObjectId,
+  session?: ClientSession,
+): Promise<boolean> {
+  return (await findMembership(userId, weddingId, session)) !== null;
 }
 
 export function countWeddingAdmins(weddingId: WeddingId, session?: ClientSession) {

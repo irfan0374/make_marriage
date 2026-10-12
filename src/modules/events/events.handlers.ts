@@ -1,20 +1,18 @@
 import 'server-only';
 import { z } from 'zod';
-import { created, defineHandler, noContent, ok } from '@/lib/http';
+import { created, defineHandler, ok } from '@/lib/http';
 import { toObjectId } from '@/lib/ids';
 import { readSessionToken } from '@/modules/auth';
 import { objectIdString } from '@/shared/validation';
 import {
   addPresetEventsSchema,
   createEventSchema,
-  deleteEventQuerySchema,
   reorderEventsSchema,
   updateEventSchema,
 } from './events.schemas';
 import {
   addPresetEvents,
   createEvent,
-  deleteEvent,
   listEvents,
   reorderEvents,
   updateEvent,
@@ -63,24 +61,6 @@ export const updateEventHandler = defineHandler(
       body,
     );
     return ok(event, { ...meta });
-  },
-);
-
-// DELETE /api/weddings/{weddingId}/events/{eventId} (api-spec §8.5)
-export const deleteEventHandler = defineHandler(
-  {
-    route: '/api/weddings/[weddingId]/events/[eventId]',
-    params: eventParams,
-    query: deleteEventQuerySchema,
-  },
-  async ({ request, params, query }) => {
-    await deleteEvent(
-      readSessionToken(request),
-      toObjectId(params.weddingId),
-      toObjectId(params.eventId),
-      query.confirm,
-    );
-    return noContent();
   },
 );
 

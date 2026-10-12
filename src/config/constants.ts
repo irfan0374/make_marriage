@@ -29,3 +29,6 @@ export const GALLERY_STORAGE_CAP_BYTES = 3 * 1024 * 1024 * 1024;
 
 /** At most this many events per wedding (api-spec §8.2); weddings usually have 3 to 10. */
 export const MAX_EVENTS_PER_WEDDING = 50;
+
+/** At most this many tasks per wedding (api-spec §12.2). */
+export const MAX_TASKS_PER_WEDDING = 500;

@@ -269,11 +269,18 @@ API responses never include password hashes, session or token hashes, or interna
   "dueDate": "2027-12-01",
   "assignee": { "userId": "66f1a3...", "name": "Ahmed" },
   "status": "todo",
+  "priority": "high",
   "eventId": "66f1d0...02",
   "completedAt": null,
+  "createdBy": { "userId": "66f1a1...", "name": "Riya" },
+  "editedBy": { "userId": "66f1a3...", "name": "Ahmed" },
+  "editedAt": "2026-09-25T10:30:00.000Z",
+  "source": "manual",
+  "starterKey": null,
   "createdAt": "2026-09-24T07:00:00.000Z"
 }
 ```
+`assignee` is `null` when unassigned or when that person has left the team. `createdBy` is `null` if the account no longer exists. `starterKey` names the starter checklist item a task came from. `priority` is `high`, `medium` or `low`. `editedBy` and `editedAt` are the last person to create or change the task and when; automatic cleanups (an event deleted, a member removed) don't change them.
 
 ### 4.8 Expense
 ```json
@@ -1032,11 +1039,12 @@ Errors: `LINK_INVALID` (404).
 | Query param | Values |
 |---|---|
 | `status` | Comma-separated `todo`, `in_progress`, `done` |
+| `priority` | Comma-separated `high`, `medium`, `low` |
 | `assignee` | A user ID, `me`, or `none` |
 | `eventId` | Event ID |
 | `due` | `overdue`, `this_week`, `none` |
 | `sort` | `dueDate` (default, no-date last), `-createdAt` |
-| `limit`, `cursor` | Pagination |
+| `limit`, `cursor` | Pagination (`limit` up to 100, default 100) |
 
 Response `200`: `{ "data": [ <Task> ], "meta": { "nextCursor": null } }`
 
@@ -1045,14 +1053,14 @@ Response `200`: `{ "data": [ <Task> ], "meta": { "nextCursor": null } }`
 
 Request:
 ```json
-{ "title": "Book mehendi artist", "description": "", "dueDate": "2027-12-01", "assigneeUserId": "66f1a3...", "eventId": "66f1d0...02" }
+{ "title": "Book mehendi artist", "description": "", "dueDate": "2027-12-01", "assigneeUserId": "66f1a3...", "eventId": "66f1d0...02", "priority": "high" }
 ```
-Required: `title`. If assigned to someone else, they get an email immediately.
+Required: `title`. `priority` defaults to `medium`. If assigned to someone else, they get an email immediately. `eventId` must be one of this wedding's events. A wedding can have at most 500 tasks.
 
-Response `201`: `<Task>`. Errors: `ASSIGNEE_NOT_MEMBER` (400).
+Response `201`: `<Task>`. Errors: `ASSIGNEE_NOT_MEMBER` (400), `VALIDATION_ERROR` (400, `eventId` not in this wedding), `TASK_LIMIT_REACHED` (409).
 
 ### 12.3 `PATCH /api/weddings/{weddingId}/tasks/{taskId}`
-**Access:** Member. Any subset of fields, plus `status`. Setting `status: "done"` sets `completedAt`.
+**Access:** Member. Any subset of fields, plus `status`. Setting `status: "done"` sets `completedAt`; moving out of done clears it. Changing the assignee to someone else (not yourself) emails them.
 
 Response `200`: `<Task>`
 
@@ -1062,12 +1070,12 @@ Response `200`: `<Task>`
 ### 12.5 `GET /api/weddings/{weddingId}/tasks/starter-checklist`
 **Access:** Member. Returns the built-in list of common wedding tasks (not yet saved).
 
-Response `200`: `{ "data": [ { "key": "book_venue", "title": "Book the venue", "suggestedMonthsBefore": 10 } ] }`
+Response `200`: `{ "data": [ { "key": "book_venue", "title": "Book the venue", "suggestedMonthsBefore": 10, "dueDate": "2027-06-14", "alreadyAdded": false } ] }`. `dueDate` is counted back from the wedding date and is never earlier than today in the wedding's timezone.
 
 ### 12.6 `POST /api/weddings/{weddingId}/tasks/starter-checklist`
 **Access:** Member. Adds selected starter tasks, with due dates counted back from the wedding date.
 
-Request: `{ "keys": ["book_venue", "book_photographer"] }`
+Request: `{ "keys": ["book_venue", "book_photographer"] }`. Keys the wedding already has are skipped. Tasks are added unassigned.
 
 Response `201`: `{ "data": [ <Task> ] }`
 
@@ -1716,6 +1724,7 @@ Response `503` if the database is unreachable.
 | `HEADCOUNT_BELOW_RSVP` | 409 | New headcount is lower than an existing RSVP |
 | `CONFIRMATION_REQUIRED` | 409 | Resend with `confirm=true` |
 | `EVENT_LIMIT_REACHED` | 409 | A wedding already has 50 events |
+| `TASK_LIMIT_REACHED` | 409 | A wedding already has 500 tasks |
 | `VENDOR_ALREADY_SAVED` | 409 | This Google place is already in the vendor list |
 | `ATTACHMENT_LIMIT_REACHED` | 409 | Vendor already has 10 attachments |
 | `FILE_TOO_LARGE` | 413 | File above the size limit |

@@ -50,6 +50,22 @@ export function addYears(date: string, years: number): string {
   return target.toISOString().slice(0, 10);
 }
 
+/** `date` plus whole months (negative to go back); the 31st becomes the month's last day. */
+export function addMonths(date: string, months: number): string {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const lastDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  target.setUTCDate(Math.min(d, lastDay));
+  return target.toISOString().slice(0, 10);
+}
+
+/** `date` plus whole days (negative to go back). */
+export function addDays(date: string, days: number): string {
+  return new Date(utcDay(date) + days * DAY_MS).toISOString().slice(0, 10);
+}
+
 /** Whole days from today (in `timeZone`) until `date`: 0 on the day, negative once it has passed. */
 export function daysUntil(date: string, timeZone: string, now = new Date()): number {
   return Math.round((utcDay(date) - utcDay(todayIn(timeZone, now))) / DAY_MS);

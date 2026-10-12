@@ -101,8 +101,11 @@ export async function findAdminWeddingId(userId: ObjectId): Promise<ObjectId | n
  * what verifies the id (see `trustWeddingId`). Matches on both ids, so it can only ever return
  * this user's own membership.
  */
-export function findMembership(userId: ObjectId, weddingId: ObjectId) {
-  return globalCollection<MembershipDocument>(MEMBERSHIPS).findOne({ weddingId, userId });
+export function findMembership(userId: ObjectId, weddingId: ObjectId, session?: ClientSession) {
+  return globalCollection<MembershipDocument>(MEMBERSHIPS).findOne(
+    { weddingId, userId },
+    { session },
+  );
 }
 
 /** Every wedding a user belongs to (across tenants, by design: it's the user's own list). */

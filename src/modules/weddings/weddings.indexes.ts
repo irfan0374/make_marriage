@@ -47,6 +47,7 @@ export const weddingsCollectionSpecs: CollectionSpec[] = [
           venue: { bsonType: 'string', maxLength: 200 },
           timezone: { bsonType: 'string' },
           sidesEnabled: { bsonType: 'bool' },
+          taskWriteVersion: { bsonType: ['int', 'long', 'double'], minimum: 0 },
           status: { enum: ['active', 'archived'] },
           createdByUserId: { bsonType: 'objectId' },
           gallery: {

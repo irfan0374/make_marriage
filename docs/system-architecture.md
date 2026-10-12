@@ -135,6 +135,7 @@ flowchart LR
 | `households` | Guest families, import, export, search |
 | `invitations` | Sending invitations, guest link access, RSVP |
 | `tasks` | Task planner |
+| `cleanup` | Deletes that tidy linked data across modules (database-design §8), e.g. deleting an event clears it from tasks. Sits above the modules it tidies, so they never import each other |
 | `expenses` | Expense tracker and summaries |
 | `vendors` | Vendor tracker |
 | `places` | Google Places integration |

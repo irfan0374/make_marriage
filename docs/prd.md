@@ -192,8 +192,8 @@ A **household** is a family or group that receives one invitation.
 ### 5.6 Task planner (TASK)
 | ID | Requirement | Priority |
 |---|---|---|
-| TASK-1 | Task fields: title, description (optional), due date, assignee (an admin or Manager), status (To do, In progress, Done), and linked event (optional). | P0 |
-| TASK-2 | List view with filters (assignee, event, status, due date) and a "My tasks" shortcut. | P0 |
+| TASK-1 | Task fields: title, description (optional), due date, assignee (an admin or Manager), status (To do, In progress, Done), priority (High, Medium, Low; default Medium), and linked event (optional). Each task shows who last changed it and when. | P0 |
+| TASK-2 | List view with filters (assignee, event, status, priority, due date) and a "My tasks" shortcut. Within each due group, High priority tasks come first. | P0 |
 | TASK-3 | Starter checklist of common wedding tasks that the couple can import and edit. | P1 |
 | TASK-4 | Removed in v1.1: every member can edit tasks, so no special assignee rule is needed. | n/a |
 | TASK-5 | Email to the assignee when a task is assigned, and due-date reminders (see NOTIF). | P1 |

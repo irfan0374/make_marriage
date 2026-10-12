@@ -1,7 +1,8 @@
 import 'server-only';
-import type { ObjectId } from 'mongodb';
+import type { ClientSession, ObjectId } from 'mongodb';
 import { MAX_EVENTS_PER_WEDDING } from '@/config/constants';
 import { AppError } from '@/lib/errors';
+import type { WeddingId } from '@/lib/ids';
 import { resolveWeddingContext } from '@/modules/members';
 import { requireWritableWedding } from '@/modules/weddings';
 import {
@@ -54,7 +55,7 @@ async function requireEventWriter(token: string | undefined, weddingId: ObjectId
 
 /**
  * Households invited to an event. Guests and invitations aren't built yet, so none can be;
- * this becomes a households lookup with them (api-spec §8.4, §8.5).
+ * this becomes a households lookup with them (api-spec §8.4).
  */
 async function invitedHouseholdCount(): Promise<number> {
   return 0;
@@ -167,24 +168,26 @@ export async function updateEvent(
   };
 }
 
-/**
- * Delete an event. When families are invited to it, the caller must confirm, because their
- * replies for it go (api-spec §8.5). Linked tasks, expenses, vendors and photos are unlinked
- * by those modules once they exist.
- */
-export async function deleteEvent(
-  token: string | undefined,
-  weddingId: ObjectId,
+/** One event of this wedding, or `null` (also for another wedding's event id). */
+export async function getEvent(
+  weddingId: WeddingId,
   eventId: ObjectId,
-  confirm: boolean,
-): Promise<void> {
-  const context = await requireEventWriter(token, weddingId);
-  if (!(await findEvent(context.weddingId, eventId))) throw new AppError('NOT_FOUND');
-  const affectedHouseholds = await invitedHouseholdCount();
-  if (affectedHouseholds > 0 && !confirm) {
-    throw new AppError('CONFIRMATION_REQUIRED', undefined, { details: { affectedHouseholds } });
-  }
-  if (!(await deleteEventDoc(context.weddingId, eventId))) throw new AppError('NOT_FOUND');
+  session?: ClientSession,
+): Promise<WeddingEvent | null> {
+  const doc = await findEvent(weddingId, eventId, session);
+  return doc ? toWeddingEvent(doc) : null;
+}
+
+/**
+ * Remove the event itself. Deleting an event also tidies what links to it (tasks, and later
+ * guests, expenses, vendors and photos), so the `cleanup` module runs this in its transaction.
+ */
+export function deleteEventRecord(
+  weddingId: WeddingId,
+  eventId: ObjectId,
+  session: ClientSession,
+): Promise<boolean> {
+  return deleteEventDoc(weddingId, eventId, session);
 }
 
 /**

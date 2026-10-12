@@ -84,3 +84,12 @@ export async function findSlugsLike(base: string): Promise<string[]> {
     .toArray();
   return docs.map((d) => d.website.slug).filter((s): s is string => typeof s === 'string');
 }
+
+/** Serialize task writes and reference cleanup on this wedding's document. */
+export function lockTaskWrites(weddingId: WeddingId, session: ClientSession) {
+  return weddings().findOneAndUpdate(
+    { _id: weddingId },
+    { $inc: { taskWriteVersion: 1 } },
+    { session, returnDocument: 'after', includeResultMetadata: false },
+  );
+}

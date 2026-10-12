@@ -20,13 +20,14 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** Call the API and return the whole envelope body (`data` and `meta`). */
+async function request(path: string, init: RequestInit = {}) {
   const response = await fetch(path, {
     ...init,
     headers: { 'content-type': 'application/json', ...init.headers },
     credentials: 'same-origin',
   });
-  if (response.status === 204) return undefined as T;
+  if (response.status === 204) return undefined;
 
   const body = await response.json().catch(() => null);
   if (!response.ok) {
@@ -38,7 +39,29 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
       error?.details,
     );
   }
-  return body.data as T;
+  return body;
+}
+
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const body = await request(path, init);
+  return body?.data as T;
+}
+
+/**
+ * Every item of a paginated list (api-spec §2.5), following `meta.nextCursor` page by page.
+ * For lists that are small by design (tasks are capped per wedding).
+ */
+export async function apiFetchAll<T>(path: string): Promise<T[]> {
+  const items: T[] = [];
+  let cursor: string | null = null;
+  do {
+    const separator = path.includes('?') ? '&' : '?';
+    const url: string = cursor ? `${path}${separator}cursor=${encodeURIComponent(cursor)}` : path;
+    const body = await request(url);
+    items.push(...((body?.data ?? []) as T[]));
+    cursor = body?.meta?.nextCursor ?? null;
+  } while (cursor);
+  return items;
 }
 
 export const postJson = <T>(path: string, body?: unknown) =>

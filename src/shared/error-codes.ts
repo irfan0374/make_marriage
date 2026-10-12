@@ -50,6 +50,7 @@ export const ERROR_CODES = {
   HEADCOUNT_BELOW_RSVP: { status: 409, message: 'Headcount is lower than an existing RSVP.' },
   CONFIRMATION_REQUIRED: { status: 409, message: 'Please confirm this action.' },
   EVENT_LIMIT_REACHED: { status: 409, message: 'A wedding can have at most 50 events.' },
+  TASK_LIMIT_REACHED: { status: 409, message: 'A wedding can have at most 500 tasks.' },
   VENDOR_ALREADY_SAVED: { status: 409, message: 'This vendor is already saved.' },
   ATTACHMENT_LIMIT_REACHED: { status: 409, message: 'A vendor can have at most 10 attachments.' },
   FILE_TOO_LARGE: { status: 413, message: 'The file is too large.' },

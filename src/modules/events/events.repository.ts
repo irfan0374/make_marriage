@@ -1,5 +1,5 @@
 import 'server-only';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type ClientSession } from 'mongodb';
 import { scopedCollection } from '@/lib/db/tenant';
 import type { WeddingId } from '@/lib/ids';
 import { EVENTS } from './events.indexes';
@@ -18,8 +18,8 @@ export function countEvents(weddingId: WeddingId) {
   return scoped(weddingId).countDocuments();
 }
 
-export function findEvent(weddingId: WeddingId, eventId: ObjectId) {
-  return scoped(weddingId).findOne({ _id: eventId });
+export function findEvent(weddingId: WeddingId, eventId: ObjectId, session?: ClientSession) {
+  return scoped(weddingId).findOne({ _id: eventId }, { session });
 }
 
 /** Add events after the existing ones, keeping their order. */
@@ -58,8 +58,12 @@ export function updateEvent(
   );
 }
 
-export async function deleteEvent(weddingId: WeddingId, eventId: ObjectId): Promise<boolean> {
-  const result = await scoped(weddingId).deleteOne({ _id: eventId });
+export async function deleteEvent(
+  weddingId: WeddingId,
+  eventId: ObjectId,
+  session?: ClientSession,
+): Promise<boolean> {
+  const result = await scoped(weddingId).deleteOne({ _id: eventId }, { session });
   return result.deletedCount === 1;
 }
 

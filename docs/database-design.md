@@ -671,11 +671,17 @@ db.households.aggregate([
 | `dueDate` | string | | `null` | `YYYY-MM-DD` |
 | `assigneeUserId` | ObjectId | | `null` | Must be a current member of the wedding |
 | `status` | enum | ✅ | `"todo"` | `todo`, `in_progress`, `done` |
+| `priority` | enum | | `"medium"` | `high`, `medium`, `low`. Missing on tasks saved before priorities: read as `medium` |
 | `eventId` | ObjectId | | `null` | → `events._id` |
 | `completedAt` | Date | | `null` | Set when status becomes `done` |
 | `createdByUserId` | ObjectId | ✅ | | |
+| `editedByUserId` | ObjectId | | creator | Last person to create or change the task. Cleanups (event deleted, member removed) don't change it |
+| `editedAt` | Date | | `createdAt` | When that change was made |
 | `source` | enum | ✅ | `"manual"` | `manual`, `starter` (from the starter checklist) |
+| `starterKey` | string | | `null` | Which starter checklist item this came from, so it isn't added twice |
 | `lastReminderFor` | string | | `null` | The `dueDate` a reminder was last sent for, so reminders aren't sent twice |
+
+At most 500 tasks per wedding (api-spec §12.2).
 
 **Indexes**
 | Index | Type | Serves |
@@ -1145,3 +1151,7 @@ R2 files are not versioned in v1. Deletions are always driven by explicit action
 - A second wedding with its own data, used by the tenant isolation tests.
 
 The seed script refuses to run if `MONGODB_URI` points to the production cluster.
+
+### Task write coordination
+
+`weddings.taskWriteVersion` is an optional internal integer (initially absent, treated as 0 by `$inc`). Task writes, event deletion and team-member removal increment it first inside their transaction. This serializes reference checks, cleanup, starter imports and the 500-task capacity check per wedding. Task link and assignee checks use the same transaction session. The tasks collection has a partial unique index on `(weddingId, starterKey)` for string keys; manual tasks with null keys are excluded.
