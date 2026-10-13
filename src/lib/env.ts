@@ -30,17 +30,17 @@ const envSchema = z.object({
   // Delivery and bounce webhooks: becomes required with guest invitations.
   RESEND_WEBHOOK_SECRET: optional(z.string().min(1)),
   EMAIL_DAILY_LIMIT: z.coerce.number().int().min(1).default(100),
+  // Development only: deliver every email to this address instead (ignored in production).
+  EMAIL_DEV_REDIRECT_TO: optional(z.email('Must be an email address')),
 
-  // --- Cloudflare R2: becomes required in Phase 1 (invitation media), used by receipts and gallery ---
-  R2_ACCOUNT_ID: optional(z.string().min(1)),
-  R2_ACCESS_KEY_ID: optional(z.string().min(1)),
-  R2_SECRET_ACCESS_KEY: optional(z.string().min(1)),
-  R2_BUCKET: optional(
-    z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/, 'Must be a valid bucket name'),
-  ),
+  // --- Cloudflare R2 (required since invitation cards; later receipts, vendor files, gallery) ---
+  R2_ACCOUNT_ID: z.string().min(1, 'Set your Cloudflare account ID'),
+  R2_ACCESS_KEY_ID: z.string().min(1, 'Set the R2 API token access key ID'),
+  R2_SECRET_ACCESS_KEY: z.string().min(1, 'Set the R2 API token secret'),
+  R2_BUCKET: z.string().regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/, 'Must be a valid bucket name'),
 
-  // --- Cron: becomes required in Phase 1 (bulk email queue via /api/cron/*) ---
-  CRON_SECRET: optional(z.string().min(32, 'Must be at least 32 characters')),
+  // --- Cron (required since bulk email): bearer secret for /api/cron/* ---
+  CRON_SECRET: z.string().min(32, 'Must be at least 32 characters'),
 
   // --- Google Places: becomes required at the end of Phase 4 (location and vendor search) ---
   GOOGLE_PLACES_API_KEY: optional(z.string().min(1)),

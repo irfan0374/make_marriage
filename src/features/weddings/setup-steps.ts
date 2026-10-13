@@ -17,6 +17,10 @@ export interface SetupFacts {
   teamSize: number;
   eventCount: number;
   guestCount: number;
+  /** An invitation card has been uploaded. */
+  hasInvitationCard: boolean;
+  /** Families sent an invitation (by email or shared by hand). */
+  sentCount: number;
 }
 
 /** In the order a couple usually goes: events, guests, the invite, family, the website. */
@@ -25,13 +29,20 @@ export function setupSteps({
   teamSize,
   eventCount,
   guestCount,
+  hasInvitationCard,
+  sentCount,
 }: SetupFacts): SetupStep[] {
   const base = `/app/${weddingId}`;
   return [
     { key: 'events', title: 'Add events', done: eventCount > 0, href: `${base}/events` },
     { key: 'guests', title: 'Add guests', done: guestCount > 0, href: `${base}/guests` },
-    { key: 'invitation', title: 'Upload invitation', done: false, href: null },
-    { key: 'send', title: 'Send invitations', done: false, href: null },
+    {
+      key: 'invitation',
+      title: 'Upload invitation',
+      done: hasInvitationCard,
+      href: `${base}/invitations`,
+    },
+    { key: 'send', title: 'Send invitations', done: sentCount > 0, href: `${base}/invitations` },
     { key: 'team', title: 'Invite your family', done: teamSize > 1, href: `${base}/team` },
     { key: 'website', title: 'Publish website', done: false, href: null },
   ];

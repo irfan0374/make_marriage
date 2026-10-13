@@ -29,6 +29,7 @@ import {
   findWeddingSummaries,
   insertWedding,
   setGuestTags,
+  setInvitation,
   updateWeddingDetails,
   type WeddingDetails,
 } from './weddings.repository';
@@ -392,4 +393,32 @@ export async function ensureGuestTags(
     await setGuestTags(trustWeddingId(wedding._id), [...known.values()], session);
   }
   return tags.map((t) => known.get(t.toLowerCase())!);
+}
+
+/**
+ * The whole wedding record, for modules that build on it (the invitation page and its
+ * settings). `null` if it's gone. Callers check access themselves.
+ */
+export async function getWeddingRecord(weddingId: WeddingId): Promise<WeddingDocument | null> {
+  const doc = await findWedding(weddingId);
+  if (!doc) return null;
+  return {
+    ...doc,
+    venue: doc.venue ?? '',
+    timezone: canonicalTimeZone(
+      doc.timezone,
+      WEDDING_TIMEZONES.map((tz) => tz.value),
+    ),
+  };
+}
+
+/** Save the invitation settings; 409 WEDDING_ARCHIVED if the wedding was archived meanwhile. */
+export async function saveInvitationSettings(
+  weddingId: WeddingId,
+  invitation: WeddingDocument['invitation'],
+  now = new Date(),
+): Promise<WeddingDocument> {
+  const updated = await setInvitation(weddingId, invitation, now);
+  if (!updated) throw new AppError('WEDDING_ARCHIVED');
+  return updated;
 }

@@ -95,3 +95,31 @@ export function formatTime(time: string): string {
   const suffix = h < 12 ? 'AM' : 'PM';
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${suffix}`;
 }
+
+/**
+ * The moment a wall-clock `date` and `time` happen in `timeZone`, e.g. 4:00 PM on 12 Apr 2028
+ * in Kochi → 10:30 UTC. For calendar files.
+ */
+export function zonedTimeToUtc(date: string, time: string, timeZone: string): Date {
+  const [y, mo, d] = date.split('-').map(Number) as [number, number, number];
+  const [h = 0, mi = 0] = time.split(':').map(Number);
+  const asUtc = Date.UTC(y, mo - 1, d, h, mi);
+  // The zone's offset at that moment; checked twice so a daylight-saving change is respected.
+  const offsetAt = (instant: number) => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    }).formatToParts(instant);
+    const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+    return (
+      Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute')) - instant
+    );
+  };
+  const first = asUtc - offsetAt(asUtc);
+  return new Date(asUtc - offsetAt(first));
+}

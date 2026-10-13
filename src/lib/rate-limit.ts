@@ -1,5 +1,5 @@
 import 'server-only';
-import { incrementWindow } from '@/lib/db/rate-limits.repository';
+import { incrementWindow, readWindow } from '@/lib/db/rate-limits.repository';
 import { AppError } from '@/lib/errors';
 
 export interface RateLimitRule {
@@ -28,3 +28,33 @@ export async function enforceRateLimits(rules: RateLimitRule[], now = new Date()
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
+export const DAY = 24 * HOUR;
+
+/**
+ * Use one unit of a quota, e.g. the daily email limit. Unlike `enforceRateLimits` it never
+ * throws: it says whether there was room, and when the window resets.
+ */
+export async function takeQuota(
+  key: string,
+  limit: number,
+  windowMs: number,
+  now = new Date(),
+): Promise<{ allowed: boolean; remaining: number; resetAt: Date }> {
+  const { count, resetAt } = await incrementWindow(key, windowMs, now);
+  return {
+    allowed: count <= limit,
+    remaining: Math.max(0, limit - count),
+    resetAt: new Date(resetAt),
+  };
+}
+
+/** How much of a quota is left, without using any. */
+export async function quotaLeft(
+  key: string,
+  limit: number,
+  windowMs: number,
+  now = new Date(),
+): Promise<{ remaining: number; resetAt: Date }> {
+  const { count, resetAt } = await readWindow(key, windowMs, now);
+  return { remaining: Math.max(0, limit - count), resetAt: new Date(resetAt) };
+}

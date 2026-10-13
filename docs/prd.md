@@ -140,7 +140,7 @@ A **household** is a family or group that receives one invitation.
 **Invitation setup**
 | ID | Requirement | Priority |
 |---|---|---|
-| INV-1 | The couple uploads one invitation as an image (JPG, PNG or WebP, up to 10 MB) or a video (MP4, size cap to be decided, see Open Questions). | P0 |
+| INV-1 | The couple uploads one invitation as an image (JPG, PNG or WebP, up to 10 MB) or a video (MP4, size cap to be decided, see Open Questions). Decision (13 Oct 2026): images only in the first release; video comes once the email thumbnail is decided. | P0 |
 | INV-2 | The couple writes an invitation message shown in the email and on the guest page. A default is provided. | P0 |
 | INV-3 | RSVP deadline set at wedding level. | P0 |
 | INV-4 | Optional per-event invitation media and per-event RSVP deadline. | P2 |

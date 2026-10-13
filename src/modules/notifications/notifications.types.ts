@@ -1,7 +1,13 @@
 import type { ObjectId } from 'mongodb';
 
 /** Every email the app sends (database-design §7.11). Templates are added as they're built. */
-export type EmailTemplate = 'member_invite' | 'task_assigned';
+export type EmailTemplate =
+  | 'member_invite'
+  | 'task_assigned'
+  | 'invitation'
+  | 'invitation_test'
+  | 'rsvp_confirmation'
+  | 'rsvp_reminder';
 
 export type EmailStatus = 'sent' | 'delivered' | 'bounced' | 'complained' | 'failed';
 

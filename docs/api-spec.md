@@ -262,7 +262,7 @@ API responses never include password hashes, session or token hashes, or interna
   "updatedAt": "2028-02-02T12:00:00.000Z"
 }
 ```
-`editedBy` / `editedAt` are the last person to create or change the family (not cleanups). Until Invitations is built, the API returns the guest-list fields only: `inviteLink`, `sentAt`, `openedAt`, `emailBounced`, `reminderCount` and the RSVP `note`/`recordedBy`/dates arrive with it.
+`editedBy` / `editedAt` are the last person to create or change the family (not cleanups). `inviteLink` is the family's personal page; it changes when the link is regenerated (§9.10).
 
 ### 4.7 Task
 ```json
@@ -855,13 +855,15 @@ Response `200`:
 ```json
 {
   "data": {
-    "media": { "type": "image", "url": "https://<r2-signed-url>", "sizeBytes": 845123 },
+    "media": { "key": "weddings/66f1b.../invitation/abc.jpg", "type": "image", "url": "https://<r2-signed-url>", "sizeBytes": 845123 },
     "message": "With the blessings of our families...",
     "rsvpDeadline": "2028-03-31",
-    "autoRemindersEnabled": true
+    "autoRemindersEnabled": true,
+    "latestDeadline": "2028-04-15"
   }
 }
 ```
+`media` is `null` without a card. `latestDeadline` is the last day the deadline may be set to: the last event's date, or the wedding date when there are no events. Only image cards for now; video waits for the thumbnail decision (PRD open question).
 
 ### 10.2 `PUT /api/weddings/{weddingId}/invitation`
 **Access:** Member
@@ -875,13 +877,15 @@ Request:
   "autoRemindersEnabled": true
 }
 ```
+- Every field is optional; an omitted field keeps its saved value (at least one is required). The app saves the card (`mediaKey`) separately from the text settings, so an out-of-date card on one page never blocks saving the message or deadline.
 - `mediaKey` comes from the file upload flow (Section 15). Send `null` to remove the media.
-- `rsvpDeadline` must be on or before the last event date.
+- `rsvpDeadline` must be on or before the last event date (`null` or `""` for none). A **changed** deadline must also be today or later in the wedding's timezone (`VALIDATION_ERROR` otherwise), so replies can't be closed for everyone by mistake; an unchanged deadline that has since passed doesn't block saving the other settings.
+- A replaced or removed card is deleted from storage.
 
-Response `200`: same shape as 10.1. Errors: `FILE_NOT_UPLOADED` (400).
+Response `200`: same shape as 10.1. Errors: `FILE_NOT_UPLOADED` (400, also for another wedding's key), `UNSUPPORTED_FILE_TYPE` (400), `WEDDING_ARCHIVED` (409).
 
 ### 10.3 `POST /api/weddings/{weddingId}/invitation/test`
-**Access:** Member. Sends a sample invitation to the caller's own email immediately, using a sample household. Response `200`.
+**Access:** Member. Sends a sample invitation to the caller's own email immediately, using a sample household. Its button opens the guest-page preview (`/app/{weddingId}/invitations/preview`); the card image link lasts 7 days. Response `200`: `{ "data": { "sentTo": "riya@example.com" } }`.
 
 Errors: `INVITATION_NOT_READY` (400, no media and no message), `EMAIL_SEND_FAILED` (502).
 
@@ -890,50 +894,58 @@ Errors: `INVITATION_NOT_READY` (400, no media and no message), `EMAIL_SEND_FAILE
 
 Request (one of):
 ```json
-{ "householdIds": ["66f1c0...101", "66f1c0...102"] }
+{ "householdIds": ["66f1c0...101", "66f1c0...102"], "resend": false, "dryRun": false }
 ```
 ```json
-{ "filter": "all_not_sent" }
+{ "filter": "all_not_sent", "dryRun": false }
 ```
-- Households without an email are skipped and reported.
+- `all_not_sent` means `not_sent` and `failed`. At most 500 selected households.
+- Households without an email (or whose email bounced) are skipped and reported.
+- Households with no invited events are skipped and reported (`skippedNoEvents`) rather than failing the whole send.
 - Households already `queued` are skipped.
-- Households already `sent` are included only with `"resend": true`.
+- Households already `sent` or `sent_manually` are included only with `"resend": true` (selected households only).
+- `dryRun: true` only counts (response `200`, `batchId: null`); the app shows it as the confirmation step.
+- Each queued household becomes `queued`, then `sent` (with `sentAt`) when its email goes out, or `failed` after 3 attempts.
 
 Response `202`:
 ```json
 {
   "data": {
-    "batchId": "send_20280115_01",
+    "batchId": "send_20280115_k3x9q2pa",
     "queued": 280,
     "skippedNoEmail": 30,
     "skippedAlreadySent": 2,
+    "skippedQueued": 0,
+    "skippedNoEvents": 1,
+    "skippedNotNeeded": 0,
     "estimatedDays": 3
   }
 }
 ```
-`estimatedDays` reflects the daily email limit (100/day on the free tier).
+`estimatedDays` reflects today's remaining emails and the daily email limit (100/day on the free tier). `200` with `batchId: null` when nothing was queued.
 
-Errors: `INVITATION_NOT_READY`, `NO_EVENTS_ASSIGNED` (400, when a selected household has no events).
+Errors: `INVITATION_NOT_READY` (400), `WEDDING_ARCHIVED` (409).
 
 ### 10.5 `GET /api/weddings/{weddingId}/invitation/batches/{batchId}`
-**Access:** Member. Progress of a send.
+**Access:** Member (side-scoped: counts only the caller's side's families). Progress of a send or reminder round.
 
 Response `200`:
 ```json
-{ "data": { "batchId": "send_20280115_01", "queued": 180, "sent": 98, "failed": 2, "cancelled": 0 } }
+{ "data": { "batchId": "send_20280115_k3x9q2pa", "type": "invitation.send", "total": 280, "waiting": 180, "sent": 97, "skipped": 1, "failed": 2, "cancelled": 0, "createdAt": "2028-01-15T03:30:00.000Z" } }
 ```
+`GET /api/weddings/{weddingId}/invitation/batches` lists the wedding's batches from the last 3 days (newest first, at most 5) in the same shape, for the progress bar.
 
 ### 10.6 `POST /api/weddings/{weddingId}/invitation/batches/{batchId}/cancel`
-**Access:** Member. Cancels jobs not yet sent. Response `200` with updated counts.
+**Access:** Member (side-scoped). Cancels jobs not yet sent; those households go back to their earlier invite status. An email being sent at that moment still goes out. Response `200` with updated counts (10.5).
 
 ### 10.7 `POST /api/weddings/{weddingId}/invitation/remind`
 **Access:** Member (side-scoped). Queues RSVP reminders.
 
-Request (one of): `{ "householdIds": [...] }` or `{ "filter": "all_incomplete" }`
+Request (one of): `{ "householdIds": [...], "dryRun": false }` or `{ "filter": "all_incomplete", "dryRun": false }`
 
-Only households with an email, an incomplete response, and reminders not turned off by the guest are included.
+Only households that were sent the invitation (`sent` or `sent_manually`), have an email that hasn't bounced, have an incomplete response, haven't turned reminders off and don't already have a reminder waiting (counted as `skippedQueued`) are included (others count as `skippedNotNeeded` or `skippedNoEmail`). When the reminder runs it is skipped if the household has replied or turned reminders off meanwhile, or replies have closed. Sending increases `reminderCount` and sets `lastRemindedAt`. The email links to the guest page's "Stop reminder emails".
 
-Response `202`: same shape as 10.4.
+Response `202`: same shape as 10.4. Errors: `RSVP_CLOSED` (409, after the deadline or when archived).
 
 ### 10.8 `POST /api/weddings/{weddingId}/events/{eventId}/notify-change`
 **Access:** Member. Queues an "event updated" email to every household invited to this event that has an email and has been sent an invitation.
@@ -947,7 +959,7 @@ Response `200`:
 ```json
 {
   "data": {
-    "overall": { "households": 312, "sent": 290, "opened": 240, "complete": 190, "partial": 20, "none": 102 },
+    "overall": { "households": 312, "sent": 290, "notSent": 22, "opened": 240, "complete": 190, "partial": 20, "none": 102, "withoutEmail": 30 },
     "events": [
       {
         "eventId": "66f1d0...02",
@@ -960,10 +972,15 @@ Response `200`:
         "declinedHouseholds": 12,
         "pendingHouseholds": 50
       }
-    ]
+    ],
+    "sideScope": null
   }
 }
 ```
+`sent` counts `sent` and `sent_manually`. Events no family is invited to are left out; names come from the events list.
+
+### 10.10 `GET /api/weddings/{weddingId}/rsvp/export`
+**Access:** Member (side-scoped). `text/csv`, one row per family per invited event in the couple's event order: event, event date, family, side, invited people, reply (Attending, Not attending, Waiting), attending people, note, recorded by (Guest or Host), replied at, email, phone. Never includes personal links.
 
 ---
 
@@ -978,7 +995,7 @@ Response `200`:
 ```json
 {
   "data": {
-    "wedding": { "brideName": "Nafiya", "groomName": "Irfan", "weddingDate": "2028-04-14", "city": "Kochi" },
+    "wedding": { "brideName": "Nafiya", "groomName": "Irfan", "weddingDate": "2028-04-14", "city": "Kochi", "venue": "Grand Hyatt, Bolgatty" },
     "household": { "displayName": "Sharma family", "members": [{ "name": "Rajesh Sharma" }, { "name": "Priya Sharma" }] },
     "invitation": {
       "media": { "type": "image", "url": "https://<r2-signed-url>" },
@@ -986,6 +1003,7 @@ Response `200`:
     },
     "rsvpDeadline": "2028-03-31",
     "rsvpOpen": true,
+    "closedReason": null,
     "events": [
       {
         "id": "66f1d0...02",
@@ -1006,7 +1024,8 @@ Response `200`:
 }
 ```
 - `rsvp` is `null` for events not yet answered.
-- `rsvpOpen` is `false` after the deadline or if the wedding is archived.
+- `rsvpOpen` is `false` after the deadline or if the wedding is archived; `closedReason` is then `deadline` or `archived`.
+- The response is `Cache-Control: no-store`. Rate limit: 60 views per minute per link (shared with 11.3–11.5).
 - `websiteUrl` is `null` if the website isn't published.
 
 Errors: `LINK_INVALID` (404, unknown or regenerated token).
@@ -1026,16 +1045,19 @@ Request:
 | Rule | Error |
 |---|---|
 | Event must be one the household is invited to | `NOT_INVITED_TO_EVENT` (400) |
-| `attendingCount` 1 to `maxHeadcount` when attending (forced to 0 when declined) | `HEADCOUNT_EXCEEDED` (400) |
+| `attendingCount` 1 to `maxHeadcount` when attending (forced to 0 when declined) | `HEADCOUNT_EXCEEDED` (400), `VALIDATION_ERROR` (400) when missing |
 | Before the deadline and wedding active | `RSVP_CLOSED` (409) |
 
 Response `200`: same shape as 11.1. A confirmation email is sent if the household has an email (failure doesn't fail the request).
 
 ### 11.3 `GET /api/public/invitations/{token}/events/{eventId}/calendar.ics`
-**Access:** Guest token. Returns a `text/calendar` file for the event, in the wedding's timezone.
+**Access:** Guest token. Returns a `text/calendar` file for an event the family is invited to (otherwise 404), at its time in the wedding's timezone. An event without an end time is given 3 hours; an end before the start is the next day.
 
 ### 11.4 `POST /api/public/invitations/{token}/stop-reminders`
 **Access:** Guest token. Stops reminder emails for this household (the invitation link keeps working). Response `204`.
+
+### 11.6 `GET /api/public/invitations/{token}/card`
+**Access:** Guest token. The invitation card image for emails: redirects (`302`) to a fresh short-lived image link, so the image still shows when the email is opened weeks later. Doesn't mark the invitation opened. `404` without a card.
 
 ### 11.5 `POST /api/public/invitations/{token}/opened`
 **Access:** Guest token. Called by the guest page from the browser after it loads. Sets `openedAt` if it isn't set yet; later calls change nothing. Requests with a known link-preview or bot user agent are accepted but ignored. Response `204`.
@@ -1249,7 +1271,7 @@ Request:
 ```
 | `purpose` | Allowed types | Max size |
 |---|---|---|
-| `invitation` | `image/jpeg`, `image/png`, `image/webp`, `video/mp4` | 10 MB image, 50 MB video |
+| `invitation` | `image/jpeg`, `image/png`, `image/webp` (`video/mp4`, 50 MB, once the thumbnail is decided) | 10 MB |
 | `website_cover` | `image/jpeg`, `image/webp` | 2 MB (resized in the browser) |
 | `website_photo` | `image/jpeg`, `image/webp` | 2 MB (resized in the browser) |
 | `receipt` | `image/jpeg`, `image/png`, `image/webp`, `application/pdf` | 10 MB |
@@ -1268,6 +1290,8 @@ Response `200`:
 }
 ```
 Errors: `UNSUPPORTED_FILE_TYPE` (400), `FILE_TOO_LARGE` (413), `STORAGE_LIMIT_REACHED` (413).
+
+When an uploaded image is linked to a record (e.g. §10.2), its first bytes are read from storage and must really be a JPEG, PNG or WebP of the declared type. A renamed file (say a text file called `card.png`) is deleted and the request gets `UNSUPPORTED_FILE_TYPE` (400). The app checks the same before uploading.
 
 ---
 
@@ -1657,13 +1681,13 @@ Up to 3 upcoming events and 5 task items are returned.
 ## 21. System endpoints
 
 ### 21.1 `POST /api/cron/process-jobs`
-**Access:** Cron secret. Called every minute.
+**Access:** Cron secret (`Authorization: Bearer <CRON_SECRET>`; otherwise `401 INVALID_SIGNATURE`). Called every minute by cron-job.org; in development, `pnpm jobs:dev` calls it every minute.
 
-Processes up to 50 due jobs, stopping after about 8 seconds. Respects the daily email limit.
+Processes up to 50 due jobs, stopping after about 8 seconds. `skipped` jobs ran but had nothing to send (the family was deleted, the send cancelled, or for a reminder the family replied, turned reminders off or replies closed); they use no email. The daily email limit (`EMAIL_DAILY_LIMIT`, per UTC day) counts **every** email the app sends, direct ones (test invitation, RSVP confirmation, team invite, task email) included; when it's reached, a direct email fails and email jobs are `deferred` to the next day without using up an attempt. A retry sends exactly the email of the first attempt (same recipient and content), so the provider's idempotency key never meets a changed email. A failed attempt is retried after 1 and then 5 minutes; the third failure is final.
 
 Response `200`:
 ```json
-{ "data": { "claimed": 50, "done": 48, "retried": 2, "failed": 0, "dailyEmailRemaining": 12, "durationMs": 6120 } }
+{ "data": { "claimed": 50, "done": 45, "skipped": 3, "deferred": 0, "retried": 2, "failed": 0, "dailyEmailRemaining": 12, "durationMs": 6120 } }
 ```
 
 ### 21.2 `POST /api/cron/daily`

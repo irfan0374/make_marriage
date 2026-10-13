@@ -1,5 +1,6 @@
 import 'server-only';
 import type { ClientSession, Filter, ObjectId, UpdateFilter } from 'mongodb';
+import { globalCollection } from '@/lib/db/client';
 import { scopedCollection } from '@/lib/db/tenant';
 import type { WeddingId } from '@/lib/ids';
 import { HOUSEHOLDS, NAME_COLLATION } from './households.indexes';
@@ -179,4 +180,148 @@ export function countInvitedTo(
 /** Every family invited to an event, whatever the side: for the event delete cleanup. */
 export function findAllInvitedTo(weddingId: WeddingId, eventId: ObjectId, session: ClientSession) {
   return scoped(weddingId).find({ 'invitedEvents.eventId': eventId }, { session }).toArray();
+}
+
+/**
+ * A family by its personal invitation link. A link names its own wedding, so this is the one
+ * lookup that isn't filtered by a wedding id first; the service then works inside that wedding.
+ */
+export function findHouseholdByToken(token: string) {
+  return globalCollection<HouseholdDocument>(HOUSEHOLDS).findOne({ token });
+}
+
+/** First time the guest page loaded in a browser; later calls change nothing. */
+export async function setOpenedAt(weddingId: WeddingId, householdId: ObjectId, now: Date) {
+  await scoped(weddingId).updateOne(
+    { _id: householdId, openedAt: null },
+    { $set: { openedAt: now, updatedAt: now } },
+  );
+}
+
+export async function setRemindersOptOut(weddingId: WeddingId, householdId: ObjectId, now: Date) {
+  await scoped(weddingId).updateOne(
+    { _id: householdId },
+    { $set: { remindersOptOut: true, updatedAt: now } },
+  );
+}
+
+/** Invitation progress over the caller's side (api-spec §10.9). */
+export async function summarizeInvitations(weddingId: WeddingId, side: HouseholdSide | null) {
+  const match = side ? [{ $match: { side } }] : [];
+  const [overall] = await scoped(weddingId)
+    .aggregate<{
+      households: number;
+      sent: number;
+      opened: number;
+      complete: number;
+      partial: number;
+      withoutEmail: number;
+    }>([
+      ...match,
+      {
+        $group: {
+          _id: null,
+          households: { $sum: 1 },
+          sent: { $sum: { $cond: [{ $in: ['$inviteStatus', ['sent', 'sent_manually']] }, 1, 0] } },
+          opened: { $sum: { $cond: [{ $ne: [{ $ifNull: ['$openedAt', null] }, null] }, 1, 0] } },
+          complete: { $sum: { $cond: [{ $eq: ['$responseStatus', 'complete'] }, 1, 0] } },
+          partial: { $sum: { $cond: [{ $eq: ['$responseStatus', 'partial'] }, 1, 0] } },
+          withoutEmail: { $sum: { $cond: [{ $eq: [{ $ifNull: ['$email', null] }, null] }, 1, 0] } },
+        },
+      },
+    ])
+    .toArray();
+  // Per event: the family's reply for that event, if any (database-design §7.5).
+  const events = await scoped(weddingId)
+    .aggregate<{
+      _id: ObjectId;
+      invitedHouseholds: number;
+      invitedHeadcount: number;
+      respondedHouseholds: number;
+      attendingHouseholds: number;
+      attendingHeadcount: number;
+      declinedHouseholds: number;
+    }>([
+      ...match,
+      { $unwind: '$invitedEvents' },
+      {
+        $addFields: {
+          rsvp: {
+            $first: {
+              $filter: {
+                input: '$rsvps',
+                as: 'r',
+                cond: { $eq: ['$$r.eventId', '$invitedEvents.eventId'] },
+              },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$invitedEvents.eventId',
+          invitedHouseholds: { $sum: 1 },
+          invitedHeadcount: { $sum: '$invitedEvents.headcount' },
+          respondedHouseholds: { $sum: { $cond: [{ $ifNull: ['$rsvp', false] }, 1, 0] } },
+          attendingHouseholds: { $sum: { $cond: [{ $eq: ['$rsvp.status', 'attending'] }, 1, 0] } },
+          attendingHeadcount: { $sum: { $ifNull: ['$rsvp.attendingCount', 0] } },
+          declinedHouseholds: { $sum: { $cond: [{ $eq: ['$rsvp.status', 'declined'] }, 1, 0] } },
+        },
+      },
+    ])
+    .toArray();
+  return {
+    overall: overall ?? {
+      households: 0,
+      sent: 0,
+      opened: 0,
+      complete: 0,
+      partial: 0,
+      withoutEmail: 0,
+    },
+    events,
+  };
+}
+
+/** Every family with an invited event, within the caller's side, for the replies export. */
+export function findInvitedHouseholds(weddingId: WeddingId, side: HouseholdSide | null) {
+  return scoped(weddingId)
+    .find(inSide(side, { 'invitedEvents.0': { $exists: true } }), {
+      sort: { displayName: 1, _id: 1 },
+      collation: NAME_COLLATION,
+    })
+    .toArray();
+}
+
+/** Families to consider for an email send, within the caller's side. */
+export function findForSending(
+  weddingId: WeddingId,
+  side: HouseholdSide | null,
+  filter: Filter<HouseholdDocument>,
+  session: ClientSession,
+) {
+  return scoped(weddingId)
+    .find(inSide(side, filter), {
+      session,
+      sort: { displayName: 1, _id: 1 },
+      collation: NAME_COLLATION,
+    })
+    .toArray();
+}
+
+/**
+ * Update one family only while it still matches `filter` (e.g. still queued), for the email
+ * jobs, which run without a person behind them. Returns whether it changed.
+ */
+export async function updateHouseholdIf(
+  weddingId: WeddingId,
+  householdId: ObjectId,
+  filter: Filter<HouseholdDocument>,
+  update: UpdateFilter<HouseholdDocument>,
+  session?: ClientSession,
+): Promise<boolean> {
+  const result = await scoped(weddingId).updateOne({ ...filter, _id: householdId }, update, {
+    session,
+  });
+  return result.modifiedCount > 0;
 }

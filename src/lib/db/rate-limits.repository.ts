@@ -32,3 +32,10 @@ export async function incrementWindow(key: string, windowMs: number, now = new D
   );
   return { count: doc?.count ?? 1, resetAt: expiresAt.getTime() - 60_000 };
 }
+
+/** The current window's count without adding to it. */
+export async function readWindow(key: string, windowMs: number, now = new Date()) {
+  const windowStart = new Date(Math.floor(now.getTime() / windowMs) * windowMs);
+  const doc = await globalCollection<RateLimitDocument>(COLLECTION).findOne({ key, windowStart });
+  return { count: doc?.count ?? 0, resetAt: windowStart.getTime() + windowMs };
+}

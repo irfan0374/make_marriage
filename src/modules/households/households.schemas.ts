@@ -208,3 +208,72 @@ export const importHouseholdRowSchema = createHouseholdSchema
     invitedEvents: eventIds.map((eventId) => ({ eventId })),
   }))
   .pipe(createHouseholdSchema);
+
+// RSVPs (api-spec §9.12, §11.2; database-design §7.5).
+export const RSVP_NOTE_MAX = 500;
+
+const rsvpStatusField = z.enum(['attending', 'declined'], {
+  message: 'Choose Attending or Not attending',
+});
+
+const rsvpNoteField = z
+  .string()
+  .trim()
+  .max(RSVP_NOTE_MAX, `Use at most ${RSVP_NOTE_MAX} characters`);
+
+/**
+ * One reply. Attending needs 1 or more people (the upper limit, the family's invited number
+ * for that event, is checked in the service); declining always means 0.
+ */
+const rsvpReplyShape = {
+  status: rsvpStatusField,
+  attendingCount: z
+    .number({ message: 'Enter how many people are coming' })
+    .int('Use a whole number')
+    .min(0)
+    .max(HEADCOUNT_MAX)
+    .optional(),
+  note: rsvpNoteField.default(''),
+};
+
+function attendingNeedsPeople(
+  value: { status: 'attending' | 'declined'; attendingCount?: number },
+  ctx: z.core.$RefinementCtx,
+) {
+  if (value.status === 'attending' && !value.attendingCount) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['attendingCount'],
+      message: 'Choose how many people are coming',
+    });
+  }
+}
+
+const withCount = <T extends { status: 'attending' | 'declined'; attendingCount?: number }>(
+  value: T,
+) => ({ ...value, attendingCount: value.status === 'declined' ? 0 : (value.attendingCount ?? 0) });
+
+// PUT /api/weddings/{weddingId}/households/{householdId}/rsvps/{eventId} (api-spec §9.12).
+export const hostRsvpSchema = z
+  .strictObject(rsvpReplyShape)
+  .superRefine(attendingNeedsPeople)
+  .transform(withCount);
+
+// PUT /api/public/invitations/{token}/rsvp (api-spec §11.2).
+export const guestRsvpSchema = z.strictObject({
+  responses: z
+    .array(
+      z
+        .strictObject({
+          eventId: objectIdString.transform((id) => id.toLowerCase()),
+          ...rsvpReplyShape,
+        })
+        .superRefine(attendingNeedsPeople)
+        .transform(withCount),
+    )
+    .min(1, 'Answer at least one event')
+    .max(50)
+    .refine((list) => new Set(list.map((r) => r.eventId)).size === list.length, {
+      message: 'Each event can appear only once',
+    }),
+});

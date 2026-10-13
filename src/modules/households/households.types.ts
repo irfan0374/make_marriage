@@ -3,6 +3,8 @@ import type { z } from 'zod';
 import type {
   bulkHouseholdsSchema,
   createHouseholdSchema,
+  guestRsvpSchema,
+  hostRsvpSchema,
   householdSideSchema,
   listHouseholdsQuerySchema,
   updateHouseholdSchema,
@@ -13,6 +15,10 @@ export type CreateHouseholdInput = z.output<typeof createHouseholdSchema>;
 export type UpdateHouseholdInput = z.output<typeof updateHouseholdSchema>;
 export type ListHouseholdsQuery = z.output<typeof listHouseholdsQuerySchema>;
 export type BulkHouseholdsInput = z.output<typeof bulkHouseholdsSchema>;
+export type HostRsvpInput = z.output<typeof hostRsvpSchema>;
+export type GuestRsvpInput = z.output<typeof guestRsvpSchema>;
+/** One reply to save: the event and the answer. */
+export type RsvpReply = HostRsvpInput & { eventId: string };
 
 export type InviteStatus = 'not_sent' | 'queued' | 'sent' | 'sent_manually' | 'failed';
 export type ResponseStatus = 'none' | 'partial' | 'complete';
@@ -82,13 +88,57 @@ export interface Household {
   tags: string[];
   notes: string;
   invitedEvents: { eventId: string; headcount: number }[];
-  rsvps: { eventId: string; status: 'attending' | 'declined'; attendingCount: number }[];
+  rsvps: HouseholdRsvp[];
+  /** The personal invitation page. */
+  inviteLink: string;
   inviteStatus: InviteStatus;
+  sentAt: string | null;
+  openedAt: string | null;
   responseStatus: ResponseStatus;
+  emailBounced: boolean;
+  reminderCount: number;
   createdBy: HouseholdPerson | null;
   editedBy: HouseholdPerson | null;
   editedAt: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface HouseholdRsvp {
+  eventId: string;
+  status: 'attending' | 'declined';
+  attendingCount: number;
+  note: string;
+  recordedBy: 'guest' | 'host';
+  respondedAt: string;
+  updatedAt: string;
+}
+
+/** Invitation and reply totals (api-spec §10.9), within the caller's side. */
+export interface RsvpSummary {
+  overall: {
+    households: number;
+    /** Sent by email or shared by hand. */
+    sent: number;
+    notSent: number;
+    opened: number;
+    complete: number;
+    partial: number;
+    none: number;
+    /** Families with no email address (their link is shared by hand). */
+    withoutEmail: number;
+  };
+  events: {
+    eventId: string;
+    invitedHouseholds: number;
+    invitedHeadcount: number;
+    respondedHouseholds: number;
+    attendingHouseholds: number;
+    attendingHeadcount: number;
+    declinedHouseholds: number;
+    pendingHouseholds: number;
+  }[];
+  sideScope: HouseholdSide | null;
 }
 
 /** Totals for the header and event cards (api-spec §9.15), within the caller's side. */

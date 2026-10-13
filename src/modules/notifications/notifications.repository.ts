@@ -12,6 +12,8 @@ const RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 export async function insertEmailLog(input: {
   weddingId: ObjectId | null;
   userId: ObjectId | null;
+  householdId: ObjectId | null;
+  jobId: ObjectId | null;
   to: string;
   template: EmailTemplate;
   status: Extract<EmailStatus, 'sent' | 'failed'>;
@@ -22,8 +24,8 @@ export async function insertEmailLog(input: {
   const doc: EmailLogDocument = {
     _id: new ObjectId(),
     weddingId: input.weddingId,
-    jobId: null,
-    householdId: null,
+    jobId: input.jobId,
+    householdId: input.householdId,
     userId: input.userId,
     to: input.to,
     template: input.template,

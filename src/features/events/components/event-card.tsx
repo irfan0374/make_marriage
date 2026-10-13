@@ -37,8 +37,8 @@ export function EventCard({
   event: WeddingEvent;
   number: number;
   status: EventStatus | undefined;
-  /** Families and people invited to it (Guests); omitted when none. */
-  invited?: { households: number; people: number };
+  /** Families and people invited to it (Guests), and people attending; omitted when none. */
+  invited?: { households: number; people: number; attending?: number };
   editing: boolean;
   canDrag: boolean;
   onEdit: () => void;
@@ -192,6 +192,14 @@ export function EventCard({
                 <strong className="text-text font-semibold">
                   {invited.people.toLocaleString('en-IN')}
                 </strong>
+                {invited.attending !== undefined && (
+                  <>
+                    <span aria-hidden>·</span> Attending{' '}
+                    <strong className="text-primary font-semibold">
+                      {invited.attending.toLocaleString('en-IN')}
+                    </strong>
+                  </>
+                )}
               </p>
             ) : (
               <span />

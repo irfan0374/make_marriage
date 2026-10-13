@@ -33,6 +33,12 @@ export default defineConfig({
             // Tests never send email: src/lib/email.ts keeps messages in memory under NODE_ENV=test.
             RESEND_API_KEY: 're_test_placeholder',
             EMAIL_FROM: 'Make My Marriage <invites@example.com>',
+            // Tests never reach R2: src/lib/r2.ts keeps files in memory under NODE_ENV=test.
+            R2_ACCOUNT_ID: 'test-account',
+            R2_ACCESS_KEY_ID: 'test-access-key',
+            R2_SECRET_ACCESS_KEY: 'test-secret',
+            R2_BUCKET: 'make-marriage-test',
+            CRON_SECRET: 'test-cron-secret-that-is-long-enough-123',
           },
         },
       },

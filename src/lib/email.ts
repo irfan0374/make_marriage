@@ -1,4 +1,5 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
 import { Resend } from 'resend';
 import { APP_NAME } from '@/config/app';
 import { getEnv } from '@/lib/env';
@@ -65,15 +66,19 @@ export async function deliverEmail(email: OutgoingEmail, idempotencyKey?: string
   if (env.NODE_ENV === 'test') {
     if (globalForEmail.__testEmailsFail) throw new EmailDeliveryError('Test delivery failure');
     testOutbox().push(email);
-    return `test_${testOutbox().length}`;
+    // Unique across test runs, like a real provider id.
+    return `test_${randomUUID()}`;
   }
 
+  // In development, every email can go to one inbox (e.g. the Resend account owner while the
+  // sender is Resend's test address). The real recipient stays visible in the subject.
+  const redirect = env.NODE_ENV === 'development' ? env.EMAIL_DEV_REDIRECT_TO : undefined;
   globalForEmail.__resend ??= new Resend(env.RESEND_API_KEY);
   const { data, error } = await globalForEmail.__resend.emails.send(
     {
       from: email.from,
-      to: email.to,
-      subject: email.subject,
+      to: redirect ?? email.to,
+      subject: redirect ? `[To ${email.to}] ${email.subject}` : email.subject,
       html: email.html,
       text: email.text,
       ...(email.replyTo ? { replyTo: email.replyTo } : {}),

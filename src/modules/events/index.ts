@@ -9,5 +9,5 @@ export {
   updateEventHandler,
 } from './events.handlers';
 export { eventsCollectionSpecs } from './events.indexes';
-export { deleteEventRecord, getEvent, listEvents } from './events.service';
+export { deleteEventRecord, getEvent, listEvents, listWeddingEvents } from './events.service';
 export type { EventChangeMeta, WeddingEvent } from './events.types';

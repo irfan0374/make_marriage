@@ -98,3 +98,19 @@ export function lockTaskWrites(weddingId: WeddingId, session: ClientSession) {
 export function setGuestTags(weddingId: WeddingId, guestTags: string[], session: ClientSession) {
   return weddings().updateOne({ _id: weddingId }, { $set: { guestTags } }, { session });
 }
+
+/**
+ * Save the invitation settings and return the updated wedding, or `null` if it was archived (or
+ * deleted) a moment ago.
+ */
+export function setInvitation(
+  weddingId: WeddingId,
+  invitation: WeddingDocument['invitation'],
+  now: Date,
+) {
+  return weddings().findOneAndUpdate(
+    { _id: weddingId, status: 'active' },
+    { $set: { invitation, updatedAt: now } },
+    { returnDocument: 'after', includeResultMetadata: false },
+  );
+}

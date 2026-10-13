@@ -10,6 +10,7 @@ import {
   bulkHouseholdsSchema,
   createHouseholdSchema,
   duplicatesQuerySchema,
+  hostRsvpSchema,
   listHouseholdsQuerySchema,
   updateHouseholdSchema,
 } from './households.schemas';
@@ -17,7 +18,13 @@ import {
   importHouseholds,
   exportHouseholds,
   bulkUpdateHouseholds,
+  clearHostRsvp,
   createHousehold,
+  exportRsvps,
+  getRsvpSummary,
+  markHouseholdSent,
+  recordHostRsvp,
+  regenerateHouseholdLink,
   deleteHousehold,
   findPossibleDuplicates,
   getHousehold,
@@ -204,4 +211,95 @@ export const importTemplateHandler = defineHandler(
       'guest-import-template.csv',
     );
   },
+);
+
+const rsvpParams = z.strictObject({
+  weddingId: objectIdString,
+  householdId: objectIdString,
+  eventId: objectIdString,
+});
+
+// POST /api/weddings/{weddingId}/households/{householdId}/regenerate-link (api-spec §9.10)
+export const regenerateLinkHandler = defineHandler(
+  {
+    route: '/api/weddings/[weddingId]/households/[householdId]/regenerate-link',
+    params: householdParams,
+  },
+  async ({ request, params }) =>
+    ok(
+      await regenerateHouseholdLink(
+        readSessionToken(request),
+        toObjectId(params.weddingId),
+        toObjectId(params.householdId),
+      ),
+    ),
+);
+
+// POST /api/weddings/{weddingId}/households/{householdId}/mark-sent (api-spec §9.11)
+export const markSentHandler = defineHandler(
+  {
+    route: '/api/weddings/[weddingId]/households/[householdId]/mark-sent',
+    params: householdParams,
+  },
+  async ({ request, params }) =>
+    ok(
+      await markHouseholdSent(
+        readSessionToken(request),
+        toObjectId(params.weddingId),
+        toObjectId(params.householdId),
+      ),
+    ),
+);
+
+// PUT /api/weddings/{weddingId}/households/{householdId}/rsvps/{eventId} (api-spec §9.12)
+export const recordRsvpHandler = defineHandler(
+  {
+    route: '/api/weddings/[weddingId]/households/[householdId]/rsvps/[eventId]',
+    params: rsvpParams,
+    body: hostRsvpSchema,
+  },
+  async ({ request, params, body }) =>
+    ok(
+      await recordHostRsvp(
+        readSessionToken(request),
+        toObjectId(params.weddingId),
+        toObjectId(params.householdId),
+        toObjectId(params.eventId),
+        body,
+      ),
+    ),
+);
+
+// DELETE /api/weddings/{weddingId}/households/{householdId}/rsvps/{eventId} (api-spec §9.13)
+export const clearRsvpHandler = defineHandler(
+  {
+    route: '/api/weddings/[weddingId]/households/[householdId]/rsvps/[eventId]',
+    params: rsvpParams,
+  },
+  async ({ request, params }) => {
+    await clearHostRsvp(
+      readSessionToken(request),
+      toObjectId(params.weddingId),
+      toObjectId(params.householdId),
+      toObjectId(params.eventId),
+    );
+    return noContent();
+  },
+);
+
+// GET /api/weddings/{weddingId}/rsvp/summary (api-spec §10.9)
+export const rsvpSummaryHandler = defineHandler(
+  { route: '/api/weddings/[weddingId]/rsvp/summary', params: weddingParams },
+  async ({ request, params }) =>
+    ok(await getRsvpSummary(readSessionToken(request), toObjectId(params.weddingId))),
+);
+
+// GET /api/weddings/{weddingId}/rsvp/export (api-spec §10.10)
+export const rsvpExportHandler = defineHandler(
+  { route: '/api/weddings/[weddingId]/rsvp/export', params: weddingParams },
+  async ({ request, params }) =>
+    csvDownload(
+      await exportRsvps(readSessionToken(request), toObjectId(params.weddingId)),
+      'rsvp-replies.csv',
+    ),
 );

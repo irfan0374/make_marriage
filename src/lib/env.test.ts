@@ -7,10 +7,15 @@ const valid = {
   MONGODB_DB_NAME: 'make_marriage_dev',
   RESEND_API_KEY: 're_test_key',
   EMAIL_FROM: 'Make My Marriage <invites@example.com>',
+  R2_ACCOUNT_ID: 'test-account',
+  R2_ACCESS_KEY_ID: 'test-access-key',
+  R2_SECRET_ACCESS_KEY: 'test-secret',
+  R2_BUCKET: 'make-marriage-dev',
+  CRON_SECRET: 'cron-secret-that-is-at-least-32-chars',
 };
 
 describe('parseEnv', () => {
-  it('boots with only the required app, database and email variables', () => {
+  it('boots with only the required app, database, email and storage variables', () => {
     const env = parseEnv(valid);
     expect(env).toMatchObject({
       ...valid,
@@ -20,8 +25,6 @@ describe('parseEnv', () => {
       EMAIL_DAILY_LIMIT: 100,
     });
     expect(env.RESEND_WEBHOOK_SECRET).toBeUndefined();
-    expect(env.R2_BUCKET).toBeUndefined();
-    expect(env.CRON_SECRET).toBeUndefined();
     expect(env.GOOGLE_PLACES_API_KEY).toBeUndefined();
   });
 
@@ -30,11 +33,33 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...valid, EMAIL_FROM: undefined })).toThrow(/EMAIL_FROM/);
   });
 
+  it('requires the cron secret', () => {
+    expect(() => parseEnv({ ...valid, CRON_SECRET: undefined })).toThrow(/CRON_SECRET/);
+  });
+
+  it('requires the R2 storage variables', () => {
+    expect(() => parseEnv({ ...valid, R2_SECRET_ACCESS_KEY: '' })).toThrow(/R2_SECRET_ACCESS_KEY/);
+    expect(() => parseEnv({ ...valid, R2_BUCKET: undefined })).toThrow(/R2_BUCKET/);
+  });
+
   it('treats empty optional variables (KEY= from .env.example) as not set', () => {
-    const env = parseEnv({ ...valid, RESEND_WEBHOOK_SECRET: '', R2_BUCKET: '', CRON_SECRET: '' });
+    const env = parseEnv({
+      ...valid,
+      RESEND_WEBHOOK_SECRET: '',
+      GOOGLE_PLACES_API_KEY: '',
+    });
     expect(env.RESEND_WEBHOOK_SECRET).toBeUndefined();
-    expect(env.R2_BUCKET).toBeUndefined();
-    expect(env.CRON_SECRET).toBeUndefined();
+    expect(env.GOOGLE_PLACES_API_KEY).toBeUndefined();
+  });
+
+  it('accepts an optional development email redirect', () => {
+    expect(parseEnv(valid).EMAIL_DEV_REDIRECT_TO).toBeUndefined();
+    expect(
+      parseEnv({ ...valid, EMAIL_DEV_REDIRECT_TO: 'me@example.com' }).EMAIL_DEV_REDIRECT_TO,
+    ).toBe('me@example.com');
+    expect(() => parseEnv({ ...valid, EMAIL_DEV_REDIRECT_TO: 'not-an-email' })).toThrow(
+      /EMAIL_DEV_REDIRECT_TO/,
+    );
   });
 
   it('validates variables when they are set', () => {
@@ -79,22 +104,22 @@ describe('requireEnv', () => {
   }
 
   it('returns the requested variables when set', () => {
-    stubEnv({ R2_BUCKET: 'make-marriage-dev', CRON_SECRET: 'x'.repeat(32) });
-    expect(requireEnv('R2_BUCKET', 'CRON_SECRET')).toEqual({
-      R2_BUCKET: 'make-marriage-dev',
-      CRON_SECRET: 'x'.repeat(32),
+    stubEnv({ RESEND_WEBHOOK_SECRET: 'whsec_test', GOOGLE_PLACES_API_KEY: 'places-key' });
+    expect(requireEnv('RESEND_WEBHOOK_SECRET', 'GOOGLE_PLACES_API_KEY')).toEqual({
+      RESEND_WEBHOOK_SECRET: 'whsec_test',
+      GOOGLE_PLACES_API_KEY: 'places-key',
     });
   });
 
   it('names the missing variables and never prints values', () => {
-    stubEnv({ CRON_SECRET: 'secret-value-that-is-long-enough-123', R2_BUCKET: '' });
-    expect(() => requireEnv('CRON_SECRET', 'R2_BUCKET', 'GOOGLE_PLACES_API_KEY')).toThrow(
-      'R2_BUCKET, GOOGLE_PLACES_API_KEY are required for this feature but not set. See .env.example.',
+    stubEnv({ RESEND_WEBHOOK_SECRET: 'whsec-secret-value-123', GOOGLE_PLACES_API_KEY: '' });
+    expect(() => requireEnv('RESEND_WEBHOOK_SECRET', 'GOOGLE_PLACES_API_KEY')).toThrow(
+      'GOOGLE_PLACES_API_KEY is required for this feature but not set. See .env.example.',
     );
     try {
-      requireEnv('R2_BUCKET', 'CRON_SECRET');
+      requireEnv('GOOGLE_PLACES_API_KEY', 'RESEND_WEBHOOK_SECRET');
     } catch (error) {
-      expect((error as Error).message).not.toContain('secret-value-that-is-long-enough-123');
+      expect((error as Error).message).not.toContain('whsec-secret-value-123');
     }
   });
 });

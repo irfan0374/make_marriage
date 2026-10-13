@@ -45,7 +45,7 @@ function navGroups(weddingId: string, isAdmin: boolean): NavItem[][] {
       { label: 'Dashboard', icon: LayoutDashboard, href: base, exact: true },
       { label: 'Events', icon: CalendarDays, href: `${base}/events` },
       { label: 'Guests', icon: Users, href: `${base}/guests` },
-      { label: 'Invitations & RSVP', icon: Mail, href: null },
+      { label: 'Invitations & RSVP', icon: Mail, href: `${base}/invitations` },
       { label: 'Tasks', icon: ListChecks, href: `${base}/tasks` },
       { label: 'Expenses', icon: Wallet, href: null },
       { label: 'Vendors', icon: Store, href: null },

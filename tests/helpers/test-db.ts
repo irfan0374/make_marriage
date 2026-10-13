@@ -14,6 +14,12 @@ process.env.APP_URL ??= 'http://localhost:3000';
 // Never real email in tests: src/lib/email.ts keeps messages in memory under NODE_ENV=test.
 process.env.RESEND_API_KEY = 're_test_placeholder';
 process.env.EMAIL_FROM = 'Make My Marriage <invites@example.com>';
+// Never real storage either: src/lib/r2.ts keeps files in memory under NODE_ENV=test.
+process.env.R2_ACCOUNT_ID = 'test-account';
+process.env.R2_ACCESS_KEY_ID = 'test-access-key';
+process.env.R2_SECRET_ACCESS_KEY = 'test-secret';
+process.env.R2_BUCKET = 'make-marriage-test';
+process.env.CRON_SECRET = 'test-cron-secret-that-is-long-enough-123';
 
 afterAll(async () => {
   const { getDb, closeMongoClient } = await import('@/lib/db/client');

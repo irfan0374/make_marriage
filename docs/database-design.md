@@ -287,7 +287,7 @@ The tenant root. Every other tenant document points to a wedding through `weddin
 | Field | Type | Default | Rules |
 |---|---|---|---|
 | `mediaKey` | string | `null` | R2 key of the uploaded invite |
-| `mediaType` | enum | `null` | `image`, `video` |
+| `mediaType` | enum | `null` | `image`, `video` (only `image` is accepted until the video thumbnail is decided) |
 | `mediaSizeBytes` | int | `null` | Image ≤ 10 MB, video ≤ 50 MB |
 | `message` | string | default text | Max 2,000 characters |
 | `rsvpDeadline` | string | `null` | `YYYY-MM-DD`, last day replies are accepted (inclusive, in the wedding timezone) |
@@ -830,10 +830,11 @@ Background job queue for bulk email and scheduled work.
 |---|---|---|---|---|
 | `weddingId` | ObjectId | | `null` | `null` for system jobs |
 | `type` | enum | ✅ | | `invitation.send`, `rsvp.remind`, `task.remind`, `event.updated_notice`, `photos.cleanup`, `retention.warn`, `retention.delete_files`, `files.delete` |
-| `status` | enum | ✅ | `"queued"` | `queued`, `processing`, `done`, `failed`, `cancelled` |
-| `payload` | object | ✅ | | Type-specific, e.g. `{ householdId }` |
+| `status` | enum | ✅ | `"queued"` | `queued`, `processing`, `done`, `skipped` (ran, nothing to send), `failed`, `cancelled` |
+| `payload` | object | ✅ | | Type-specific. Invitation and reminder jobs: `{ householdId, previousStatus, side }` (the invite status to restore on cancel, and the family's side so a side-limited Manager sees and cancels only their own) |
+| `sent` | object | | `null` | Email jobs: what the first attempt sends (`to`, `subject`, `fromName` and the template's values). Retries send exactly this, so the provider's idempotency key always matches the same email. Removed with the job by TTL |
 | `batchId` | string | | `null` | Groups jobs from one "Send invitations" action for progress display |
-| `idempotencyKey` | string | ✅ | | e.g. `invite:{householdId}:{batchId}`. Unique |
+| `idempotencyKey` | string | ✅ | | e.g. `invite:{householdId}:{batchId}` or `remind:{householdId}:{batchId}`. Unique; also sent to Resend so a retried email is delivered once |
 | `attempts` | int | ✅ | `0` | |
 | `maxAttempts` | int | ✅ | `3` | |
 | `runAfter` | Date | ✅ | now | Earliest time to run |

@@ -3,7 +3,6 @@
 import { ChevronDown, MailPlus } from 'lucide-react';
 import Link from 'next/link';
 import { Logo } from '@/components/common/logo';
-import { SoonTag } from '@/components/common/soon-tag';
 import { useMe, useWedding } from '@/features/weddings/hooks';
 import { AccountMenu } from './account-menu';
 import { WeddingMobileNav } from './wedding-nav';
@@ -41,14 +40,13 @@ export function WeddingTopBar({ weddingId }: { weddingId: string }) {
           ))}
 
         <div className="ml-auto flex items-center gap-4">
-          <span
-            aria-disabled="true"
-            className="bg-primary text-primary-foreground hidden cursor-default items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold opacity-60 shadow-sm sm:inline-flex"
+          <Link
+            href={`/app/${weddingId}/invitations`}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 hidden items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-colors sm:inline-flex"
           >
             <MailPlus aria-hidden className="size-4.5" />
             Send invitations
-            <SoonTag className="bg-primary-foreground/15 text-primary-foreground" />
-          </span>
+          </Link>
           <AccountMenu
             compact
             settingsHref={wedding?.me.role === 'admin' ? `/app/${weddingId}/settings` : undefined}

@@ -3,6 +3,7 @@ import {
   addDays,
   addMonths,
   addYears,
+  zonedTimeToUtc,
   canonicalTimeZone,
   daysUntil,
   formatDate,
@@ -68,5 +69,28 @@ describe('addMonths and addDays', () => {
   it('moves by days across months and years', () => {
     expect(addDays('2027-12-30', 6)).toBe('2028-01-05');
     expect(addDays('2028-03-01', -1)).toBe('2028-02-29');
+  });
+});
+
+describe('zonedTimeToUtc', () => {
+  it('converts India time to UTC', () => {
+    expect(zonedTimeToUtc('2028-04-12', '16:00', 'Asia/Kolkata').toISOString()).toBe(
+      '2028-04-12T10:30:00.000Z',
+    );
+  });
+
+  it('respects daylight saving in London', () => {
+    expect(zonedTimeToUtc('2028-07-01', '18:00', 'Europe/London').toISOString()).toBe(
+      '2028-07-01T17:00:00.000Z',
+    );
+    expect(zonedTimeToUtc('2028-01-15', '18:00', 'Europe/London').toISOString()).toBe(
+      '2028-01-15T18:00:00.000Z',
+    );
+  });
+
+  it('handles times near midnight', () => {
+    expect(zonedTimeToUtc('2028-04-12', '00:30', 'Asia/Kolkata').toISOString()).toBe(
+      '2028-04-11T19:00:00.000Z',
+    );
   });
 });

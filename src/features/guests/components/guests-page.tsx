@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { SoonTag } from '@/components/common/soon-tag';
 import { Button } from '@/components/ui/button';
 import { useEvents } from '@/features/events/hooks';
 import { useHouseholds, useHouseholdSummary } from '@/features/guests/hooks';
@@ -33,6 +32,7 @@ import {
   BulkEventsDialog,
   BulkTagDialog,
 } from './guest-dialogs';
+import { SendDialog } from '@/features/invitations/components/send-dialog';
 import { FamilyDetails, SideChip } from './family-details';
 import { FamilyModal, type FamilyModalMode } from './family-modal';
 
@@ -154,7 +154,7 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [modal, setModal] = useState<FamilyModalMode | null>(null);
   const [deleting, setDeleting] = useState<Household | null>(null);
-  const [bulk, setBulk] = useState<'events' | 'tags' | 'delete' | null>(null);
+  const [bulk, setBulk] = useState<'events' | 'tags' | 'delete' | 'send' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -406,13 +406,13 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
                 >
                   <Tag aria-hidden className="size-4" /> Add tag
                 </Button>
-                <span
-                  aria-disabled="true"
-                  className="bg-primary text-primary-foreground flex h-9 cursor-default items-center gap-2 rounded-full px-4 text-sm opacity-60"
+                <Button
+                  className="h-9 gap-2 px-4"
+                  disabled={wedding.status === 'archived'}
+                  onClick={() => setBulk('send')}
                 >
                   <Send aria-hidden className="size-4" /> Send invitation
-                  <SoonTag className="bg-primary-foreground/15 text-primary-foreground" />
-                </span>
+                </Button>
                 <Button
                   variant="destructive"
                   className="h-9 gap-2 px-4"
@@ -710,6 +710,10 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
 
             {details && (
               <FamilyDetails
+                key={details.id}
+                weddingId={weddingId}
+                coupleNames={`${wedding.brideName} & ${wedding.groomName}`}
+                readOnly={wedding.status === 'archived'}
                 household={details}
                 events={eventList}
                 timeZone={wedding.timezone}
@@ -774,6 +778,23 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
           guestTags={wedding.guestTags}
           onClose={() => setBulk(null)}
           onDone={bulkDone('tagged')}
+        />
+      )}
+      {bulk === 'send' && (
+        <SendDialog
+          weddingId={weddingId}
+          title={`Email the invitation to ${families(selected.size)}`}
+          request={{
+            kind: 'invite',
+            input: { householdIds: selectedIds, resend: false, dryRun: false },
+          }}
+          onClose={() => setBulk(null)}
+          onSent={(result) => {
+            setSelected(new Map());
+            setNotice(
+              `Sending the invitation to ${families(result.queued)}. Emails go out a few every minute.`,
+            );
+          }}
         />
       )}
       {bulk === 'delete' && (

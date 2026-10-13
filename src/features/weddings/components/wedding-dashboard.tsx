@@ -22,6 +22,7 @@ import { SoonTag } from '@/components/common/soon-tag';
 import { dateTile, upcomingEvents } from '@/features/events/event-timing';
 import { useEvents } from '@/features/events/hooks';
 import { useHouseholdSummary } from '@/features/guests/hooks';
+import { useInvitationSettings, useRsvpSummary } from '@/features/invitations/hooks';
 import { dueLabel, tasksDueSoon } from '@/features/tasks/task-groups';
 import { PriorityBadge } from '@/features/tasks/components/task-row';
 import { useTasks } from '@/features/tasks/hooks';
@@ -29,6 +30,7 @@ import { useTeam } from '@/features/team/hooks';
 import { useMe, useWedding } from '@/features/weddings/hooks';
 import { firstName, greetingFor, setupSteps } from '@/features/weddings/setup-steps';
 import type { WeddingEvent } from '@/modules/events/events.types';
+import type { RsvpSummary } from '@/modules/households/households.types';
 import type { Task } from '@/modules/tasks/tasks.types';
 import type { Wedding } from '@/modules/weddings/weddings.types';
 import { ApiError } from '@/shared/api-client';
@@ -161,18 +163,29 @@ function SetupCard({
   teamSize,
   eventCount,
   guestCount,
+  hasInvitationCard,
+  sentCount,
 }: {
   weddingId: string;
   teamSize: number;
   eventCount: number;
   guestCount: number;
+  hasInvitationCard: boolean;
+  sentCount: number;
 }) {
   const dismissed = useSyncExternalStore(
     subscribeDismiss,
     () => hiddenThisVisit.has(weddingId) || readDismissed(weddingId),
     () => false,
   );
-  const steps = setupSteps({ weddingId, teamSize, eventCount, guestCount });
+  const steps = setupSteps({
+    weddingId,
+    teamSize,
+    eventCount,
+    guestCount,
+    hasInvitationCard,
+    sentCount,
+  });
   const done = steps.filter((s) => s.done).length;
   const percent = Math.round((done / steps.length) * 100);
   if (dismissed || done === steps.length) return null;
@@ -464,6 +477,63 @@ function RsvpLegend() {
   );
 }
 
+/** Attending, waiting and declined families per event, as one bar each. */
+function RsvpByEvent({
+  weddingId,
+  events,
+  summary,
+}: {
+  weddingId: string;
+  events: WeddingEvent[] | undefined;
+  summary: RsvpSummary | undefined;
+}) {
+  const rows = (events ?? []).flatMap((event) => {
+    const t = summary?.events.find((e) => e.eventId === event.id);
+    return t && t.invitedHouseholds > 0 ? [{ event, t }] : [];
+  });
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        icon={Users}
+        text="Who's attending each event will show here once families are invited."
+        action={{ href: `/app/${weddingId}/guests`, label: 'Invite families to events' }}
+      />
+    );
+  }
+  return (
+    <ul className="space-y-5 pt-5">
+      {rows.map(({ event, t }) => {
+        const share = (n: number) => `${(n / t.invitedHouseholds) * 100}%`;
+        return (
+          <li key={event.id}>
+            <p className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="truncate font-medium">{event.name}</span>
+              <span className="text-text-muted shrink-0 text-xs">
+                {t.attendingHeadcount} attending · {t.pendingHouseholds} waiting
+              </span>
+            </p>
+            <div
+              role="img"
+              aria-label={`${event.name}: ${t.attendingHouseholds} families attending, ${t.pendingHouseholds} waiting, ${t.declinedHouseholds} declined`}
+              className="bg-background mt-2 flex h-2.5 overflow-hidden rounded-full"
+            >
+              <span className="bg-primary h-full" style={{ width: share(t.attendingHouseholds) }} />
+              <span
+                className="bg-primary-tint h-full"
+                style={{ width: share(t.pendingHouseholds) }}
+              />
+              <span
+                className="bg-text-muted/30 h-full"
+                style={{ width: share(t.declinedHouseholds) }}
+              />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function QuickAction({
   href,
   icon: Icon,
@@ -503,6 +573,8 @@ export function WeddingDashboard({
   const { data: guests } = useHouseholdSummary(weddingId);
   const { data: tasks } = useTasks(weddingId);
   const { data: me } = useMe();
+  const { data: rsvp } = useRsvpSummary(weddingId);
+  const { data: invitation } = useInvitationSettings(weddingId);
 
   if (isPending) {
     return (
@@ -538,6 +610,11 @@ export function WeddingDashboard({
 
   const isAdmin = wedding.me.role === 'admin';
   const base = `/app/${weddingId}`;
+  // The event with the most people coming, for "Guests attending".
+  const busiest = (rsvp?.events ?? [])
+    .filter((t) => t.attendingHeadcount > 0)
+    .map((t) => ({ t, name: events?.find((e) => e.id === t.eventId)?.name ?? 'an event' }))
+    .sort((a, b) => b.t.attendingHeadcount - a.t.attendingHeadcount)[0];
 
   return (
     <div className="flex w-full flex-col pb-16">
@@ -548,6 +625,8 @@ export function WeddingDashboard({
         teamSize={team?.members.length ?? 1}
         eventCount={events?.length ?? 0}
         guestCount={guests?.households ?? 0}
+        hasInvitationCard={Boolean(invitation?.media)}
+        sentCount={rsvp?.overall.sent ?? 0}
       />
 
       <section
@@ -563,8 +642,20 @@ export function WeddingDashboard({
               : 'No guests added yet'
           }
         />
-        <StatCard label="Replied" value="0" footer="No invitations sent yet" />
-        <StatCard label="Guests attending" value="0" footer="No replies yet" />
+        <StatCard
+          label="Replied"
+          value={(rsvp?.overall.complete ?? 0).toLocaleString('en-IN')}
+          footer={
+            rsvp && rsvp.overall.sent > 0
+              ? `of ${rsvp.overall.households.toLocaleString('en-IN')} ${rsvp.overall.households === 1 ? 'family' : 'families'} · ${rsvp.overall.partial} partly replied`
+              : 'No invitations sent yet'
+          }
+        />
+        <StatCard
+          label="Guests attending"
+          value={busiest ? busiest.t.attendingHeadcount.toLocaleString('en-IN') : '0'}
+          footer={busiest ? `Most at one event: ${busiest.name}` : 'No replies yet'}
+        />
         <StatCard label="Total spent" value="₹0" footer="No expenses logged yet" />
       </section>
 
@@ -581,10 +672,7 @@ export function WeddingDashboard({
             />
           </DashCard>
           <DashCard title="RSVP by event" action={<RsvpLegend />}>
-            <EmptyState
-              icon={Users}
-              text="Who's attending each event will show here once invitations go out."
-            />
+            <RsvpByEvent weddingId={weddingId} events={events} summary={rsvp} />
           </DashCard>
         </div>
 

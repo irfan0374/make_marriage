@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { eventStatuses, isInDateOrder, sortByDate } from '@/features/events/event-timing';
 import { useEvents, useReorderEvents } from '@/features/events/hooks';
 import { useHouseholdSummary } from '@/features/guests/hooks';
+import { useRsvpSummary } from '@/features/invitations/hooks';
 import { useWedding } from '@/features/weddings/hooks';
 import { EVENT_PRESETS } from '@/modules/events/events.schemas';
 import type { EventPresetKey, WeddingEvent } from '@/modules/events/events.types';
@@ -96,6 +97,7 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
   const { data: events, error, isPending, refetch } = useEvents(weddingId);
   const reorder = useReorderEvents(weddingId);
   const { data: guestTotals } = useHouseholdSummary(weddingId);
+  const { data: replies } = useRsvpSummary(weddingId);
   const [panel, setPanel] = useState<PanelMode | null>(null);
   const [quickAdd, setQuickAdd] = useState(false);
   const [deleting, setDeleting] = useState<WeddingEvent | null>(null);
@@ -135,6 +137,12 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
   const archived = wedding?.status === 'archived';
   const canReorder = events.length > 1 && !reorder.isPending && !archived;
 
+  const invitedTo = (eventId: string) => {
+    const totals = guestTotals?.events.find((t) => t.eventId === eventId);
+    if (!totals) return undefined;
+    const reply = replies?.events.find((t) => t.eventId === eventId);
+    return { ...totals, attending: reply?.attendingHeadcount };
+  };
   const nameOf = (id: UniqueIdentifier) => events.find((e) => e.id === id)?.name ?? 'Event';
   const positionOf = (id: UniqueIdentifier) => events.findIndex((e) => e.id === id) + 1;
 
@@ -264,7 +272,7 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
                     event={event}
                     number={index + 1}
                     status={statuses.get(event.id)}
-                    invited={guestTotals?.events.find((t) => t.eventId === event.id)}
+                    invited={invitedTo(event.id)}
                     editing={editingId === event.id}
                     canDrag={canReorder}
                     onEdit={() => openPanel({ kind: 'edit', event })}

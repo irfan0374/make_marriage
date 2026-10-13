@@ -15,5 +15,8 @@ export {
   requireWritableWedding,
   lockWeddingTasks,
   ensureGuestTags,
+  getWeddingRecord,
+  saveInvitationSettings,
+  DEFAULT_INVITATION_MESSAGE,
 } from './weddings.service';
-export type { Me, Wedding, WeddingSummary } from './weddings.types';
+export type { Me, Wedding, WeddingDocument, WeddingSummary } from './weddings.types';

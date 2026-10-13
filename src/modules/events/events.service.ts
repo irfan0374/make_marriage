@@ -168,6 +168,14 @@ export async function updateEvent(
   };
 }
 
+/**
+ * Every event of a wedding in the couple's order, for server pages that have already checked
+ * access another way (the guest invitation page, by its personal link).
+ */
+export async function listWeddingEvents(weddingId: WeddingId): Promise<WeddingEvent[]> {
+  return (await listEventDocs(weddingId)).map(toWeddingEvent);
+}
+
 /** One event of this wedding, or `null` (also for another wedding's event id). */
 export async function getEvent(
   weddingId: WeddingId,

@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { firstName, greetingFor, setupSteps } from './setup-steps';
+import { firstName, greetingFor, setupSteps, type SetupFacts } from './setup-steps';
+
+const facts = (overrides: Partial<SetupFacts> = {}): SetupFacts => ({
+  weddingId: 'w1',
+  teamSize: 1,
+  eventCount: 0,
+  guestCount: 0,
+  hasInvitationCard: false,
+  sentCount: 0,
+  ...overrides,
+});
 
 describe('setupSteps', () => {
   it('lists the six steps, with only built features linked', () => {
-    const steps = setupSteps({ weddingId: 'w1', teamSize: 1, eventCount: 0, guestCount: 0 });
+    const steps = setupSteps(facts({}));
     expect(steps.map((s) => s.title)).toEqual([
       'Add events',
       'Add guests',
@@ -15,26 +25,32 @@ describe('setupSteps', () => {
     expect(steps.filter((s) => s.href).map((s) => s.href)).toEqual([
       '/app/w1/events',
       '/app/w1/guests',
+      '/app/w1/invitations',
+      '/app/w1/invitations',
       '/app/w1/team',
     ]);
     expect(steps.some((s) => s.done)).toBe(false);
   });
 
   it('counts the family step as done once someone has joined', () => {
-    const team = setupSteps({ weddingId: 'w1', teamSize: 2, eventCount: 0, guestCount: 0 }).find(
-      (s) => s.key === 'team',
-    );
+    const team = setupSteps(facts({ teamSize: 2 })).find((s) => s.key === 'team');
     expect(team?.done).toBe(true);
   });
 
   it('counts guests as done once a family is added', () => {
-    const steps = setupSteps({ weddingId: 'w1', teamSize: 1, eventCount: 0, guestCount: 1 });
+    const steps = setupSteps(facts({ guestCount: 1 }));
     expect(steps.find((s) => s.key === 'guests')?.done).toBe(true);
   });
 
   it('counts events as done once one is added', () => {
-    const steps = setupSteps({ weddingId: 'w1', teamSize: 1, eventCount: 1, guestCount: 0 });
+    const steps = setupSteps(facts({ eventCount: 1 }));
     expect(steps.find((s) => s.key === 'events')?.done).toBe(true);
+  });
+
+  it('counts the invitation steps from the card and sent families', () => {
+    const steps = setupSteps(facts({ hasInvitationCard: true, sentCount: 3 }));
+    expect(steps.find((s) => s.key === 'invitation')?.done).toBe(true);
+    expect(steps.find((s) => s.key === 'send')?.done).toBe(true);
   });
 });
 

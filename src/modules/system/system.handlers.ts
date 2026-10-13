@@ -1,7 +1,7 @@
 import 'server-only';
 import { AppError } from '@/lib/errors';
 import { defineHandler, ok } from '@/lib/http';
-import { getHealth } from './system.service';
+import { getHealth, runJobQueue } from './system.service';
 
 // GET /api/health (api-spec §21.4). Public; 503 when the database is unreachable.
 export const getHealthHandler = defineHandler({ route: '/api/health' }, async () => {
@@ -16,4 +16,11 @@ export const apiNotFoundHandler = defineHandler(
   async () => {
     throw new AppError('NOT_FOUND');
   },
+);
+
+// POST /api/cron/process-jobs (api-spec §21.1). Called every minute by the scheduler with the
+// cron secret; not a browser, so no origin check.
+export const processJobsHandler = defineHandler(
+  { route: '/api/cron/process-jobs', originCheck: false },
+  async ({ request }) => ok(await runJobQueue(request.headers.get('authorization'))),
 );

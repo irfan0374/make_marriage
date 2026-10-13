@@ -1,6 +1,9 @@
 'use client';
 
 import { Mail, NotebookPen, Pencil, Phone, X } from 'lucide-react';
+import { useState } from 'react';
+import { FamilyInvitation } from '@/features/invitations/components/family-invitation';
+import { RecordReplyDialog } from '@/features/invitations/components/record-reply-dialog';
 import type { WeddingEvent } from '@/modules/events/events.types';
 import type { Household } from '@/modules/households/households.types';
 import { formatDate, todayIn } from '@/shared/dates';
@@ -8,7 +11,7 @@ import { formatPhone } from '@/shared/phone';
 import { dateTile } from '@/features/events/event-timing';
 
 // The family details panel beside the list (Stitch "Guests"): who they are, how to reach them,
-// and the events they're invited to. Replies and the invitation link arrive with Invitations.
+// their personal invitation link, and the events they're invited to with each reply.
 
 const SIDE_LABEL = { bride: 'Bride side', groom: 'Groom side' } as const;
 const box = 'bg-background rounded-input p-4';
@@ -29,19 +32,42 @@ export function SideChip({ side }: { side: Household['side'] }) {
   );
 }
 
+function ReplyText({ reply }: { reply: Household['rsvps'][number] | undefined }) {
+  if (!reply) return <span className="text-pending-text">Waiting for reply</span>;
+  const by = reply.recordedBy === 'host' ? ' · recorded by host' : '';
+  return reply.status === 'attending' ? (
+    <span className="text-success-text">
+      Attending · {reply.attendingCount}
+      {by}
+    </span>
+  ) : (
+    <span>Not attending{by}</span>
+  );
+}
+
 export function FamilyDetails({
+  weddingId,
+  coupleNames,
+  readOnly,
   household,
   events,
   timeZone,
   onEdit,
   onClose,
 }: {
+  weddingId: string;
+  coupleNames: string;
+  /** An archived wedding: nothing can be changed. */
+  readOnly: boolean;
   household: Household;
   events: WeddingEvent[];
   timeZone: string;
   onEdit: () => void;
   onClose: () => void;
 }) {
+  const [recording, setRecording] = useState<{ event: WeddingEvent; headcount: number } | null>(
+    null,
+  );
   const invited = household.invitedEvents
     .map((i) => ({ ...i, event: events.find((e) => e.id === i.eventId) }))
     .filter((i): i is typeof i & { event: WeddingEvent } => Boolean(i.event));
@@ -123,6 +149,13 @@ export function FamilyDetails({
         )}
       </section>
 
+      <FamilyInvitation
+        weddingId={weddingId}
+        household={household}
+        coupleNames={coupleNames}
+        readOnly={readOnly}
+      />
+
       {household.notes && (
         <section className={box}>
           <h3 className={`${label} flex items-center justify-between`}>
@@ -135,7 +168,7 @@ export function FamilyDetails({
 
       <section>
         <h3 className={`${label} flex items-center justify-between`}>
-          Event invites
+          Event invites &amp; replies
           <span className="text-pending-text tracking-normal normal-case">
             {invited.length} {invited.length === 1 ? 'event' : 'events'}
           </span>
@@ -146,6 +179,7 @@ export function FamilyDetails({
           <ul className="space-y-2">
             {invited.map(({ event, headcount }) => {
               const tile = dateTile(event.date);
+              const reply = household.rsvps.find((r) => r.eventId === event.id);
               return (
                 <li key={event.id} className={`${box} flex items-center gap-3 py-3`}>
                   <span className="bg-primary-tint text-primary flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
@@ -156,7 +190,25 @@ export function FamilyDetails({
                     <p className="text-text-muted text-xs">
                       {formatDate(event.date).slice(0, -5)} · {headcount} invited
                     </p>
+                    <p className="text-text-muted mt-0.5 text-xs font-medium">
+                      <ReplyText reply={reply} />
+                    </p>
+                    {reply?.note && (
+                      <p className="text-text-muted mt-0.5 truncate text-xs italic">
+                        “{reply.note}”
+                      </p>
+                    )}
                   </div>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => setRecording({ event, headcount })}
+                      aria-label={`Record reply for ${event.name}`}
+                      className="text-primary hover:bg-primary-tint shrink-0 rounded-full px-2.5 py-1.5 text-xs font-semibold"
+                    >
+                      {reply ? 'Change' : 'Record'}
+                    </button>
+                  )}
                 </li>
               );
             })}
@@ -164,15 +216,21 @@ export function FamilyDetails({
         )}
       </section>
 
-      <p className="text-text-muted border-border/60 border-t pt-4 text-xs">
-        Their invitation link and replies appear here once invitations are ready.
-        {household.createdBy && (
-          <span className="mt-1 block">
-            Added by {household.createdBy.name} on{' '}
-            {formatDate(todayIn(timeZone, new Date(household.createdAt)))}
-          </span>
-        )}
-      </p>
+      {household.createdBy && (
+        <p className="text-text-muted border-border/60 border-t pt-4 text-xs">
+          Added by {household.createdBy.name} on{' '}
+          {formatDate(todayIn(timeZone, new Date(household.createdAt)))}
+        </p>
+      )}
+      {recording && (
+        <RecordReplyDialog
+          weddingId={weddingId}
+          household={household}
+          event={recording.event}
+          invited={recording.headcount}
+          onClose={() => setRecording(null)}
+        />
+      )}
     </aside>
   );
 }
