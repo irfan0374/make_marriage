@@ -58,3 +58,37 @@ export const deleteHousehold = (weddingId: string, id: string) =>
   apiFetch<void>(`${base(weddingId)}/${id}`, { method: 'DELETE' });
 export const bulkHouseholds = (weddingId: string, input: BulkHouseholdsInput) =>
   postJson<{ updated: number }>(`${base(weddingId)}/bulk`, input);
+
+export const importGuestRows = (
+  weddingId: string,
+  rows: unknown[],
+  dryRun: boolean,
+  createMissingTags: boolean,
+) =>
+  postJson<import('@/modules/households/households.types').HouseholdImportResult>(
+    `${base(weddingId)}/import`,
+    { rows, dryRun, createMissingTags },
+  );
+
+export async function downloadGuestCsv(
+  weddingId: string,
+  kind: 'export' | 'import-template',
+  query = new URLSearchParams(),
+) {
+  const filters = new URLSearchParams(query);
+  filters.delete('cursor');
+  filters.delete('limit');
+  const response = await fetch(`${base(weddingId)}/${kind}?${filters}`, {
+    credentials: 'same-origin',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message ?? 'Could not download the file. Please try again.');
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = kind === 'export' ? 'guest-families.csv' : 'guest-import-template.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

@@ -6,7 +6,8 @@ import { AppError } from '@/lib/errors';
 import { toObjectId, type WeddingId } from '@/lib/ids';
 import { randomToken } from '@/lib/tokens';
 import { getUsersByIds, type PublicUser } from '@/modules/auth';
-import { getEvent } from '@/modules/events';
+import { getEvent, listEvents } from '@/modules/events';
+import { makeCsv } from '@/shared/csv';
 import { isMember, resolveWeddingContext, type WeddingContext } from '@/modules/members';
 import {
   ensureGuestTags,
@@ -28,7 +29,13 @@ import {
   updateHousehold,
   updateHouseholdsEach,
 } from './households.repository';
-import { normalizePhone } from './households.schemas';
+import {
+  normalizePhone,
+  importHouseholdRowSchema,
+  type importHouseholdsSchema,
+} from './households.schemas';
+import type { z } from 'zod';
+import type { HouseholdImportResult } from './households.types';
 import type {
   BulkHouseholdsInput,
   CreateHouseholdInput,
@@ -174,7 +181,7 @@ async function resolveInvitedEvents(
   weddingId: WeddingId,
   events: { eventId: string; headcount?: number }[],
   headcount: number,
-  session: ClientSession,
+  session: ClientSession | undefined,
 ) {
   const resolved: { eventId: ObjectId; headcount: number }[] = [];
   for (const event of events) {
@@ -318,6 +325,7 @@ export async function createHousehold(
   weddingId: ObjectId,
   input: CreateHouseholdInput,
   now = new Date(),
+  importing?: { batchId: string; createMissingTags: boolean },
 ): Promise<Household> {
   const doc = await writeGuests(token, weddingId, async ({ context, side, wedding, session }) => {
     if ((await countAllHouseholds(context.weddingId, session)) >= MAX_HOUSEHOLDS_PER_WEDDING) {
@@ -330,6 +338,22 @@ export async function createHousehold(
       headcount,
       session,
     );
+    if (
+      importing &&
+      !importing.createMissingTags &&
+      input.tags.some(
+        (tag) => !wedding.guestTags.some((known) => known.toLowerCase() === tag.toLowerCase()),
+      )
+    ) {
+      throw fieldError(
+        'tags',
+        'This tag does not exist. Enable creating new tags or choose an existing tag.',
+      );
+    }
+    const resolvedSide = resolveSide(input.side, null, {
+      sidesEnabled: wedding.sidesEnabled,
+      scope: side,
+    });
     const tags = await ensureGuestTags(wedding, input.tags, session);
     const base = {
       _id: new ObjectId(),
@@ -338,7 +362,7 @@ export async function createHousehold(
       headcount,
       email: input.email,
       phone: input.phone,
-      side: resolveSide(input.side, null, { sidesEnabled: wedding.sidesEnabled, scope: side }),
+      side: resolvedSide,
       tags,
       notes: input.notes,
     };
@@ -359,7 +383,7 @@ export async function createHousehold(
         lastRemindedAt: null,
         reminderCount: 0,
         remindersOptOut: false,
-        importBatchId: null,
+        importBatchId: importing?.batchId ?? null,
         createdByUserId: context.userId,
         editedByUserId: context.userId,
         editedAt: now,
@@ -571,4 +595,157 @@ export async function removeEventFromHouseholds(
     })),
     session,
   );
+}
+
+/** Dry-run never writes; actual rows use the same locked creation path as Add family. */
+export async function importHouseholds(
+  token: string | undefined,
+  weddingId: ObjectId,
+  input: z.output<typeof importHouseholdsSchema>,
+): Promise<HouseholdImportResult> {
+  const { context, side, sidesEnabled } = await readerOf(token, weddingId);
+  const wedding = await requireWritableWedding(context.weddingId);
+  const result: HouseholdImportResult = {
+    importBatchId: input.dryRun ? null : `imp_${new ObjectId().toHexString()}`,
+    created: 0,
+    failed: 0,
+    valid: 0,
+    errors: [],
+    possibleDuplicates: [],
+    duplicateRows: [],
+  };
+  const knownTags = new Set(wedding.guestTags.map((tag) => tag.toLowerCase()));
+  const seen = new Map<string, number>();
+  const capacity = MAX_HOUSEHOLDS_PER_WEDDING - (await countAllHouseholds(context.weddingId));
+  for (let i = 0; i < input.rows.length; i++) {
+    const row = i + 1;
+    const parsed = importHouseholdRowSchema.safeParse(input.rows[i]);
+    if (!parsed.success) {
+      result.failed++;
+      result.errors.push(
+        ...parsed.error.issues.map((issue) => ({
+          row,
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      );
+      continue;
+    }
+    const values = parsed.data;
+    try {
+      resolveSide(values.side, null, { sidesEnabled, scope: side });
+      await resolveInvitedEvents(
+        context.weddingId,
+        values.invitedEvents,
+        values.headcount ?? Math.max(values.members.length, 1),
+        undefined,
+      );
+      const newTags = values.tags
+        .map((tag) => tag.toLowerCase())
+        .filter((tag) => !knownTags.has(tag));
+      if (!input.createMissingTags && newTags.length)
+        throw fieldError('tags', 'Choose existing tags or enable creating new tags.');
+      if (knownTags.size + newTags.length > 50)
+        throw fieldError('tags', 'A wedding can have at most 50 tags');
+      if (input.dryRun && result.valid >= capacity) throw new AppError('HOUSEHOLD_LIMIT_REACHED');
+      const duplicates = await findPossibleDuplicates(token, weddingId, {
+        displayName: values.displayName,
+        email: values.email ?? undefined,
+        phone: values.phone ?? undefined,
+      });
+      result.possibleDuplicates.push(
+        ...duplicates.map((d) => ({ row, existingHouseholdId: d.id })),
+      );
+      const keys = [
+        `name:${values.displayName.toLowerCase()}`,
+        ...(values.email ? [`email:${values.email}`] : []),
+        ...(values.phone ? [`phone:${values.phone}`] : []),
+      ];
+      const previous = keys.map((key) => seen.get(key)).find((match) => match !== undefined);
+      if (previous !== undefined) result.duplicateRows.push({ row, matchesRow: previous });
+      if (!input.dryRun) {
+        await createHousehold(token, weddingId, values, new Date(), {
+          batchId: result.importBatchId!,
+          createMissingTags: input.createMissingTags,
+        });
+        result.created++;
+      }
+      for (const tag of newTags) knownTags.add(tag);
+      for (const key of keys) if (!seen.has(key)) seen.set(key, row);
+      result.valid++;
+    } catch (error) {
+      if (
+        !(error instanceof AppError) ||
+        !['VALIDATION_ERROR', 'HOUSEHOLD_LIMIT_REACHED'].includes(error.code)
+      )
+        throw error;
+      result.failed++;
+      const details =
+        Array.isArray(error.details) && error.details.length
+          ? error.details
+          : [{ path: '', message: error.message }];
+      result.errors.push(
+        ...details.map((detail) => ({ row, path: detail.path, message: detail.message })),
+      );
+    }
+  }
+  return result;
+}
+
+/** Export all matching families, not merely the visible page, using the list's side checks. */
+export async function exportHouseholds(
+  token: string | undefined,
+  weddingId: ObjectId,
+  query: ListHouseholdsQuery,
+): Promise<string> {
+  const events = await listEvents(token, weddingId);
+  const all: Household[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await listHouseholds(token, weddingId, { ...query, limit: 100, cursor });
+    all.push(...page.households);
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor && all.length < MAX_HOUSEHOLDS_PER_WEDDING);
+  return makeCsv([
+    [
+      'displayName',
+      'members',
+      'headcount',
+      'email',
+      'phone',
+      'side',
+      'tags',
+      'notes',
+      'eventIds',
+      'inviteStatus',
+      'responseStatus',
+      ...events.flatMap((event) => [
+        `${event.name} (${event.id}) invited`,
+        `${event.name} (${event.id}) reply`,
+        `${event.name} (${event.id}) attending`,
+      ]),
+    ],
+    ...all.map((h) => [
+      h.displayName,
+      h.members.map((m) => m.name).join('; '),
+      h.headcount,
+      h.email,
+      h.phone,
+      h.side,
+      h.tags.join('; '),
+      h.notes,
+      h.invitedEvents.map((event) => event.eventId).join('; '),
+      h.inviteStatus,
+      h.responseStatus,
+      ...events.flatMap((event) => {
+        const invite = h.invitedEvents.find((e) => e.eventId === event.id);
+        const reply = h.rsvps.find((e) => e.eventId === event.id);
+        return [
+          invite?.headcount ?? '',
+          invite ? (reply?.status ?? 'pending') : '',
+          reply?.attendingCount ?? '',
+        ];
+      }),
+    ]),
+  ]);
 }

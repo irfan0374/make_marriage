@@ -1,4 +1,6 @@
 'use client';
+import { downloadGuestCsv } from '@/features/guests/api';
+import { ImportGuestsDialog } from './import-guests-dialog';
 
 import {
   CalendarPlus,
@@ -109,7 +111,14 @@ function FilterSelect({
   );
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void; weddingId: string }) {
+function EmptyState({
+  onAdd,
+  onImport,
+}: {
+  onAdd: () => void;
+  onImport: () => void;
+  weddingId: string;
+}) {
   return (
     <section className={cn(card, 'mx-auto mt-4 max-w-2xl px-6 py-12 text-center sm:px-10')}>
       <span className="bg-primary-tint text-primary mx-auto flex size-16 items-center justify-center rounded-full">
@@ -125,14 +134,10 @@ function EmptyState({ onAdd }: { onAdd: () => void; weddingId: string }) {
           <UserPlus aria-hidden className="size-4" />
           Add family
         </Button>
-        <span
-          aria-disabled="true"
-          className="border-border text-text-muted flex h-12 cursor-default items-center gap-2 rounded-full border px-5 text-sm opacity-70"
-        >
+        <Button variant="outline" className="h-12 gap-2 px-6" onClick={onImport}>
           <Upload aria-hidden className="size-4" />
-          Import from CSV or Excel
-          <SoonTag />
-        </span>
+          Import CSV or Excel
+        </Button>
       </div>
     </section>
   );
@@ -151,6 +156,8 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
   const [deleting, setDeleting] = useState<Household | null>(null);
   const [bulk, setBulk] = useState<'events' | 'tags' | 'delete' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Search as you type, a moment after the last key.
   useEffect(() => {
@@ -246,18 +253,33 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <span
-            aria-disabled="true"
-            className="border-border text-text-muted flex h-10 cursor-default items-center gap-2 rounded-full border px-4 text-sm opacity-70"
+          <Button
+            variant="outline"
+            disabled={exporting}
+            className="h-10 gap-2 px-4"
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await downloadGuestCsv(weddingId, 'export', query);
+              } catch (e) {
+                setNotice(e instanceof Error ? e.message : 'Export failed. Please try again.');
+              } finally {
+                setExporting(false);
+              }
+            }}
           >
-            <Download aria-hidden className="size-4" /> Export <SoonTag />
-          </span>
-          <span
-            aria-disabled="true"
-            className="border-border text-text-muted flex h-10 cursor-default items-center gap-2 rounded-full border px-4 text-sm opacity-70"
+            <Download aria-hidden className="size-4" />
+            {exporting ? 'Exporting…' : 'Export CSV'}
+          </Button>
+          <Button
+            variant="outline"
+            className="h-10 gap-2 px-4"
+            disabled={wedding.status === 'archived'}
+            onClick={() => setImporting(true)}
           >
-            <Upload aria-hidden className="size-4" /> Import CSV <SoonTag />
-          </span>
+            <Upload aria-hidden className="size-4" />
+            Import guests
+          </Button>
           <Button className="h-10 gap-2 px-5" onClick={() => setModal({ kind: 'new' })}>
             <UserPlus aria-hidden className="size-4" />
             Add family
@@ -291,7 +313,11 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
 
       {summary.households === 0 && !filtered ? (
         <>
-          <EmptyState weddingId={weddingId} onAdd={() => setModal({ kind: 'new' })} />
+          <EmptyState
+            weddingId={weddingId}
+            onAdd={() => setModal({ kind: 'new' })}
+            onImport={() => setImporting(true)}
+          />
           {eventList.length === 0 && (
             <p className="text-text-muted mt-6 text-center text-sm">
               Tip: add your events first so you can choose them for each family.{' '}
@@ -760,6 +786,19 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
             setNotice(`${families(selected.size)} deleted.`);
             setSelected(new Map());
             setDetailsId(null);
+          }}
+        />
+      )}
+      {importing && (
+        <ImportGuestsDialog
+          weddingId={weddingId}
+          events={eventList}
+          sideScope={scope}
+          onClose={() => setImporting(false)}
+          onImported={(created) => {
+            setNotice(`${created} families imported.`);
+            setOffset(0);
+            setSelected(new Map());
           }}
         />
       )}

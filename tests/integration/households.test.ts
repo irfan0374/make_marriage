@@ -1,3 +1,7 @@
+import { POST as importGuests } from '@/app/api/weddings/[weddingId]/households/import/route';
+import { GET as exportGuests } from '@/app/api/weddings/[weddingId]/households/export/route';
+import { GET as template } from '@/app/api/weddings/[weddingId]/households/import-template/route';
+import { parseCsv } from '@/shared/csv';
 import { ObjectId } from 'mongodb';
 import { NextRequest } from 'next/server';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -515,5 +519,146 @@ describe('guest families (Atlas test database)', () => {
     expect((await list(weddingId, admin.cookie)).status).toBe(200);
     expect((await add(weddingId, admin.cookie, sharma)).status).toBe(409);
     expect((await patch(weddingId, family.id, admin.cookie, { notes: 'x' })).status).toBe(409);
+  });
+});
+
+describe('guest import and CSV export', () => {
+  it('dry-runs without writes or new tags, then saves valid rows despite errors and records the batch', async () => {
+    const admin = await newUser('Importer');
+    const weddingId = await newWedding(admin.cookie);
+    const eventId = await newEvent(weddingId, admin.cookie, 'Haldi');
+    const input = {
+      rows: [
+        {
+          displayName: 'Imported family',
+          members: ['Anu', 'Ravi'],
+          phone: '98765 43210',
+          side: 'bride',
+          tags: ['Imported'],
+          eventIds: [eventId],
+        },
+        { displayName: '', side: 'bride' },
+      ],
+      createMissingTags: true,
+      dryRun: true,
+    };
+    const run = (body: unknown) =>
+      importGuests(
+        request('POST', `${base(weddingId)}/import`, admin.cookie, body),
+        params({ weddingId }),
+      );
+    const preview = await run(input);
+    expect(preview.status).toBe(200);
+    expect((await preview.json()).data).toMatchObject({
+      created: 0,
+      valid: 1,
+      failed: 1,
+      importBatchId: null,
+    });
+    expect((await totals(weddingId, admin.cookie)).households).toBe(0);
+    const untouched = await getDb()
+      .collection('weddings')
+      .findOne({ _id: ObjectId.createFromHexString(weddingId) });
+    expect(untouched?.guestTags).not.toContain('Imported');
+    const saved = (await (await run({ ...input, dryRun: false })).json()).data;
+    expect(saved).toMatchObject({ created: 1, valid: 1, failed: 1 });
+    expect(saved.errors[0].row).toBe(2);
+    const doc = await getDb()
+      .collection('households')
+      .findOne({ weddingId: ObjectId.createFromHexString(weddingId) });
+    expect(doc?.importBatchId).toBe(saved.importBatchId);
+    expect(doc?.headcount).toBe(2);
+    expect(doc?.phone).toBe('+919876543210');
+    const repeated = (await (await run({ ...input, rows: [input.rows[0], input.rows[0]] })).json())
+      .data;
+    expect(repeated.possibleDuplicates.length).toBeGreaterThan(0);
+    expect(repeated.duplicateRows).toEqual([{ row: 2, matchesRow: 1 }]);
+  });
+
+  it('keeps import/export side-scoped, honors filters, and hides foreign weddings', async () => {
+    const admin = await newUser('Exporter');
+    const weddingId = await newWedding(admin.cookie);
+    await add(weddingId, admin.cookie, { displayName: 'Bride private', side: 'bride' });
+    await add(weddingId, admin.cookie, { displayName: 'Groom visible', side: 'groom' });
+    const manager = await newManager(weddingId, admin.cookie, 'groom');
+    const exported = await exportGuests(
+      request('GET', `${base(weddingId)}/export`, manager.cookie),
+      params({ weddingId }),
+    );
+    expect(exported.status).toBe(200);
+    const csv = await exported.text();
+    expect(csv).toContain('Groom visible');
+    expect(csv).not.toContain('Bride private');
+    expect(csv).not.toContain('token');
+    const filtered = await exportGuests(
+      request('GET', `${base(weddingId)}/export?side=bride`, manager.cookie),
+      params({ weddingId }),
+    );
+    expect(parseCsv(await filtered.text())).toHaveLength(1);
+    const scoped = await importGuests(
+      request('POST', `${base(weddingId)}/import`, manager.cookie, {
+        dryRun: false,
+        rows: [{ displayName: 'Wrong side', side: 'bride' }, { displayName: 'My side' }],
+      }),
+      params({ weddingId }),
+    );
+    expect((await scoped.json()).data).toMatchObject({ created: 1, failed: 1 });
+    const stranger = await newUser('StrangerImport');
+    expect(
+      (
+        await exportGuests(
+          request('GET', `${base(weddingId)}/export`, stranger.cookie),
+          params({ weddingId }),
+        )
+      ).status,
+    ).toBe(404);
+    const t = await template(
+      request('GET', `${base(weddingId)}/import-template`, manager.cookie),
+      params({ weddingId }),
+    );
+    expect(await t.text()).toContain('groom');
+  });
+
+  it('rejects cross-wedding events, missing tags when disabled, and writes to archived weddings', async () => {
+    const admin = await newUser('StrictImport');
+    const weddingId = await newWedding(admin.cookie);
+    const foreign = await newUser('ForeignImport');
+    const foreignWedding = await newWedding(foreign.cookie);
+    const eventId = await newEvent(foreignWedding, foreign.cookie, 'Foreign event');
+    const body = {
+      rows: [
+        { displayName: 'Foreign event family', side: 'bride', eventIds: [eventId] },
+        { displayName: 'New tag family', side: 'bride', tags: ['Unknown'] },
+      ],
+      createMissingTags: false,
+      dryRun: true,
+    };
+    const res = await importGuests(
+      request('POST', `${base(weddingId)}/import`, admin.cookie, body),
+      params({ weddingId }),
+    );
+    expect((await res.json()).data).toMatchObject({ valid: 0, failed: 2 });
+    await getDb()
+      .collection('weddings')
+      .updateOne(
+        { _id: ObjectId.createFromHexString(weddingId) },
+        { $set: { status: 'archived' } },
+      );
+    expect(
+      (
+        await importGuests(
+          request('POST', `${base(weddingId)}/import`, admin.cookie, body),
+          params({ weddingId }),
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await exportGuests(
+          request('GET', `${base(weddingId)}/export`, admin.cookie),
+          params({ weddingId }),
+        )
+      ).status,
+    ).toBe(200);
   });
 });

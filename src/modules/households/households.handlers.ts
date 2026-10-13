@@ -1,3 +1,4 @@
+import { makeCsv } from '@/shared/csv';
 import 'server-only';
 import { z } from 'zod';
 import { created, defineHandler, list, noContent, ok } from '@/lib/http';
@@ -5,6 +6,7 @@ import { toObjectId } from '@/lib/ids';
 import { readSessionToken } from '@/modules/auth';
 import { objectIdString } from '@/shared/validation';
 import {
+  importHouseholdsSchema,
   bulkHouseholdsSchema,
   createHouseholdSchema,
   duplicatesQuerySchema,
@@ -12,6 +14,8 @@ import {
   updateHouseholdSchema,
 } from './households.schemas';
 import {
+  importHouseholds,
+  exportHouseholds,
   bulkUpdateHouseholds,
   createHousehold,
   deleteHousehold,
@@ -128,5 +132,76 @@ export const deleteHouseholdHandler = defineHandler(
       toObjectId(params.householdId),
     );
     return noContent();
+  },
+);
+
+function csvDownload(csv: string, filename: string) {
+  return new Response(csv, {
+    headers: {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': `attachment; filename="${filename}"`,
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+    },
+  });
+}
+
+export const importHouseholdsHandler = defineHandler(
+  {
+    route: '/api/weddings/[weddingId]/households/import',
+    params: weddingParams,
+    body: importHouseholdsSchema,
+  },
+  async ({ request, params, body }) =>
+    ok(await importHouseholds(readSessionToken(request), toObjectId(params.weddingId), body)),
+);
+
+export const exportHouseholdsHandler = defineHandler(
+  {
+    route: '/api/weddings/[weddingId]/households/export',
+    params: weddingParams,
+    query: listHouseholdsQuerySchema,
+  },
+  async ({ request, params, query }) =>
+    csvDownload(
+      await exportHouseholds(readSessionToken(request), toObjectId(params.weddingId), query),
+      'guest-families.csv',
+    ),
+);
+
+export const importTemplateHandler = defineHandler(
+  { route: '/api/weddings/[weddingId]/households/import-template', params: weddingParams },
+  async ({ request, params }) => {
+    const summary = await getHouseholdSummary(
+      readSessionToken(request),
+      toObjectId(params.weddingId),
+    );
+    return csvDownload(
+      makeCsv([
+        [
+          'displayName',
+          'members',
+          'headcount',
+          'email',
+          'phone',
+          'side',
+          'tags',
+          'notes',
+          'eventIds',
+        ],
+        [
+          'Example family',
+          'Anu; Ravi',
+          2,
+          'family@example.com',
+          '+919876543210',
+          summary.sideScope ?? 'bride',
+          'Family',
+          '',
+          '',
+        ],
+      ]),
+      'guest-import-template.csv',
+    );
   },
 );

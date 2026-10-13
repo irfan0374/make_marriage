@@ -107,3 +107,13 @@ export interface PossibleDuplicate {
   /** What matched. */
   reason: 'phone' | 'email' | 'name';
 }
+
+export interface HouseholdImportResult {
+  importBatchId: string | null;
+  created: number;
+  failed: number;
+  valid: number;
+  errors: { row: number; path: string; message: string }[];
+  possibleDuplicates: { row: number; existingHouseholdId: string }[];
+  duplicateRows: { row: number; matchesRow: number }[];
+}

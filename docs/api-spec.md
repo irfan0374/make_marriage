@@ -764,8 +764,10 @@ Request:
   "dryRun": false
 }
 ```
-- Maximum 1,000 rows per request.
-- `dryRun: true` validates without saving, for the preview screen.
+- Maximum 1,000 rows per request. Row numbers are 1-based within `rows` (the UI adds 1 for the file header). Optional `notes` is imported as host-only text. Duplicate matches within the file are returned as `duplicateRows: [{ row, matchesRow }]` alongside matches to saved families.
+- The browser accepts CSV and `.xlsx` up to 5 MB, reads the first worksheet, and maps semicolon-separated members, tags and event names/IDs. Saves are sent in batches of 50 rows.
+- `dryRun: true` (default) validates without saving or creating tags, for the preview screen. The response also includes `valid`, the number of rows that passed validation. `importBatchId` is `null` for a dry run.
+- `createMissingTags: false` rejects rows with unknown tags. Manager side limits, event ownership, family/tag limits and archived-wedding restrictions apply on the server.
 - Valid rows are saved even if some rows fail.
 
 Response `200`:
@@ -806,7 +808,7 @@ Request:
 Maximum 500 households per request. Response `200`: `{ "data": { "updated": 2 } }`
 
 ### 9.9 `GET /api/weddings/{weddingId}/households/export`
-**Access:** Member (side-scoped). Same filters as the list. Returns `text/csv` with one row per household and one attending column per event.
+**Access:** Member (side-scoped). Same filters as the list. Returns `text/csv` with one row per household and invited-count, reply-status and attending-count columns per event. Includes invite and response status, excludes personal invitation tokens. Exports all matching rows, ignoring paging. Formula-looking text is escaped for spreadsheet safety.
 
 ### 9.10 `POST /api/weddings/{weddingId}/households/{householdId}/regenerate-link`
 **Access:** Member (side-scoped). Issues a new token. The old link stops working immediately.

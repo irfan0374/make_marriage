@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  importHouseholdsSchema,
+  importHouseholdRowSchema,
   bulkHouseholdsSchema,
   createHouseholdSchema,
   listHouseholdsQuerySchema,
@@ -112,5 +114,27 @@ describe('listHouseholdsQuerySchema and bulkHouseholdsSchema', () => {
     expect(bulkHouseholdsSchema.safeParse({ action: 'delete', householdIds: [] }).success).toBe(
       false,
     );
+  });
+});
+
+describe('guest import requests', () => {
+  it('defaults to dry-run and bounds the request to 1,000 independently validated rows', () => {
+    expect(importHouseholdsSchema.parse({ rows: [{}, null] })).toMatchObject({
+      dryRun: true,
+      createMissingTags: true,
+    });
+    expect(importHouseholdsSchema.safeParse({ rows: Array(1001).fill({}) }).success).toBe(false);
+  });
+  it('converts member strings and event IDs to the existing family schema', () => {
+    expect(
+      importHouseholdRowSchema.parse({
+        displayName: 'Khan',
+        members: [' Anu ', ' '],
+        eventIds: [id],
+      }),
+    ).toMatchObject({ members: [{ name: 'Anu' }], invitedEvents: [{ eventId: id.toLowerCase() }] });
+    expect(
+      importHouseholdRowSchema.safeParse({ displayName: 'Khan', eventIds: [id, id] }).success,
+    ).toBe(false);
   });
 });

@@ -40,8 +40,10 @@ Phase 1 (Core). **Auth step 1a, onboarding, team, the dashboard shell, Events, T
 
 | 13 Oct 2026 | Guests manual QA | Browser-tested as a Manager with access to both sides: empty state, required name/side validation, member-driven headcount and manual override, phone formatting, tag creation and case-insensitive reuse, event headcount limits, duplicate phone/name/email warnings and re-checking, edit/save, selection and bulk invite/tag/delete, search and filters, event total cards, 51-family pagination, event-card totals, dashboard count/setup completion, and 390px phone layout. All 51 QA families removed with approval; the QA VIP tag remains. No application code changed during QA |
 
+| 13 Oct 2026 | Guest import/export implementation | CSV and Excel (.xlsx, first worksheet) upload with column mapping, server dry-run preview, duplicate warnings, row errors and partial success; 1,000 rows/file, browser file cap 5 MB, 50-row save batches. Downloadable CSV template and filtered CSV export of all matching families, invite/RSVP statuses and per-event invitation/reply/attending columns. Scoped Managers cannot import opposite-side families or export hidden families; archived weddings export read-only. ExcelJS dependency approved by the user. Lint and typecheck pass; 275 tests pass, including isolated Atlas import/export checks. CSV and XLSX mapping/dry-run previews and template/export/error-report downloads checked in the browser; no dev families saved during verification |
+
 ## Next
-1. **Guests: import and export** (GUEST-3, GUEST-8): CSV/Excel import with column mapping and preview, CSV export (needs an Excel parsing library: ask first).
+1. **Invitations and RSVP development:** use the approved Stitch designs; invitation setup, public guest replies, sending/tracking and RSVP CSV export. Guest import/export is ready for review.
 2. **Invitations and RSVP** (PRD §5.4): invitation setup (R2 upload), guest page and RSVP, sending and tracking; then the "Let families know?" email (api-spec §8.4, §10.8; Stitch screen ready) and "Attending" on event cards.
 3. **Task due-date reminders** (NOTIF-4): needs the background job runner (cron route + `jobs`).
 4. **Forgot and reset password** (auth step 1b) now that email works, plus `PATCH /api/me` and leave wedding (API §7.7).

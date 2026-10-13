@@ -185,3 +185,26 @@ export const bulkHouseholdsSchema = z.discriminatedUnion('action', [
     householdIds: z.array(objectIdString).min(1).max(MAX_BULK),
   }),
 ]);
+
+// Imports deliberately validate individual rows in the service, allowing partial success.
+export const importHouseholdsSchema = z.strictObject({
+  rows: z
+    .array(z.unknown())
+    .min(1, 'Choose at least one family')
+    .max(1000, 'Import at most 1,000 rows at a time'),
+  createMissingTags: z.boolean().default(true),
+  dryRun: z.boolean().default(true),
+});
+
+export const importHouseholdRowSchema = createHouseholdSchema
+  .omit({ members: true, invitedEvents: true })
+  .extend({
+    members: z.array(z.string().trim().max(MEMBER_NAME_MAX)).max(MAX_MEMBERS).default([]),
+    eventIds: z.array(objectIdString).max(50).default([]),
+  })
+  .transform(({ members, eventIds, ...rest }): z.input<typeof createHouseholdSchema> => ({
+    ...rest,
+    members: members.map((name) => ({ name })),
+    invitedEvents: eventIds.map((eventId) => ({ eventId })),
+  }))
+  .pipe(createHouseholdSchema);

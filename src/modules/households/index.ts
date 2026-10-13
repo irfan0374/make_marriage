@@ -2,6 +2,9 @@ import 'server-only';
 
 // Public API of the households module: guest families (api-spec §9).
 export {
+  importHouseholdsHandler,
+  exportHouseholdsHandler,
+  importTemplateHandler,
   bulkHouseholdsHandler,
   createHouseholdHandler,
   deleteHouseholdHandler,
