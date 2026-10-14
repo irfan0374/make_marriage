@@ -25,6 +25,7 @@ import {
   DuplicateSlugError,
   findSlugsLike,
   findWedding,
+  findActiveWeddingTimezones,
   findWeddingsWithAutoReminders,
   lockTaskWrites,
   findWeddingSummaries,
@@ -437,5 +438,20 @@ export async function listAutoReminderWeddings(): Promise<
       WEDDING_TIMEZONES.map((tz) => tz.value),
     ),
     rsvpDeadline: doc.invitation.rsvpDeadline!,
+  }));
+}
+
+/** Every active wedding and its timezone, for scheduled work at a local hour (PRD NOTIF-7). */
+export async function listActiveWeddingTimezones(): Promise<
+  { weddingId: WeddingId; timezone: string }[]
+> {
+  const docs = await findActiveWeddingTimezones();
+  return docs.map((doc) => ({
+    // Read straight from the weddings collection by the scheduled run itself.
+    weddingId: trustWeddingId(doc._id),
+    timezone: canonicalTimeZone(
+      doc.timezone,
+      WEDDING_TIMEZONES.map((tz) => tz.value),
+    ),
   }));
 }

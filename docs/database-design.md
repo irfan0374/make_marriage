@@ -685,7 +685,7 @@ db.households.aggregate([
 | `editedAt` | Date | | `createdAt` | When that change was made |
 | `source` | enum | ✅ | `"manual"` | `manual`, `starter` (from the starter checklist) |
 | `starterKey` | string | | `null` | Which starter checklist item this came from, so it isn't added twice |
-| `lastReminderFor` | string | | `null` | The `dueDate` a reminder was last sent for, so reminders aren't sent twice |
+| `lastReminderFor` | string | | `null` | The day (`YYYY-MM-DD`) this task was last included in a reminder email. Duplicates are prevented by the job's idempotency key (one email per person per day) |
 
 At most 500 tasks per wedding (api-spec §12.2).
 

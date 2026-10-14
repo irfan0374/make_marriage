@@ -15,6 +15,7 @@ const NOUNS: Record<BatchCounts['type'], [string, string]> = {
   'invitation.send': ['invitation', 'invitations'],
   'rsvp.remind': ['reminder', 'reminders'],
   'event.updated_notice': ['event update', 'event updates'],
+  'task.remind': ['task reminder', 'task reminders'],
 };
 
 const label = (batch: BatchCounts) => NOUNS[batch.type][batch.total === 1 ? 0 : 1];

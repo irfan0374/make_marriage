@@ -4,12 +4,21 @@ import { createElement } from 'react';
 import { withTransaction } from '@/lib/db/transaction';
 import { MAX_TASKS_PER_WEDDING } from '@/config/constants';
 import { TaskAssignedEmail } from '@/emails/task-assigned';
+import { TaskReminderEmail, type TaskReminderEmailProps } from '@/emails/task-reminder';
 import { getEnv } from '@/lib/env';
 import { AppError } from '@/lib/errors';
-import { toObjectId, type WeddingId } from '@/lib/ids';
+import { randomToken } from '@/lib/tokens';
+import { toObjectId, trustWeddingId, type WeddingId } from '@/lib/ids';
 import { logger } from '@/lib/logger';
 import { getUsersByIds, type PublicUser } from '@/modules/auth';
-import { getEvent } from '@/modules/events';
+import { getEvent, listWeddingEvents } from '@/modules/events';
+import {
+  enqueueJobs,
+  PermanentJobError,
+  sendJobEmail,
+  type JobDocument,
+  type JobHandlers,
+} from '@/modules/jobs';
 import {
   isMember,
   listMembers,
@@ -17,22 +26,30 @@ import {
   type WeddingContext,
 } from '@/modules/members';
 import { sendEmail } from '@/modules/notifications';
-import { getWeddingBasics, requireWritableWedding, lockWeddingTasks } from '@/modules/weddings';
-import { addDays, addMonths, formatDate, todayIn } from '@/shared/dates';
+import {
+  getWeddingBasics,
+  listActiveWeddingTimezones,
+  lockWeddingTasks,
+  requireWritableWedding,
+} from '@/modules/weddings';
+import { addDays, addMonths, formatDate, hourIn, todayIn } from '@/shared/dates';
 import {
   clearTaskAssignee,
   clearTaskEvent,
   countTasks,
   deleteTask as deleteTaskDoc,
+  findAssigneesDueOn,
+  findOpenTasksDueBy,
   findStarterKeys,
   findTask,
   insertTasks,
   listTasks as listTaskDocs,
+  markReminded,
   updateTask as updateTaskDoc,
   type NewTask,
   type TaskChanges,
 } from './tasks.repository';
-import { STARTER_TASKS } from './tasks.schemas';
+import { STARTER_TASKS, TASK_PRIORITY_LABELS } from './tasks.schemas';
 import type {
   AddStarterTasksInput,
   CreateTaskInput,
@@ -412,3 +429,122 @@ export function unassignTasksOf(
 ) {
   return clearTaskAssignee(weddingId, userId, now, session);
 }
+
+// Due-date reminders (PRD NOTIF-4): each morning at 9 AM in the wedding's timezone, everyone
+// with an open task due today or tomorrow gets one email listing those and anything overdue.
+
+/** Scheduled emails go at 9 AM in the wedding's timezone (PRD NOTIF-7). */
+const SEND_HOUR = 9;
+
+/**
+ * Queue today's task reminders (POST /api/cron/daily, api-spec §21.2, run hourly). One job per
+ * person per wedding per day, whatever the number of runs: the key holds the date.
+ */
+export async function queueTaskReminders(
+  now = new Date(),
+): Promise<{ taskRemindersQueued: number }> {
+  let taskRemindersQueued = 0;
+  for (const wedding of await listActiveWeddingTimezones()) {
+    if (hourIn(wedding.timezone, now) !== SEND_HOUR) continue;
+    const today = todayIn(wedding.timezone, now);
+    try {
+      const people = await findAssigneesDueOn(wedding.weddingId, [today, addDays(today, 1)]);
+      if (people.length === 0) continue;
+      const batchId = `taskremind_${today.replace(/-/g, '')}_${randomToken(6)
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '0')}`;
+      taskRemindersQueued += await withTransaction((session) =>
+        enqueueJobs(
+          wedding.weddingId,
+          batchId,
+          people.map((userId) => ({
+            type: 'task.remind' as const,
+            payload: { userId, day: today },
+            idempotencyKey: `taskremind:${wedding.weddingId.toHexString()}:${userId.toHexString()}:${today}`,
+          })),
+          session,
+          now,
+        ),
+      );
+    } catch (error) {
+      // One wedding's problem never stops the others.
+      logger.warn('tasks.reminders_failed', {
+        weddingId: wedding.weddingId.toHexString(),
+        err: error,
+      });
+    }
+  }
+  return { taskRemindersQueued };
+}
+
+/** The tasks page link in emails. */
+const tasksUrlOf = (weddingId: WeddingId) =>
+  new URL(`/app/${weddingId.toHexString()}/tasks`, getEnv().APP_URL).toString();
+
+/** The job that sends one person's reminder, run by the cron route (api-spec §21.1). */
+export const taskJobHandlers: Pick<JobHandlers, 'task.remind'> = {
+  'task.remind': {
+    async run(job: JobDocument, tools) {
+      if (!job.weddingId) throw new PermanentJobError('Job has no wedding');
+      const weddingId = trustWeddingId(job.weddingId);
+      const userId = job.payload.userId as ObjectId;
+      const day = job.payload.day as string;
+      const wedding = await getWeddingBasics(weddingId);
+      // Left the team, or the wedding was archived or deleted: no reminder.
+      if (!wedding || wedding.status !== 'active' || !(await isMember(weddingId, userId))) {
+        return 'skipped';
+      }
+      const tomorrow = addDays(day, 1);
+      // Rechecked now: tasks done, reassigned, re-dated or deleted meanwhile drop out.
+      const tasks = await findOpenTasksDueBy(weddingId, userId, tomorrow);
+      if (!job.sent && !tasks.some((t) => t.dueDate === day || t.dueDate === tomorrow)) {
+        return 'skipped';
+      }
+      const [user] = (await getUsersByIds([userId])).values();
+      if (!user && !job.sent) return 'skipped';
+      const events = new Map((await listWeddingEvents(weddingId)).map((e) => [e.id, e.name]));
+      const line = (task: TaskDocument) => {
+        const detail = [
+          task.priority === 'high' ? `${TASK_PRIORITY_LABELS.high} priority` : '',
+          task.eventId && events.has(task.eventId.toHexString())
+            ? `For the ${events.get(task.eventId.toHexString())}`
+            : '',
+          task.dueDate && task.dueDate < day ? `Was due ${formatDate(task.dueDate)}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        return { title: task.title, ...(detail ? { detail } : {}) };
+      };
+      await sendJobEmail(job, tools, {
+        template: 'task_reminder',
+        render: (props: TaskReminderEmailProps) => createElement(TaskReminderEmail, props),
+        build: () => {
+          const coupleNames = `${wedding.brideName} & ${wedding.groomName}`;
+          const due = (date: string) => tasks.filter((t) => t.dueDate === date).map(line);
+          const count = tasks.length;
+          return {
+            to: user!.email,
+            subject: `${count} ${count === 1 ? 'task' : 'tasks'} for ${coupleNames}'s wedding`,
+            fromName: coupleNames,
+            props: {
+              name: user!.name.split(/\s+/)[0] ?? user!.name,
+              coupleNames,
+              overdue: tasks.filter((t) => t.dueDate! < day).map(line),
+              today: due(day),
+              tomorrow: due(tomorrow),
+              tasksUrl: tasksUrlOf(weddingId),
+            },
+          };
+        },
+        weddingId,
+        userId,
+      });
+      await markReminded(
+        weddingId,
+        tasks.map((t) => t._id),
+        day,
+      );
+      return 'done';
+    },
+  },
+};

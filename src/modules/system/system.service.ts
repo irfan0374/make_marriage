@@ -4,7 +4,8 @@ import { AppError } from '@/lib/errors';
 import { getEnv } from '@/lib/env';
 import { recordEmailBounced, recordEmailComplaint } from '@/modules/households';
 import { invitationJobHandlers, queueAutomaticReminders } from '@/modules/invitations';
-import { processJobs, type ProcessJobsResult } from '@/modules/jobs';
+import { queueTaskReminders, taskJobHandlers } from '@/modules/tasks';
+import { processJobs, type JobHandlers, type ProcessJobsResult } from '@/modules/jobs';
 import {
   dailyEmailsLeft,
   readResendWebhook,
@@ -27,6 +28,9 @@ export async function getHealth(): Promise<Health> {
   }
 }
 
+/** Every job type's handler, from the module that owns it. */
+const JOB_HANDLERS: JobHandlers = { ...invitationJobHandlers, ...taskJobHandlers };
+
 /** Cron calls carry `Authorization: Bearer <CRON_SECRET>` (architecture §9.4). */
 function assertCronSecret(authorization: string | null): void {
   const expected = Buffer.from(`Bearer ${getEnv().CRON_SECRET}`);
@@ -41,7 +45,7 @@ export async function runJobQueue(
   authorization: string | null,
 ): Promise<ProcessJobsResult & { dailyEmailRemaining: number }> {
   assertCronSecret(authorization);
-  const result = await processJobs(invitationJobHandlers);
+  const result = await processJobs(JOB_HANDLERS);
   if (result.claimed > 0 || result.deferred > 0) logger.info('jobs.run', { ...result });
   // Every email counts, sent here or straight from a request.
   return { ...result, dailyEmailRemaining: (await dailyEmailsLeft()).remaining };
@@ -73,11 +77,14 @@ export async function handleResendWebhook(
 
 /**
  * POST /api/cron/daily (api-spec §21.2): the scheduled work, called every hour so each wedding
- * gets it at 9 AM in its own timezone. For now: automatic RSVP reminders. Safe to call twice.
+ * gets it at 9 AM in its own timezone: automatic RSVP reminders and task reminders. Safe to call
+ * twice.
  */
 export async function runScheduledWork(authorization: string | null) {
   assertCronSecret(authorization);
-  const result = await queueAutomaticReminders();
-  if (result.rsvpRemindersQueued > 0) logger.info('cron.daily', result);
+  const result = { ...(await queueAutomaticReminders()), ...(await queueTaskReminders()) };
+  if (result.rsvpRemindersQueued > 0 || result.taskRemindersQueued > 0) {
+    logger.info('cron.daily', result);
+  }
   return result;
 }

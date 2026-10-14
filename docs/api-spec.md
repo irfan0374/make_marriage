@@ -1695,9 +1695,9 @@ Response `200`:
 ### 21.2 `POST /api/cron/daily`
 **Access:** Cron secret (`Authorization: Bearer <CRON_SECRET>`). Called **every hour**, so each wedding's scheduled emails go at 9:00 AM in its own timezone (PRD NOTIF-7); `pnpm jobs:dev` calls it hourly in development.
 
-Work today: automatic RSVP reminders. For each active wedding with automatic reminders on and a deadline, during the 9 AM hour of its timezone, when the deadline is exactly 7 or 2 days away, queue reminders to every family the manual reminder (10.7) would reach. Idempotency key `autoremind:{householdId}:{deadline}:{7|2}`, so each family gets each reminder at most once per deadline. Later, with their features: task due reminders, expiring old member invites, abandoned upload cleanup, retention warnings and deletions.
+Work today: automatic RSVP reminders. For each active wedding with automatic reminders on and a deadline, during the 9 AM hour of its timezone, when the deadline is exactly 7 or 2 days away, queue reminders to every family the manual reminder (10.7) would reach. Idempotency key `autoremind:{householdId}:{deadline}:{7|2}`, so each family gets each reminder at most once per deadline. Task due reminders (PRD NOTIF-4): for each active wedding, during the 9 AM hour of its timezone, everyone with an open task due today or tomorrow gets one `task.remind` job (key `taskremind:{weddingId}:{userId}:{date}`, so one email per person per wedding per day). When it runs, the person's open tasks are read again: those due today and tomorrow, plus any overdue ones, go in one email; the job is skipped if they've left the team, the wedding was archived, or nothing is due today or tomorrow any more. Overdue tasks alone never trigger an email. Later, with their features: expiring old member invites, abandoned upload cleanup, retention warnings and deletions.
 
-Response `200`: `{ "data": { "weddingsDue": 3, "rsvpRemindersQueued": 40 } }`
+Response `200`: `{ "data": { "weddingsDue": 3, "rsvpRemindersQueued": 40, "taskRemindersQueued": 12 } }`
 
 Both cron endpoints are safe to call twice: duplicate work is prevented by idempotency keys.
 

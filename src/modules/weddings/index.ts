@@ -16,6 +16,7 @@ export {
   lockWeddingTasks,
   ensureGuestTags,
   getWeddingRecord,
+  listActiveWeddingTimezones,
   listAutoReminderWeddings,
   saveInvitationSettings,
   DEFAULT_INVITATION_MESSAGE,

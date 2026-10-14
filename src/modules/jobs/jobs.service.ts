@@ -1,8 +1,10 @@
 import 'server-only';
-import type { ClientSession } from 'mongodb';
+import type { ClientSession, ObjectId } from 'mongodb';
+import type { ReactElement } from 'react';
 import type { WeddingId } from '@/lib/ids';
 import { logger } from '@/lib/logger';
 import { DAY } from '@/lib/rate-limit';
+import { DailyEmailLimitError, sendQueuedEmail, type EmailMessage } from '@/modules/notifications';
 import {
   cancelQueuedJobs,
   claimNextJob,
@@ -208,4 +210,57 @@ export function cancelBatchJobs(
   now = new Date(),
 ): Promise<JobDocument[]> {
   return cancelQueuedJobs(weddingId, side, batchId, now, session);
+}
+
+/** The email a job sends, saved when its first attempt starts so every retry sends the same. */
+export interface JobEmail<P> {
+  to: string;
+  subject: string;
+  fromName: string;
+  props: P;
+}
+
+/**
+ * Send a job's email. A retry sends what an earlier attempt really tried to send, even if the
+ * data changed meanwhile, so the provider's idempotency key always belongs to the same email.
+ * Otherwise `build` makes it from the latest data, and it's saved only once today's email limit
+ * lets the attempt start: a send put off until tomorrow is rebuilt then. The limit defers the job.
+ */
+export async function sendJobEmail<P extends object>(
+  job: JobDocument,
+  tools: JobRunTools,
+  message: {
+    template: EmailMessage['template'];
+    render: (props: P) => ReactElement;
+    build: () => JobEmail<P>;
+    weddingId: WeddingId;
+    householdId?: ObjectId;
+    userId?: ObjectId;
+  },
+): Promise<void> {
+  const saved = job.sent as JobEmail<P> | null | undefined;
+  const email = saved ?? message.build();
+  try {
+    await sendQueuedEmail(
+      {
+        template: message.template,
+        to: email.to,
+        subject: email.subject,
+        body: message.render(email.props),
+        fromName: email.fromName,
+        weddingId: message.weddingId,
+        householdId: message.householdId ?? null,
+        userId: message.userId ?? null,
+        jobId: job._id,
+        idempotencyKey: job.idempotencyKey,
+      },
+      new Date(),
+      saved
+        ? {}
+        : { beforeSend: () => tools.remember(email as unknown as Record<string, unknown>) },
+    );
+  } catch (error) {
+    if (error instanceof DailyEmailLimitError) throw new DeferJobError(error.resetAt);
+    throw error;
+  }
 }

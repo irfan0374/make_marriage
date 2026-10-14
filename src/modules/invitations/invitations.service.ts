@@ -1,7 +1,7 @@
 import 'server-only';
 import type { ClientSession, ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
-import { createElement, type ReactElement } from 'react';
+import { createElement } from 'react';
 import { APP_NAME, SESSION_COOKIE_NAME } from '@/config/app';
 import { getEnv } from '@/lib/env';
 import { AppError } from '@/lib/errors';
@@ -17,7 +17,6 @@ import { getEvent, listWeddingEvents, type WeddingEvent } from '@/modules/events
 import { fileViewUrl, removeFile, verifyUploadedFile } from '@/modules/files';
 import {
   cancelBatchJobs,
-  DeferJobError,
   enqueueJobs,
   familiesWithPendingJobs,
   getBatch,
@@ -25,8 +24,8 @@ import {
   PermanentJobError,
   type BatchCounts,
   type JobDocument,
+  sendJobEmail,
   type JobHandlers,
-  type JobRunTools,
 } from '@/modules/jobs';
 import {
   chooseFamiliesToEmail,
@@ -48,12 +47,7 @@ import {
   type HouseholdDocument,
 } from '@/modules/households';
 import { resolveWeddingContext } from '@/modules/members';
-import {
-  dailyEmailsLeft,
-  DailyEmailLimitError,
-  sendEmail,
-  sendQueuedEmail,
-} from '@/modules/notifications';
+import { dailyEmailsLeft, sendEmail } from '@/modules/notifications';
 import {
   getWeddingRecord,
   listAutoReminderWeddings,
@@ -920,58 +914,11 @@ async function jobContext(job: JobDocument) {
   return { weddingId, household, wedding };
 }
 
-/** The email a job sends, saved on its first attempt so every retry sends exactly the same. */
-interface JobEmail<P> {
-  to: string;
-  subject: string;
-  fromName: string;
-  props: P;
-}
-
-/**
- * Send a job's email: on the first attempt `build` decides it and it's remembered; a retry sends
- * the remembered one, even if the family or the invitation changed meanwhile, so the provider's
- * idempotency key always belongs to the same email. Today's email limit defers the job.
- */
-async function sendJobEmail<P extends object>(
-  job: JobDocument,
-  tools: JobRunTools,
-  template: 'invitation' | 'rsvp_reminder' | 'event_updated',
-  render: (props: P) => ReactElement,
-  build: () => JobEmail<P>,
-  ids: { weddingId: WeddingId; householdId: ObjectId },
-): Promise<void> {
-  // A retry sends what an earlier attempt really tried to send. Otherwise it's built from the
-  // latest details, and only saved once today's limit lets the attempt start: a send put off
-  // until tomorrow is rebuilt then, so it never carries yesterday's details.
-  const saved = job.sent as JobEmail<P> | null | undefined;
-  const email = saved ?? build();
-  try {
-    await sendQueuedEmail(
-      {
-        template,
-        to: email.to,
-        subject: email.subject,
-        body: render(email.props),
-        fromName: email.fromName,
-        weddingId: ids.weddingId,
-        householdId: ids.householdId,
-        jobId: job._id,
-        idempotencyKey: job.idempotencyKey,
-      },
-      new Date(),
-      saved
-        ? {}
-        : { beforeSend: () => tools.remember(email as unknown as Record<string, unknown>) },
-    );
-  } catch (error) {
-    if (error instanceof DailyEmailLimitError) throw new DeferJobError(error.resetAt);
-    throw error;
-  }
-}
-
 /** Handlers for the job queue, run by the cron route (api-spec §21.1). */
-export const invitationJobHandlers: JobHandlers = {
+export const invitationJobHandlers: Pick<
+  JobHandlers,
+  'invitation.send' | 'rsvp.remind' | 'event.updated_notice'
+> = {
   'invitation.send': {
     async run(job, tools) {
       const { weddingId, household, wedding } = await jobContext(job);
@@ -980,12 +927,10 @@ export const invitationJobHandlers: JobHandlers = {
       if (wedding.status === 'archived') throw new PermanentJobError('Wedding archived');
       if (!household.email && !job.sent) throw new PermanentJobError('Family has no email');
       const email = household.email!;
-      await sendJobEmail(
-        job,
-        tools,
-        'invitation',
-        (props: InvitationEmailProps) => createElement(InvitationEmail, props),
-        () => {
+      await sendJobEmail(job, tools, {
+        template: 'invitation',
+        render: (props: InvitationEmailProps) => createElement(InvitationEmail, props),
+        build: () => {
           const coupleNames = coupleNamesOf(wedding);
           return {
             to: email,
@@ -1001,8 +946,9 @@ export const invitationJobHandlers: JobHandlers = {
             },
           };
         },
-        { weddingId, householdId: household._id },
-      );
+        weddingId,
+        householdId: household._id,
+      });
       await recordInvitationEmailed(weddingId, household._id);
       return 'done';
     },
@@ -1032,12 +978,10 @@ export const invitationJobHandlers: JobHandlers = {
       ) {
         return 'skipped';
       }
-      await sendJobEmail(
-        job,
-        tools,
-        'event_updated',
-        (props: EventUpdatedEmailProps) => createElement(EventUpdatedEmail, props),
-        () => {
+      await sendJobEmail(job, tools, {
+        template: 'event_updated',
+        render: (props: EventUpdatedEmailProps) => createElement(EventUpdatedEmail, props),
+        build: () => {
           const coupleNames = coupleNamesOf(wedding);
           const where = [event!.venueName, event!.address].filter(Boolean).join(', ');
           return {
@@ -1055,8 +999,9 @@ export const invitationJobHandlers: JobHandlers = {
             },
           };
         },
-        { weddingId, householdId: household._id },
-      );
+        weddingId,
+        householdId: household._id,
+      });
       return 'done';
     },
   },
@@ -1078,12 +1023,10 @@ export const invitationJobHandlers: JobHandlers = {
       }
       const email = household.email;
       const events = await listWeddingEvents(weddingId);
-      await sendJobEmail(
-        job,
-        tools,
-        'rsvp_reminder',
-        (props: RsvpReminderEmailProps) => createElement(RsvpReminderEmail, props),
-        () => {
+      await sendJobEmail(job, tools, {
+        template: 'rsvp_reminder',
+        render: (props: RsvpReminderEmailProps) => createElement(RsvpReminderEmail, props),
+        build: () => {
           const coupleNames = coupleNamesOf(wedding);
           const pageUrl = inviteLinkOf(household.token);
           return {
@@ -1106,8 +1049,9 @@ export const invitationJobHandlers: JobHandlers = {
             },
           };
         },
-        { weddingId, householdId: household._id },
-      );
+        weddingId,
+        householdId: household._id,
+      });
       await recordReminded(weddingId, household._id);
       return 'done';
     },

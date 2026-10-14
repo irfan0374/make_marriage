@@ -131,3 +131,10 @@ export function findWeddingsWithAutoReminders() {
     )
     .toArray();
 }
+
+/** Every active wedding's id and timezone, for scheduled work that runs per wedding. */
+export function findActiveWeddingTimezones() {
+  return weddings()
+    .find({ status: 'active' }, { projection: { timezone: 1 } })
+    .toArray();
+}

@@ -11,6 +11,8 @@ export {
   listRecentBatches,
   PermanentJobError,
   processJobs,
+  sendJobEmail,
+  type JobEmail,
   type JobHandler,
   type JobHandlers,
   type JobRunTools,

@@ -256,7 +256,7 @@ A **household** is a family or group that receives one invitation.
 | NOTIF-1 | Transactional emails: password reset, member invitation, guest invitation, RSVP reminder, RSVP confirmation, event-updated notice, task assigned, task due reminder, retention warning. | P0 |
 | NOTIF-2 | Every send is logged with a status (sent, delivered, bounced, complained, failed). A bounced address is flagged on the household. | P0 |
 | NOTIF-3 | Automatic RSVP reminders, e.g. 7 days and 2 days before the deadline. The couple can switch this on or off. They go only to households with an email address and an incomplete response. | P1 |
-| NOTIF-4 | Task due reminders to the assignee, 1 day before and on the due date. (A per-user opt-out is deferred until after v1.) | P1 |
+| NOTIF-4 | Task due reminders to the assignee, 1 day before and on the due date. (A per-user opt-out is deferred until after v1.) Decision (15 Oct 2026): one email per person per day at 9 AM, listing their tasks due today and tomorrow plus any overdue ones; tasks they assigned to themselves count too. | P1 |
 | NOTIF-5 | Deferred until after v1: daily digest to the couple summarising new RSVPs. | Deferred |
 | NOTIF-6 | Guest emails include a "stop reminders" link that stops reminders but not access to the invitation. | P1 |
 | NOTIF-7 | Scheduled emails are sent at 9:00 AM in the wedding timezone. | P1 |

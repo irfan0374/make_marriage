@@ -8,7 +8,8 @@ export type EmailTemplate =
   | 'invitation_test'
   | 'rsvp_confirmation'
   | 'rsvp_reminder'
-  | 'event_updated';
+  | 'event_updated'
+  | 'task_reminder';
 
 export type EmailStatus = 'sent' | 'delivered' | 'bounced' | 'complained' | 'failed';
 

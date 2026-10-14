@@ -10,5 +10,10 @@ export {
   updateTaskHandler,
 } from './tasks.handlers';
 export { tasksCollectionSpecs } from './tasks.indexes';
-export { unassignTasksOf, unlinkEventFromTasks } from './tasks.service';
+export {
+  queueTaskReminders,
+  taskJobHandlers,
+  unassignTasksOf,
+  unlinkEventFromTasks,
+} from './tasks.service';
 export type { StarterTask, Task } from './tasks.types';

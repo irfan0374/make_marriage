@@ -229,8 +229,8 @@ export function TaskPanel({
             onChange={(e) => set({ assigneeUserId: e.target.value })}
             hint={
               assigningOther
-                ? "They'll get an email when you save."
-                : "They'll get an email when you assign it."
+                ? "They'll get an email when you save, and a reminder at 9 AM the day before it's due and on the day."
+                : "They'll get an email when you assign it, and a reminder at 9 AM the day before it's due and on the day."
             }
             error={fieldErrors.assigneeUserId}
             disabled={pending}

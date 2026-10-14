@@ -1,7 +1,7 @@
 import type { ObjectId } from 'mongodb';
 
 /** Job types with a handler today (database-design §7.10); more arrive with their features. */
-export type JobType = 'invitation.send' | 'rsvp.remind' | 'event.updated_notice';
+export type JobType = 'invitation.send' | 'rsvp.remind' | 'event.updated_notice' | 'task.remind';
 
 /** `skipped`: ran, but there was nothing to do (e.g. the family replied meanwhile). */
 export type JobStatus = 'queued' | 'processing' | 'done' | 'skipped' | 'failed' | 'cancelled';

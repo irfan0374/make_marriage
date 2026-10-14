@@ -132,3 +132,35 @@ export async function clearTaskAssignee(
     { session },
   );
 }
+
+/** People with an open task due on one of `dates` (the reminder run). */
+export async function findAssigneesDueOn(weddingId: WeddingId, dates: string[]) {
+  const docs = await scoped(weddingId)
+    .find(
+      { status: { $ne: 'done' }, assigneeUserId: { $type: 'objectId' }, dueDate: { $in: dates } },
+      { projection: { assigneeUserId: 1 } },
+    )
+    .toArray();
+  const ids = new Map(docs.map((doc) => [doc.assigneeUserId!.toHexString(), doc.assigneeUserId!]));
+  return [...ids.values()];
+}
+
+/** One person's open tasks due on or before `lastDate` (overdue included), soonest first. */
+export function findOpenTasksDueBy(
+  weddingId: WeddingId,
+  assigneeUserId: ObjectId,
+  lastDate: string,
+) {
+  return scoped(weddingId)
+    .find(
+      { status: { $ne: 'done' }, assigneeUserId, dueDate: { $type: 'string', $lte: lastDate } },
+      { sort: { dueDate: 1, _id: 1 } },
+    )
+    .toArray();
+}
+
+/** Note which day these tasks were last included in a reminder. */
+export async function markReminded(weddingId: WeddingId, taskIds: ObjectId[], day: string) {
+  if (taskIds.length === 0) return;
+  await scoped(weddingId).updateMany({ _id: { $in: taskIds } }, { $set: { lastReminderFor: day } });
+}
