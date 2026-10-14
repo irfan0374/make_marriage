@@ -136,7 +136,7 @@ describe('PATCH events/{eventId}', () => {
     updateEventHandler(request('PATCH', `${base}/${id}`, body), params({ weddingId, eventId: id }));
 
   it('returns the event with the change meta', async () => {
-    const meta = { guestFacingChange: false, affectedHouseholds: 0 };
+    const meta = { guestFacingChange: true };
     vi.mocked(service.updateEvent).mockResolvedValueOnce({
       event: { id: eventId } as never,
       meta,

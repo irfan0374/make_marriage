@@ -33,6 +33,7 @@ import { todayIn } from '@/shared/dates';
 import { DeleteEventDialog } from './delete-event-dialog';
 import { EventCard } from './event-card';
 import { EventPanel, type PanelMode } from './event-panel';
+import { NotifyChangeDialog } from './notify-change-dialog';
 import { QuickAddDialog } from './quick-add-dialog';
 
 // The Events page (Stitch "Events", "Add event", "Events (Empty)"; PRD SETUP-2 to SETUP-5): the
@@ -101,6 +102,7 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
   const [panel, setPanel] = useState<PanelMode | null>(null);
   const [quickAdd, setQuickAdd] = useState(false);
   const [deleting, setDeleting] = useState<WeddingEvent | null>(null);
+  const [notifying, setNotifying] = useState<WeddingEvent | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -294,6 +296,7 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
               mode={panel}
               onClose={() => setPanel(null)}
               onDelete={setDeleting}
+              onGuestFacingChange={setNotifying}
               readOnly={archived}
             />
           )}
@@ -306,6 +309,13 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
           weddingDate={wedding.weddingDate}
           events={events}
           onClose={() => setQuickAdd(false)}
+        />
+      )}
+      {notifying && (
+        <NotifyChangeDialog
+          weddingId={weddingId}
+          event={notifying}
+          onClose={() => setNotifying(null)}
         />
       )}
       {deleting && (

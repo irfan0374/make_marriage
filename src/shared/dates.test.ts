@@ -4,6 +4,7 @@ import {
   addMonths,
   addYears,
   zonedTimeToUtc,
+  hourIn,
   canonicalTimeZone,
   daysUntil,
   formatDate,
@@ -92,5 +93,14 @@ describe('zonedTimeToUtc', () => {
     expect(zonedTimeToUtc('2028-04-12', '00:30', 'Asia/Kolkata').toISOString()).toBe(
       '2028-04-11T19:00:00.000Z',
     );
+  });
+});
+
+describe('hourIn', () => {
+  it('reads the local hour in a timezone', () => {
+    const at = new Date('2028-04-12T03:45:00Z');
+    expect(hourIn('Asia/Kolkata', at)).toBe(9);
+    expect(hourIn('Asia/Dubai', at)).toBe(7);
+    expect(hourIn('Europe/London', at)).toBe(4);
   });
 });

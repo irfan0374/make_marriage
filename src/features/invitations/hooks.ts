@@ -6,6 +6,7 @@ import {
   cancelBatch,
   clearRsvp,
   getBatches,
+  notifyEventChange,
   remindFamilies,
   sendInvitations,
   getInvitationSettings,
@@ -100,12 +101,17 @@ export function useClearRsvp(weddingId: string) {
 
 export type EmailKind = 'invite' | 'remind';
 export type EmailRequest =
-  { kind: 'invite'; input: SendInvitationsInput } | { kind: 'remind'; input: RemindFamiliesInput };
+  | { kind: 'invite'; input: SendInvitationsInput }
+  | { kind: 'remind'; input: RemindFamiliesInput }
+  /** Tell families invited to an event about its new details (api-spec §10.8). */
+  | { kind: 'update'; eventId: string; input: { dryRun: boolean } };
 
 const emailCall = (weddingId: string, request: EmailRequest) =>
   request.kind === 'invite'
     ? sendInvitations(weddingId, request.input)
-    : remindFamilies(weddingId, request.input);
+    : request.kind === 'remind'
+      ? remindFamilies(weddingId, request.input)
+      : notifyEventChange(weddingId, request.eventId, request.input);
 
 /** Who an email send would reach, without sending (a dry run). */
 export function useEmailPreview(weddingId: string, request: EmailRequest) {
@@ -119,6 +125,9 @@ export function useEmailPreview(weddingId: string, request: EmailRequest) {
     staleTime: 0,
     gcTime: 0,
     retry: false,
+    // A failed check is only asked again by "Try again": a dialog opening on it must not refetch
+    // by itself, or a lasting failure would loop (each refetch hides and re-opens the dialog).
+    retryOnMount: false,
   });
 }
 

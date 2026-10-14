@@ -30,7 +30,7 @@ function messageOf(error: unknown): string {
   return 'Could not reach the server. Check your connection and try again.';
 }
 
-function skippedLines(result: SendResult, kind: 'invite' | 'remind'): string[] {
+function skippedLines(result: SendResult, kind: EmailRequest['kind']): string[] {
   return [
     result.skippedNoEmail > 0 &&
       `${families(result.skippedNoEmail)} without an email: share their link on WhatsApp`,
@@ -40,7 +40,9 @@ function skippedLines(result: SendResult, kind: 'invite' | 'remind'): string[] {
     result.skippedNotNeeded > 0 &&
       (kind === 'remind'
         ? `${families(result.skippedNotNeeded)} replied already, turned reminders off or weren’t sent the invitation`
-        : `${families(result.skippedNotNeeded)} not needed`),
+        : kind === 'update'
+          ? `${families(result.skippedNotNeeded)} not sent the invitation yet (they’ll see the new details when it goes out)`
+          : `${families(result.skippedNotNeeded)} not needed`),
   ].filter((line): line is string => Boolean(line));
 }
 
@@ -48,12 +50,16 @@ export function SendDialog({
   weddingId,
   request: initialRequest,
   title,
+  description,
+  cancelLabel = 'Cancel',
   onClose,
   onSent,
 }: {
   weddingId: string;
   request: EmailRequest;
   title: string;
+  description?: string;
+  cancelLabel?: string;
   onClose: () => void;
   onSent?: (result: SendResult) => void;
 }) {
@@ -78,14 +84,15 @@ export function SendDialog({
       onOpenChange={(open) => !open && onClose()}
       title={title}
       description={
-        invite
+        description ??
+        (invite
           ? 'Each family gets the invitation by email with their own link to reply.'
-          : 'Families who haven’t answered every event get a gentle reminder with their link.'
+          : 'Families who haven’t answered every event get a gentle reminder with their link.')
       }
       footer={
         <>
           <Button variant="outline" className="h-11 px-6" onClick={onClose}>
-            Cancel
+            {cancelLabel}
           </Button>
           <Button
             className="h-11 px-6"
@@ -114,6 +121,16 @@ export function SendDialog({
             preview.error ? messageOf(preview.error) : send.error ? messageOf(send.error) : null
           }
         />
+        {preview.isError && (
+          <Button
+            variant="outline"
+            className="h-10 px-5"
+            disabled={preview.isFetching}
+            onClick={() => void preview.refetch()}
+          >
+            {preview.isFetching ? 'Checking…' : 'Try again'}
+          </Button>
+        )}
         {preview.isPending ? (
           <p role="status" className="text-text-muted text-sm">
             Checking who can get it…

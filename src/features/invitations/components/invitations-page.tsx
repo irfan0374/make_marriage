@@ -358,8 +358,9 @@ function CardSection({
                   Automatic reminders
                 </p>
                 <p id={`${remindersId}-hint`} className="text-text-muted mt-1 text-xs">
-                  Emails families who haven&apos;t replied, 7 and 2 days before the deadline. Starts
-                  when email sending is ready.
+                  Emails families who haven&apos;t replied, 7 and 2 days before the deadline, at 9
+                  AM. Only families sent the invitation, with an email, who haven&apos;t stopped
+                  reminders.
                 </p>
               </div>
               <Switch

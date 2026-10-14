@@ -112,10 +112,16 @@ export async function findActiveHouseholdIds(
   weddingId: WeddingId,
   type: JobType,
   session: ClientSession,
+  payloadMatch: Record<string, unknown> = {},
 ): Promise<Set<string>> {
   const ids = await jobs().distinct(
     'payload.householdId',
-    { weddingId, type, status: { $in: ['queued', 'processing'] } },
+    {
+      weddingId,
+      type,
+      status: { $in: ['queued', 'processing'] },
+      ...Object.fromEntries(Object.entries(payloadMatch).map(([k, v]) => [`payload.${k}`, v])),
+    },
     { session },
   );
   return new Set(ids.map((id: { toHexString?: () => string }) => id.toHexString?.() ?? String(id)));

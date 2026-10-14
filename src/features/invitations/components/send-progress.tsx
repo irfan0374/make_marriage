@@ -11,14 +11,13 @@ import { ApiError } from '@/shared/api-client';
 // has gone, what failed, what's still waiting, and Cancel. Families' statuses refresh as emails
 // go out.
 
-const label = (batch: BatchCounts) =>
-  batch.type === 'invitation.send'
-    ? batch.total === 1
-      ? 'invitation'
-      : 'invitations'
-    : batch.total === 1
-      ? 'reminder'
-      : 'reminders';
+const NOUNS: Record<BatchCounts['type'], [string, string]> = {
+  'invitation.send': ['invitation', 'invitations'],
+  'rsvp.remind': ['reminder', 'reminders'],
+  'event.updated_notice': ['event update', 'event updates'],
+};
+
+const label = (batch: BatchCounts) => NOUNS[batch.type][batch.total === 1 ? 0 : 1];
 
 function BatchRow({ weddingId, batch }: { weddingId: string; batch: BatchCounts }) {
   const cancel = useCancelBatch(weddingId);

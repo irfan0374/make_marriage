@@ -7,6 +7,7 @@ import { guestRsvpSchema } from '@/modules/households/households.schemas';
 import { objectIdString } from '@/shared/validation';
 import {
   batchIdSchema,
+  notifyChangeSchema,
   remindFamiliesSchema,
   sendInvitationsSchema,
   updateInvitationSchema,
@@ -17,6 +18,7 @@ import {
   getSendBatch,
   invitationCardUrl,
   listSendBatches,
+  notifyEventChange,
   remindFamilies,
   sendInvitations,
   getInvitationSettings,
@@ -190,4 +192,24 @@ export const publicCardHandler = defineHandler(
         headers: { location: await invitationCardUrl(params.token) },
       }),
     ),
+);
+
+const eventParams = z.strictObject({ weddingId: objectIdString, eventId: objectIdString });
+
+// POST /api/weddings/{weddingId}/events/{eventId}/notify-change (api-spec §10.8)
+export const notifyEventChangeHandler = defineHandler(
+  {
+    route: '/api/weddings/[weddingId]/events/[eventId]/notify-change',
+    params: eventParams,
+    body: notifyChangeSchema,
+  },
+  async ({ request, params, body }) => {
+    const result = await notifyEventChange(
+      readSessionToken(request),
+      toObjectId(params.weddingId),
+      toObjectId(params.eventId),
+      body,
+    );
+    return result.batchId ? accepted(result) : ok(result);
+  },
 );

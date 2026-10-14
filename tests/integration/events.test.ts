@@ -152,8 +152,10 @@ describe('events (Atlas test database)', () => {
       endTime: null,
       dressCode: 'Green & yellow',
     });
-    // No invitations exist yet, so there's no one to tell about the change.
-    expect(body.meta).toEqual({ guestFacingChange: false, affectedHouseholds: 0 });
+    // The time changed, so the app may offer to tell families (api-spec §8.4).
+    expect(body.meta).toEqual({ guestFacingChange: true });
+    const dressOnly = await patch(weddingId, event.id, admin.cookie, { dressCode: 'Yellow' });
+    expect((await dressOnly.json()).meta).toEqual({ guestFacingChange: false });
 
     expect((await remove(weddingId, event.id, admin.cookie)).status).toBe(204);
     expect((await (await list(weddingId, admin.cookie)).json()).data).toEqual([]);

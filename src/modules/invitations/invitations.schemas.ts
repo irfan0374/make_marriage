@@ -49,5 +49,8 @@ export const remindFamiliesSchema = z.union([
   z.strictObject({ filter: z.literal('all_incomplete'), dryRun: z.boolean().default(false) }),
 ]);
 
-/** A batch id in a URL: `send_…` or `remind_…`. */
-export const batchIdSchema = z.string().regex(/^(send|remind)_[a-z0-9_]{6,60}$/);
+// POST /api/weddings/{weddingId}/events/{eventId}/notify-change (api-spec §10.8).
+export const notifyChangeSchema = z.strictObject({ dryRun: z.boolean().default(false) });
+
+/** A batch id in a URL: `send_…`, `remind_…` or `update_…`. */
+export const batchIdSchema = z.string().regex(/^(send|remind|update)_[a-z0-9_]{6,60}$/);

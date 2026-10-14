@@ -25,6 +25,7 @@ import {
   DuplicateSlugError,
   findSlugsLike,
   findWedding,
+  findWeddingsWithAutoReminders,
   lockTaskWrites,
   findWeddingSummaries,
   insertWedding,
@@ -421,4 +422,20 @@ export async function saveInvitationSettings(
   const updated = await setInvitation(weddingId, invitation, now);
   if (!updated) throw new AppError('WEDDING_ARCHIVED');
   return updated;
+}
+
+/** Weddings due an automatic-reminder check: id, timezone and deadline (PRD NOTIF-3). */
+export async function listAutoReminderWeddings(): Promise<
+  { weddingId: WeddingId; timezone: string; rsvpDeadline: string }[]
+> {
+  const docs = await findWeddingsWithAutoReminders();
+  return docs.map((doc) => ({
+    // Read straight from the weddings collection by the scheduled run itself.
+    weddingId: trustWeddingId(doc._id),
+    timezone: canonicalTimeZone(
+      doc.timezone,
+      WEDDING_TIMEZONES.map((tz) => tz.value),
+    ),
+    rsvpDeadline: doc.invitation.rsvpDeadline!,
+  }));
 }

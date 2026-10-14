@@ -46,19 +46,21 @@ function toWeddingEvent(doc: EventDocument): WeddingEvent {
   };
 }
 
+/** Changes guests would want to hear about: when and where. */
+const GUEST_FACING_FIELDS = [
+  'date',
+  'startTime',
+  'endTime',
+  'venueName',
+  'address',
+  'mapUrl',
+] as const;
+
 /** A member, in a wedding that isn't archived. */
 async function requireEventWriter(token: string | undefined, weddingId: ObjectId) {
   const context = await resolveWeddingContext(token, weddingId);
   await requireWritableWedding(context.weddingId);
   return context;
-}
-
-/**
- * Households invited to an event. Guests and invitations aren't built yet, so none can be;
- * this becomes a households lookup with them (api-spec §8.4).
- */
-async function invitedHouseholdCount(): Promise<number> {
-  return 0;
 }
 
 async function addEvents(
@@ -157,15 +159,12 @@ export async function updateEvent(
   const updated = await updateEventDoc(context.weddingId, eventId, changes, now);
   if (!updated) throw new AppError('NOT_FOUND');
 
-  const guestFacing = (['date', 'startTime', 'endTime', 'venueName', 'address'] as const).some(
+  // Families may need telling (api-spec §8.4, §10.8). Events don't know about guests, so how
+  // many families that reaches comes from notify-change's dry run.
+  const guestFacingChange = GUEST_FACING_FIELDS.some(
     (field) => changes[field] !== undefined && changes[field] !== current[field],
   );
-  // Families can only be told once invitations exist (api-spec §10.8).
-  const affectedHouseholds = guestFacing ? await invitedHouseholdCount() : 0;
-  return {
-    event: toWeddingEvent(updated),
-    meta: { guestFacingChange: affectedHouseholds > 0, affectedHouseholds },
-  };
+  return { event: toWeddingEvent(updated), meta: { guestFacingChange } };
 }
 
 /**

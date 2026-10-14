@@ -20,6 +20,8 @@ process.env.R2_ACCESS_KEY_ID = 'test-access-key';
 process.env.R2_SECRET_ACCESS_KEY = 'test-secret';
 process.env.R2_BUCKET = 'make-marriage-test';
 process.env.CRON_SECRET = 'test-cron-secret-that-is-long-enough-123';
+// Resend's webhook secret format: `whsec_` + base64 (tests sign their own webhook calls).
+process.env.RESEND_WEBHOOK_SECRET = `whsec_${Buffer.from('test-webhook-secret-key-123').toString('base64')}`;
 
 afterAll(async () => {
   const { getDb, closeMongoClient } = await import('@/lib/db/client');

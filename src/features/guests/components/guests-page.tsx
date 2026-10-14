@@ -52,6 +52,15 @@ const INVITE_LABEL: Record<InviteStatus, string> = {
   sent_manually: 'Sent manually',
   failed: 'Failed',
 };
+/** The family's email bounced (Resend): share their link another way. */
+function BouncedTag() {
+  return (
+    <span className="bg-danger-bg text-danger-text ml-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap">
+      Bounced
+    </span>
+  );
+}
+
 const INVITE_STYLE: Record<InviteStatus, string> = {
   not_sent: 'text-text-muted',
   queued: 'bg-pending-bg text-pending-text',
@@ -174,7 +183,9 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
     if (filters.side) q.set('side', filters.side);
     if (filters.tag) q.set('tags', filters.tag);
     if (filters.eventId) q.set('eventId', filters.eventId);
-    if (filters.inviteStatus) q.set('inviteStatus', filters.inviteStatus);
+    // "Email bounced" sits in the Invite filter but is its own flag.
+    if (filters.inviteStatus === 'bounced') q.set('emailBounced', 'true');
+    else if (filters.inviteStatus) q.set('inviteStatus', filters.inviteStatus);
     if (filters.responseStatus) q.set('responseStatus', filters.responseStatus);
     if (offset > 0) q.set('cursor', String(offset));
     return q;
@@ -464,10 +475,13 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
                 label="Invite"
                 value={filters.inviteStatus}
                 onChange={(inviteStatus) => setFilter({ inviteStatus })}
-                options={(Object.keys(INVITE_LABEL) as InviteStatus[]).map((s) => ({
-                  value: s,
-                  label: INVITE_LABEL[s],
-                }))}
+                options={[
+                  ...(Object.keys(INVITE_LABEL) as InviteStatus[]).map((s) => ({
+                    value: s,
+                    label: INVITE_LABEL[s],
+                  })),
+                  { value: 'bounced', label: 'Email bounced' },
+                ]}
               />
               <FilterSelect
                 label="Reply"
@@ -612,6 +626,7 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
                             >
                               {INVITE_LABEL[h.inviteStatus]}
                             </span>
+                            {h.emailBounced && <BouncedTag />}
                           </td>
                         </tr>
                       ))}
@@ -673,6 +688,7 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
                             >
                               {INVITE_LABEL[h.inviteStatus]}
                             </span>
+                            {h.emailBounced && <BouncedTag />}
                           </p>
                         </button>
                       </li>

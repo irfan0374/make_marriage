@@ -152,6 +152,8 @@ export const listHouseholdsQuerySchema = z.strictObject({
     'Unknown invite status',
   ),
   responseStatus: z.enum(['none', 'partial', 'complete']).optional(),
+  /** Families whose email bounced (Resend webhook). */
+  emailBounced: z.literal('true').optional(),
   sort: z.enum(['name', '-createdAt', '-updatedAt']).default('name'),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   cursor: z

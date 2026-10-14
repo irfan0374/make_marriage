@@ -7,6 +7,7 @@ import { AppError } from '@/lib/errors';
 import { toObjectId, trustWeddingId, type WeddingId } from '@/lib/ids';
 import { logger } from '@/lib/logger';
 import { randomToken } from '@/lib/tokens';
+import { recordAudit } from '@/modules/audit';
 import { getUsersByIds, type PublicUser } from '@/modules/auth';
 import { getEvent, listEvents } from '@/modules/events';
 import { makeCsv } from '@/shared/csv';
@@ -283,6 +284,7 @@ export async function listHouseholds(
   if (query.eventId) filter['invitedEvents.eventId'] = toObjectId(query.eventId);
   if (query.inviteStatus) filter.inviteStatus = { $in: query.inviteStatus };
   if (query.responseStatus) filter.responseStatus = query.responseStatus;
+  if (query.emailBounced) filter.emailBounced = true;
 
   const skip = query.cursor ? Number(query.cursor) : 0;
   const { docs, total } = await listHouseholdDocs(context.weddingId, side, filter, {
@@ -483,6 +485,8 @@ export async function updateHouseholdDetails(
           ...next,
           ...events,
           searchText: searchTextOf(next),
+          // A corrected address hasn't bounced (yet).
+          ...(next.email !== current.email ? { emailBounced: false } : {}),
           editedByUserId: context.userId,
           editedAt: now,
           updatedAt: now,
@@ -798,6 +802,17 @@ export async function regenerateHouseholdLink(
       session,
     );
     if (!updated) throw new AppError('NOT_FOUND');
+    await recordAudit(
+      context.weddingId,
+      {
+        actor: { type: 'user', userId: context.userId },
+        action: 'household.link_regenerated',
+        targetType: 'household',
+        targetId: householdId,
+      },
+      session,
+      now,
+    );
     return updated;
   });
   logger.info('household.link_regenerated', { householdId: householdId.toHexString() });
@@ -831,6 +846,24 @@ export async function markHouseholdSent(
     return updated;
   });
   return (await toHouseholds([doc]))[0]!;
+}
+
+/** A reply as a short audit value, e.g. `attending:3`, `declined`, or `null` for none. */
+function replyValue(rsvp: Pick<RsvpDocument, 'status' | 'attendingCount'> | undefined) {
+  if (!rsvp) return null;
+  return rsvp.status === 'attending' ? `attending:${rsvp.attendingCount}` : 'declined';
+}
+
+/** What changed per event, for the audit log (only events whose answer changed). */
+function replyChanges(before: RsvpDocument[], after: RsvpDocument[]) {
+  return after.flatMap((rsvp) => {
+    const old = before.find((r) => r.eventId.equals(rsvp.eventId));
+    const from = replyValue(old);
+    const to = replyValue(rsvp);
+    return from === to && (old?.note ?? '') === (rsvp.note ?? '')
+      ? []
+      : [{ eventId: rsvp.eventId.toHexString(), before: from, after: to }];
+  });
 }
 
 /**
@@ -905,6 +938,18 @@ export async function recordHostRsvp(
       session,
     );
     if (!updated) throw new AppError('NOT_FOUND');
+    await recordAudit(
+      context.weddingId,
+      {
+        actor: { type: 'user', userId: context.userId },
+        action: 'rsvp.recorded_by_host',
+        targetType: 'household',
+        targetId: householdId,
+        meta: { changes: replyChanges(current.rsvps, replies.rsvps) },
+      },
+      session,
+      now,
+    );
     return updated;
   });
   logger.info('rsvp.saved', { householdId: householdId.toHexString(), recordedBy: 'host' });
@@ -924,6 +969,21 @@ export async function clearHostRsvp(
     if (!current) throw new AppError('NOT_FOUND');
     const rsvps = current.rsvps.filter((r) => !r.eventId.equals(eventId));
     if (rsvps.length === current.rsvps.length) return;
+    await recordAudit(
+      context.weddingId,
+      {
+        actor: { type: 'user', userId: context.userId },
+        action: 'rsvp.cleared',
+        targetType: 'household',
+        targetId: householdId,
+        meta: {
+          eventId: eventId.toHexString(),
+          before: replyValue(current.rsvps.find((r) => r.eventId.equals(eventId))),
+        },
+      },
+      session,
+      now,
+    );
     await updateHousehold(
       context.weddingId,
       side,
@@ -978,6 +1038,19 @@ export async function saveGuestRsvps(
       session,
     );
     if (!updated) throw new AppError('LINK_INVALID');
+    // Last write wins; the log keeps both sides when a guest and the couple edit together.
+    await recordAudit(
+      weddingId,
+      {
+        actor: { type: 'guest', householdId: current._id },
+        action: 'rsvp.submitted',
+        targetType: 'household',
+        targetId: current._id,
+        meta: { changes: replyChanges(current.rsvps, next.rsvps) },
+      },
+      session,
+      now,
+    );
     return updated;
   });
   logger.info('rsvp.saved', { householdId: doc._id.toHexString(), recordedBy: 'guest' });
@@ -1095,43 +1168,51 @@ export interface FamiliesToEmail {
   skippedNotNeeded: number;
 }
 
-export type EmailSelection = { householdIds: string[] } | { filter: string };
+export type EmailSelection =
+  | { householdIds: string[] }
+  | { filter: string }
+  /** Every family invited to this event (event-updated notices). */
+  | { eventId: ObjectId };
+
+type ChooseOptions = {
+  resend?: boolean;
+  dryRun?: boolean;
+  /**
+   * Families that already have this email waiting (read in this transaction), skipped as
+   * "already being sent". Reminders and updates use it, since they don't change the invite status.
+   */
+  pending?: (weddingId: WeddingId, session: ClientSession) => Promise<Set<string>>;
+};
+
+type QueueFamilies = (args: {
+  weddingId: WeddingId;
+  chosen: FamiliesToEmail;
+  session: ClientSession;
+}) => Promise<void>;
 
 /**
- * Choose the families to email, within the caller's side, and (unless `dryRun`) hand them to
- * `queue` in the same transaction, marking invitations "queued". Invitations skip families with
- * no email, no events, already queued, or already sent unless `resend`. Reminders go only to
- * families that were sent the invitation, have an email that hasn't bounced, haven't replied to
- * every event and haven't turned reminders off.
+ * Choose the families to email, within `side`, and (unless `dryRun`) hand them to `queue` in
+ * the same transaction, marking invitations "queued". Invitations skip families with no email,
+ * no events, already queued, or already sent unless `resend`. Reminders and event updates go only
+ * to families that were sent the invitation and have an email that hasn't bounced; reminders
+ * also skip families that replied to every event or turned reminders off.
  */
-export async function chooseFamiliesToEmail(
-  token: string | undefined,
-  weddingId: ObjectId,
-  kind: 'invite' | 'remind',
-  selection: EmailSelection,
+async function chooseIn(
   {
-    resend = false,
-    dryRun = false,
-    pending,
-  }: {
-    resend?: boolean;
-    dryRun?: boolean;
-    /**
-     * Families that already have this email waiting (read in this transaction), skipped as
-     * "already being sent". Reminders use it, since they don't change the invite status.
-     */
-    pending?: (weddingId: WeddingId, session: ClientSession) => Promise<Set<string>>;
-  },
-  queue: (args: {
-    weddingId: WeddingId;
-    chosen: FamiliesToEmail;
-    session: ClientSession;
-  }) => Promise<void>,
-  now = new Date(),
+    weddingId,
+    side,
+    session,
+  }: { weddingId: WeddingId; side: HouseholdSide | null; session: ClientSession },
+  kind: 'invite' | 'remind' | 'update',
+  selection: EmailSelection,
+  { resend = false, dryRun = false, pending }: ChooseOptions,
+  queue: QueueFamilies,
+  now: Date,
 ): Promise<FamiliesToEmail> {
-  return writeGuests(token, weddingId, async ({ context, side, session }) => {
-    const filter: Filter<HouseholdDocument> =
-      'householdIds' in selection
+  const filter: Filter<HouseholdDocument> =
+    'eventId' in selection
+      ? { 'invitedEvents.eventId': selection.eventId }
+      : 'householdIds' in selection
         ? {
             _id: {
               $in: [...new Set(selection.householdIds.map((id) => id.toLowerCase()))].map(
@@ -1142,46 +1223,81 @@ export async function chooseFamiliesToEmail(
         : kind === 'invite'
           ? { inviteStatus: { $in: ['not_sent', 'failed'] } }
           : { responseStatus: { $in: ['none', 'partial'] } };
-    const candidates = await findForSending(context.weddingId, side, filter, session);
-    const waiting = pending ? await pending(context.weddingId, session) : new Set<string>();
-    const chosen: FamiliesToEmail = {
-      side,
-      families: [],
-      skippedNoEmail: 0,
-      skippedAlreadySent: 0,
-      skippedQueued: 0,
-      skippedNoEvents: 0,
-      skippedNotNeeded: 0,
-    };
-    for (const doc of candidates) {
-      const sent = doc.inviteStatus === 'sent' || doc.inviteStatus === 'sent_manually';
-      if (!doc.email || doc.emailBounced) chosen.skippedNoEmail++;
-      else if (doc.invitedEvents.length === 0) chosen.skippedNoEvents++;
-      else if (doc.inviteStatus === 'queued' || waiting.has(doc._id.toHexString())) {
-        chosen.skippedQueued++;
-      } else if (kind === 'invite' && sent && !resend) chosen.skippedAlreadySent++;
-      else if (
-        kind === 'remind' &&
-        (!sent || doc.responseStatus === 'complete' || doc.remindersOptOut)
-      ) {
-        chosen.skippedNotNeeded++;
-      } else chosen.families.push(doc);
-    }
-    if (dryRun || chosen.families.length === 0) return chosen;
+  const candidates = await findForSending(weddingId, side, filter, session);
+  const waiting = pending ? await pending(weddingId, session) : new Set<string>();
+  const chosen: FamiliesToEmail = {
+    side,
+    families: [],
+    skippedNoEmail: 0,
+    skippedAlreadySent: 0,
+    skippedQueued: 0,
+    skippedNoEvents: 0,
+    skippedNotNeeded: 0,
+  };
+  for (const doc of candidates) {
+    const sent = doc.inviteStatus === 'sent' || doc.inviteStatus === 'sent_manually';
+    if (!doc.email || doc.emailBounced) chosen.skippedNoEmail++;
+    else if (doc.invitedEvents.length === 0) chosen.skippedNoEvents++;
+    else if (doc.inviteStatus === 'queued' || waiting.has(doc._id.toHexString())) {
+      chosen.skippedQueued++;
+    } else if (kind === 'invite' && sent && !resend) chosen.skippedAlreadySent++;
+    else if (
+      kind === 'remind' &&
+      (!sent || doc.responseStatus === 'complete' || doc.remindersOptOut)
+    ) {
+      chosen.skippedNotNeeded++;
+    } else if (kind === 'update' && !sent) {
+      // Never sent the invitation: they'll see the new details when it goes out.
+      chosen.skippedNotNeeded++;
+    } else chosen.families.push(doc);
+  }
+  if (dryRun || chosen.families.length === 0) return chosen;
 
-    if (kind === 'invite') {
-      await updateHouseholdsEach(
-        context.weddingId,
-        side,
-        chosen.families.map((doc) => ({
-          id: doc._id,
-          set: { inviteStatus: 'queued' as const, updatedAt: now },
-        })),
-        session,
-      );
-    }
-    await queue({ weddingId: context.weddingId, chosen, session });
-    return chosen;
+  if (kind === 'invite') {
+    await updateHouseholdsEach(
+      weddingId,
+      side,
+      chosen.families.map((doc) => ({
+        id: doc._id,
+        set: { inviteStatus: 'queued' as const, updatedAt: now },
+      })),
+      session,
+    );
+  }
+  await queue({ weddingId: weddingId, chosen, session });
+  return chosen;
+}
+
+/** `chooseIn` for a team member's request: their side, under the wedding lock. */
+export function chooseFamiliesToEmail(
+  token: string | undefined,
+  weddingId: ObjectId,
+  kind: 'invite' | 'remind' | 'update',
+  selection: EmailSelection,
+  options: ChooseOptions,
+  queue: QueueFamilies,
+  now = new Date(),
+): Promise<FamiliesToEmail> {
+  return writeGuests(token, weddingId, ({ context, side, session }) =>
+    chooseIn({ weddingId: context.weddingId, side, session }, kind, selection, options, queue, now),
+  );
+}
+
+/**
+ * `chooseIn` for the app's own scheduled work (automatic reminders): every side, under the
+ * wedding lock. The caller has already chosen an active wedding.
+ */
+export function chooseFamiliesToEmailAsSystem(
+  weddingId: WeddingId,
+  kind: 'remind',
+  selection: EmailSelection,
+  options: ChooseOptions,
+  queue: QueueFamilies,
+  now = new Date(),
+): Promise<FamiliesToEmail> {
+  return withTransaction(async (session) => {
+    await lockWeddingTasks(weddingId, session);
+    return chooseIn({ weddingId, side: null, session }, kind, selection, options, queue, now);
   });
 }
 
@@ -1268,5 +1384,37 @@ export function withInvitationScope<T>(
 ): Promise<T> {
   return writeGuests(token, weddingId, ({ context, side, session }) =>
     fn({ weddingId: context.weddingId, side, session }),
+  );
+}
+
+/**
+ * An email to this family bounced (Resend webhook, PRD NOTIF-2): flag it, unless the family's
+ * address has been changed since, so no more emails are queued to it.
+ */
+export async function recordEmailBounced(
+  weddingId: WeddingId,
+  householdId: ObjectId,
+  address: string,
+  now = new Date(),
+): Promise<void> {
+  await updateHouseholdIf(
+    weddingId,
+    householdId,
+    { email: address.toLowerCase() },
+    { $set: { emailBounced: true, updatedAt: now } },
+  );
+}
+
+/** The family marked an email as spam: no more reminders (they can still open their page). */
+export async function recordEmailComplaint(
+  weddingId: WeddingId,
+  householdId: ObjectId,
+  now = new Date(),
+): Promise<void> {
+  await updateHouseholdIf(
+    weddingId,
+    householdId,
+    {},
+    { $set: { remindersOptOut: true, updatedAt: now } },
   );
 }

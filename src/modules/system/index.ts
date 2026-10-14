@@ -1,5 +1,11 @@
 import 'server-only';
 
-export { getHealth } from './system.service';
-export { apiNotFoundHandler, getHealthHandler, processJobsHandler } from './system.handlers';
+export { getHealth, runScheduledWork } from './system.service';
+export {
+  apiNotFoundHandler,
+  getHealthHandler,
+  processJobsHandler,
+  resendWebhookHandler,
+  scheduledWorkHandler,
+} from './system.handlers';
 export type { Health } from './system.types';

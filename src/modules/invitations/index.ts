@@ -6,6 +6,7 @@ export {
   getBatchHandler,
   getInvitationHandler,
   listBatchesHandler,
+  notifyEventChangeHandler,
   publicCardHandler,
   remindFamiliesHandler,
   sendInvitationsHandler,
@@ -21,5 +22,6 @@ export {
   getGuestInvitationPage,
   getPageInvitationPreview,
   invitationJobHandlers,
+  queueAutomaticReminders,
 } from './invitations.service';
 export type { InvitationSettings, PublicInvitation } from './invitations.types';

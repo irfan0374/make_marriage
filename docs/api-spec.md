@@ -651,10 +651,10 @@ Response `200`:
 ```json
 {
   "data": <Event>,
-  "meta": { "guestFacingChange": true, "affectedHouseholds": 142 }
+  "meta": { "guestFacingChange": true }
 }
 ```
-`guestFacingChange` is `true` when the date, time or venue changed and invitations were already sent, so the app can offer to notify families (see 10.8).
+`guestFacingChange` is `true` when the date, start or end time, venue, address or map link changed, so the app can offer to tell families. How many families that reaches comes from 10.8's `dryRun` (events don't know about guests); the app asks only when it's at least one.
 
 ### 8.5 `DELETE /api/weddings/{weddingId}/events/{eventId}`
 **Access:** Member
@@ -948,9 +948,11 @@ Only households that were sent the invitation (`sent` or `sent_manually`), have 
 Response `202`: same shape as 10.4. Errors: `RSVP_CLOSED` (409, after the deadline or when archived).
 
 ### 10.8 `POST /api/weddings/{weddingId}/events/{eventId}/notify-change`
-**Access:** Member. Queues an "event updated" email to every household invited to this event that has an email and has been sent an invitation.
+**Access:** Member (side-scoped). Queues an "event updated" email (the event's latest date, time and place, and the family's link) to every household invited to this event that has an email that hasn't bounced and has been sent an invitation (`sent` or `sent_manually`). Families that already have an update for this event waiting are skipped (`skippedQueued`).
 
-Response `202`: `{ "data": { "batchId": "...", "queued": 142 } }`
+Request: `{ "dryRun": false }` (`true` only counts).
+
+Response `202` (or `200` with `batchId: null` for a dry run or nobody to email): same shape as 10.4. Progress and cancel as 10.5–10.6 (`update_…` batches). Errors: `NOT_FOUND` (unknown event).
 
 ### 10.9 `GET /api/weddings/{weddingId}/rsvp/summary`
 **Access:** Member (side-scoped)
@@ -1691,16 +1693,16 @@ Response `200`:
 ```
 
 ### 21.2 `POST /api/cron/daily`
-**Access:** Cron secret. Called once a day at 9:00 AM IST.
+**Access:** Cron secret (`Authorization: Bearer <CRON_SECRET>`). Called **every hour**, so each wedding's scheduled emails go at 9:00 AM in its own timezone (PRD NOTIF-7); `pnpm jobs:dev` calls it hourly in development.
 
-Work: queue automatic RSVP reminders (7 and 2 days before deadlines), queue task due reminders, expire old member invites, clean up abandoned uploads, send retention warnings, delete files for weddings past retention.
+Work today: automatic RSVP reminders. For each active wedding with automatic reminders on and a deadline, during the 9 AM hour of its timezone, when the deadline is exactly 7 or 2 days away, queue reminders to every family the manual reminder (10.7) would reach. Idempotency key `autoremind:{householdId}:{deadline}:{7|2}`, so each family gets each reminder at most once per deadline. Later, with their features: task due reminders, expiring old member invites, abandoned upload cleanup, retention warnings and deletions.
 
-Response `200`: `{ "data": { "rsvpRemindersQueued": 40, "taskRemindersQueued": 12, "pendingPhotosCleaned": 8, "retentionWarnings": 1, "retentionDeletions": 0 } }`
+Response `200`: `{ "data": { "weddingsDue": 3, "rsvpRemindersQueued": 40 } }`
 
 Both cron endpoints are safe to call twice: duplicate work is prevented by idempotency keys.
 
 ### 21.3 `POST /api/webhooks/resend`
-**Access:** Webhook signature. Receives delivery events from Resend.
+**Access:** Webhook signature: Resend signs with Svix headers (`svix-id`, `svix-timestamp`, `svix-signature: v1,<base64 HMAC-SHA256 of "id.timestamp.body">`) using `RESEND_WEBHOOK_SECRET` (`whsec_…`); timestamps older than 5 minutes are refused. Receives delivery events from Resend.
 
 | Event | Effect |
 |---|---|
@@ -1708,7 +1710,9 @@ Both cron endpoints are safe to call twice: duplicate work is prevented by idemp
 | `email.bounced` | Email log marked `bounced`, household `emailBounced` set to `true` |
 | `email.complained` | Email log marked `complained`, household reminders turned off |
 
-Response `200` (Resend retries on other responses). Errors: `INVALID_SIGNATURE` (401).
+Each event is added to the log's `statusHistory` (last 10). A later `delivered` never replaces `bounced` or `complained`. The household is updated first and the log last, and both are safe to repeat, so Resend's retry completes anything that failed. A bounce flags the household only if its address is still the one that bounced; changing a household's email clears `emailBounced`. Other event types and unknown emails are ignored.
+
+Response `200`: `{ "data": { "applied": true } }` (`false` when ignored; Resend retries on other responses). Errors: `INVALID_SIGNATURE` (401).
 
 ### 21.4 `GET /api/health`
 **Access:** Public

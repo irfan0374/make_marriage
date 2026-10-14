@@ -31,6 +31,8 @@ export const sendInvitations = (weddingId: string, input: SendInvitationsInput) 
   postJson<SendResult>(`${wedding(weddingId)}/invitation/send`, input);
 export const remindFamilies = (weddingId: string, input: RemindFamiliesInput) =>
   postJson<SendResult>(`${wedding(weddingId)}/invitation/remind`, input);
+export const notifyEventChange = (weddingId: string, eventId: string, input: { dryRun: boolean }) =>
+  postJson<SendResult>(`${wedding(weddingId)}/events/${eventId}/notify-change`, input);
 export const getBatches = (weddingId: string) =>
   apiFetch<BatchCounts[]>(`${wedding(weddingId)}/invitation/batches`);
 export const cancelBatch = (weddingId: string, batchId: string) =>

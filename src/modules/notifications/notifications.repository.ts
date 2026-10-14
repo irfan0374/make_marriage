@@ -41,3 +41,39 @@ export async function insertEmailLog(input: {
   };
   await globalCollection<EmailLogDocument>(EMAIL_LOGS).insertOne(doc);
 }
+
+/** Record a delivery event from the provider's webhook on the email's log (last 10 kept). */
+export async function applyDeliveryEvent(
+  providerMessageId: string,
+  status: Extract<EmailStatus, 'delivered' | 'bounced' | 'complained'>,
+  at: Date,
+) {
+  await globalCollection<EmailLogDocument>(EMAIL_LOGS).updateOne({ providerMessageId }, [
+    {
+      $set: {
+        // A bounce or complaint is never replaced by a later "delivered".
+        status: {
+          $cond: [
+            {
+              $and: [
+                { $eq: [status, 'delivered'] },
+                { $in: ['$status', ['bounced', 'complained']] },
+              ],
+            },
+            '$status',
+            status,
+          ],
+        },
+        statusHistory: {
+          $slice: [{ $concatArrays: ['$statusHistory', [{ status, at }]] }, -10],
+        },
+        updatedAt: at,
+      },
+    },
+  ]);
+}
+
+/** The log of one sent email, by the provider's id. */
+export function findEmailLogByProviderId(providerMessageId: string) {
+  return globalCollection<EmailLogDocument>(EMAIL_LOGS).findOne({ providerMessageId });
+}

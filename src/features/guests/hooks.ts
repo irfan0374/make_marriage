@@ -24,6 +24,10 @@ export function useHouseholds(weddingId: string, query: URLSearchParams) {
     queryKey: [...guestsKey(weddingId), 'list', query.toString()],
     queryFn: () => getHouseholds(weddingId, query),
     placeholderData: keepPreviousData,
+    // Emails go out from the queue in the background: while any family shown is still
+    // "Sending", check again every few seconds so it turns "Sent" (or "Failed") by itself.
+    refetchInterval: (q) =>
+      q.state.data?.households.some((h) => h.inviteStatus === 'queued') ? 10_000 : false,
   });
 }
 

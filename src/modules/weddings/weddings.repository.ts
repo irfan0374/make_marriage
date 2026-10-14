@@ -114,3 +114,20 @@ export function setInvitation(
     { returnDocument: 'after', includeResultMetadata: false },
   );
 }
+
+/**
+ * Active weddings with automatic RSVP reminders on and a deadline set, for the scheduled run.
+ * The one cross-wedding read: it returns only what the reminder run needs.
+ */
+export function findWeddingsWithAutoReminders() {
+  return weddings()
+    .find(
+      {
+        status: 'active',
+        'invitation.autoRemindersEnabled': true,
+        'invitation.rsvpDeadline': { $type: 'string' },
+      },
+      { projection: { timezone: 1, 'invitation.rsvpDeadline': 1 } },
+    )
+    .toArray();
+}

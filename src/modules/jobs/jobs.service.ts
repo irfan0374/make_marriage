@@ -71,13 +71,17 @@ export function enqueueJobs(
   return insertJobs(weddingId, batchId, jobs, now, session);
 }
 
-/** Families with a `type` job still waiting or running, read in the caller's transaction. */
+/**
+ * Families with a `type` job still waiting or running (optionally only jobs whose payload
+ * matches, e.g. the same event), read in the caller's transaction.
+ */
 export function familiesWithPendingJobs(
   weddingId: WeddingId,
   type: JobType,
   session: ClientSession,
+  payloadMatch?: Record<string, unknown>,
 ): Promise<Set<string>> {
-  return findActiveHouseholdIds(weddingId, type, session);
+  return findActiveHouseholdIds(weddingId, type, session, payloadMatch);
 }
 
 /**

@@ -56,6 +56,6 @@ export interface WeddingEvent {
 
 /** `meta` of PATCH: whether to offer the "event updated" email (api-spec §8.4, §10.8). */
 export interface EventChangeMeta {
+  /** The date, time, venue, address or map link changed. */
   guestFacingChange: boolean;
-  affectedHouseholds: number;
 }

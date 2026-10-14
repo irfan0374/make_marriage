@@ -75,6 +75,16 @@ function initialValues(mode: PanelMode): Values {
   };
 }
 
+/** Changes families would want to hear about (api-spec §8.4). */
+const GUEST_FACING: (keyof Values)[] = [
+  'date',
+  'startTime',
+  'endTime',
+  'venueName',
+  'address',
+  'mapUrl',
+];
+
 /** Fields that differ from the saved event; text compared trimmed, so a stray space isn't a change. */
 function changedFields(values: Values, saved: Values): (keyof Values)[] {
   return (Object.keys(values) as (keyof Values)[]).filter((key) => {
@@ -89,12 +99,15 @@ export function EventPanel({
   mode,
   onClose,
   onDelete,
+  onGuestFacingChange,
   readOnly = false,
 }: {
   weddingId: string;
   mode: PanelMode;
   onClose: () => void;
   onDelete: (event: WeddingEvent) => void;
+  /** Saved a change to when or where it is: the page may offer to tell families. */
+  onGuestFacingChange?: (event: WeddingEvent) => void;
   /** An archived wedding: the event can be read but not changed or deleted. */
   readOnly?: boolean;
 }) {
@@ -142,9 +155,16 @@ export function EventPanel({
       return;
     }
     const patch = Object.fromEntries(changes.map((key) => [key, input[key]])) as UpdateEventInput;
+    const guestFacing = changes.some((key) => GUEST_FACING.includes(key));
     update.mutate(
       { eventId: mode.event.id, input: patch },
-      { onSuccess: onClose, onError: showError },
+      {
+        onSuccess: (event) => {
+          onClose();
+          if (guestFacing) onGuestFacingChange?.(event);
+        },
+        onError: showError,
+      },
     );
   }
 

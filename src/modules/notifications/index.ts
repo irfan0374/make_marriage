@@ -4,8 +4,11 @@ import 'server-only';
 export {
   dailyEmailsLeft,
   DailyEmailLimitError,
+  readResendWebhook,
+  recordDeliveryEvent,
   sendEmail,
   sendQueuedEmail,
+  verifyResendWebhook,
 } from './notifications.service';
-export type { EmailMessage } from './notifications.service';
+export type { DeliveryEvent, EmailMessage } from './notifications.service';
 export { notificationsCollectionSpecs } from './notifications.indexes';

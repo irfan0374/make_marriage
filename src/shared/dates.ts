@@ -123,3 +123,11 @@ export function zonedTimeToUtc(date: string, time: string, timeZone: string): Da
   const first = asUtc - offsetAt(asUtc);
   return new Date(asUtc - offsetAt(first));
 }
+
+/** The hour (0–23) it is now in `timeZone`, e.g. for "9 AM in the wedding's timezone". */
+export function hourIn(timeZone: string, now = new Date()): number {
+  const hour = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' })
+    .formatToParts(now)
+    .find((p) => p.type === 'hour')?.value;
+  return Number(hour ?? 0);
+}

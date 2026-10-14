@@ -937,10 +937,10 @@ Autocomplete calls for setting the wedding location are not counted.
 |---|---|---|---|
 | `weddingId` | ObjectId | ✅ | |
 | `actor` | object | ✅ | `{ type: "user" | "guest" | "system", userId?, householdId? }` |
-| `action` | string | ✅ | e.g. `member.invited`, `member.removed`, `member.role_changed`, `event.deleted`, `household.deleted`, `household.link_regenerated`, `rsvp.submitted` (actor `guest`), `rsvp.recorded_by_host`, `vendor.deleted`, `expense.deleted`, `website.published`, `gallery.link_regenerated`, `photo.deleted`, `wedding.archived` |
+| `action` | string | ✅ | e.g. `member.invited`, `member.removed`, `member.role_changed`, `event.deleted`, `household.deleted`, `household.link_regenerated`, `rsvp.submitted` (actor `guest`), `rsvp.recorded_by_host`, `rsvp.cleared`, `vendor.deleted`, `expense.deleted`, `website.published`, `gallery.link_regenerated`, `photo.deleted`, `wedding.archived` |
 | `targetType` | string | ✅ | e.g. `household`, `event` |
 | `targetId` | ObjectId | | |
-| `meta` | object | | Small details, e.g. `{ before: "manager", after: "admin" }`. No passwords, tokens or full personal records |
+| `meta` | object | | Small details, e.g. `{ before: "manager", after: "admin" }`; replies store `{ changes: [{ eventId, before: "attending:3", after: "declined" }] }`. No passwords, tokens or full personal records |
 | `at` | Date | ✅ | |
 | `expiresAt` | Date | ✅ | `at + 24 months` |
 

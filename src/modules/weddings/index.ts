@@ -16,6 +16,7 @@ export {
   lockWeddingTasks,
   ensureGuestTags,
   getWeddingRecord,
+  listAutoReminderWeddings,
   saveInvitationSettings,
   DEFAULT_INVITATION_MESSAGE,
 } from './weddings.service';

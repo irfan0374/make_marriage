@@ -1,5 +1,5 @@
 import 'server-only';
-import type { ObjectId } from 'mongodb';
+import type { ClientSession, ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { createElement, type ReactElement } from 'react';
 import { APP_NAME, SESSION_COOKIE_NAME } from '@/config/app';
@@ -12,7 +12,8 @@ import { randomToken, sha256Hex } from '@/lib/tokens';
 import { InvitationEmail, type InvitationEmailProps } from '@/emails/invitation';
 import { RsvpConfirmationEmail } from '@/emails/rsvp-confirmation';
 import { RsvpReminderEmail, type RsvpReminderEmailProps } from '@/emails/rsvp-reminder';
-import { listWeddingEvents, type WeddingEvent } from '@/modules/events';
+import { EventUpdatedEmail, type EventUpdatedEmailProps } from '@/emails/event-updated';
+import { getEvent, listWeddingEvents, type WeddingEvent } from '@/modules/events';
 import { fileViewUrl, removeFile, verifyUploadedFile } from '@/modules/files';
 import {
   cancelBatchJobs,
@@ -29,6 +30,7 @@ import {
 } from '@/modules/jobs';
 import {
   chooseFamiliesToEmail,
+  chooseFamiliesToEmailAsSystem,
   findInvitationHousehold,
   getFamilyForEmail,
   invitationScope,
@@ -41,6 +43,8 @@ import {
   markInvitationOpened,
   saveGuestRsvps,
   stopInvitationReminders,
+  type EmailSelection,
+  type FamiliesToEmail,
   type HouseholdDocument,
 } from '@/modules/households';
 import { resolveWeddingContext } from '@/modules/members';
@@ -52,11 +56,20 @@ import {
 } from '@/modules/notifications';
 import {
   getWeddingRecord,
+  listAutoReminderWeddings,
   requireWritableWedding,
   saveInvitationSettings,
   type WeddingDocument,
 } from '@/modules/weddings';
-import { formatDate, todayIn, zonedTimeToUtc } from '@/shared/dates';
+import {
+  daysUntil,
+  formatDate,
+  formatLongDate,
+  formatTime,
+  hourIn,
+  todayIn,
+  zonedTimeToUtc,
+} from '@/shared/dates';
 import type {
   InvitationSettings,
   PublicInvitation,
@@ -568,9 +581,9 @@ export async function invitationCalendar(
 // Sending by email (api-spec §10.4–10.7, PRD INV-6, INV-7, INV-18): families are chosen and
 // queued in one transaction; the job queue sends them a few at a time within the daily limit.
 
-const JOB_TYPES = ['invitation.send', 'rsvp.remind'] as const;
+const JOB_TYPES = ['invitation.send', 'rsvp.remind', 'event.updated_notice'] as const;
 
-function newBatchId(kind: 'send' | 'remind', now: Date): string {
+function newBatchId(kind: 'send' | 'remind' | 'update', now: Date): string {
   const day = now.toISOString().slice(0, 10).replace(/-/g, '');
   return `${kind}_${day}_${randomToken(6)
     .toLowerCase()
@@ -585,49 +598,99 @@ async function estimateDays(count: number, now: Date): Promise<number> {
   return 1 + Math.ceil((count - remaining) / getEnv().EMAIL_DAILY_LIMIT);
 }
 
+type EmailKind = 'invite' | 'remind' | 'update';
+
+const KIND = {
+  invite: { type: 'invitation.send', batch: 'send' },
+  remind: { type: 'rsvp.remind', batch: 'remind' },
+  update: { type: 'event.updated_notice', batch: 'update' },
+} as const;
+
+/** Who is sending: a team member (their side), or the app's scheduled work (every side). */
+type Sender = { token: string | undefined; weddingId: ObjectId } | { system: WeddingId };
+
+/**
+ * Choose families and queue one email job each, in one transaction. `keyOf` makes each job's
+ * idempotency key; by default it's unique to this batch, so the same family can be emailed
+ * again in a later send.
+ */
 async function queueEmails(
-  token: string | undefined,
-  weddingId: ObjectId,
-  kind: 'invite' | 'remind',
-  selection: { householdIds: string[] } | { filter: string },
-  options: { resend?: boolean; dryRun: boolean },
+  sender: Sender,
+  kind: EmailKind,
+  selection: EmailSelection,
+  options: {
+    resend?: boolean;
+    dryRun: boolean;
+    eventId?: ObjectId;
+    keyOf?: (householdId: string, batchId: string) => string;
+  },
   now: Date,
 ): Promise<SendResult> {
   let batchId: string | null = null;
-  const chosen = await chooseFamiliesToEmail(
-    token,
-    weddingId,
-    kind,
-    selection,
-    {
-      ...options,
-      // Reminders don't change the invite status, so check the queue for one already waiting.
-      pending:
-        kind === 'remind'
-          ? (id, session) => familiesWithPendingJobs(id, 'rsvp.remind', session)
-          : undefined,
-    },
-    async ({ weddingId: id, chosen: families, session }) => {
-      batchId = newBatchId(kind === 'invite' ? 'send' : 'remind', now);
-      await enqueueJobs(
-        id,
-        batchId,
-        families.families.map((doc) => ({
-          type: kind === 'invite' ? 'invitation.send' : 'rsvp.remind',
-          // The side lets a side-limited Manager see and cancel only their own families.
-          payload: {
-            householdId: doc._id,
-            previousStatus: doc.inviteStatus,
-            side: doc.side,
-          },
-          idempotencyKey: `${kind}:${doc._id.toHexString()}:${batchId}`,
-        })),
-        session,
-        now,
-      );
-    },
-    now,
-  );
+  const { type, batch } = KIND[kind];
+  // Reminders and updates don't change the invite status, so look in the queue for one already
+  // waiting (an update only counts for the same event).
+  const pending =
+    kind === 'invite'
+      ? undefined
+      : (id: WeddingId, session: ClientSession) =>
+          familiesWithPendingJobs(
+            id,
+            type,
+            session,
+            options.eventId ? { eventId: options.eventId } : undefined,
+          );
+  const queue = async ({
+    weddingId: id,
+    chosen: families,
+    session,
+  }: {
+    weddingId: WeddingId;
+    chosen: FamiliesToEmail;
+    session: ClientSession;
+  }) => {
+    const newBatch = newBatchId(batch, now);
+    batchId = newBatch;
+    await enqueueJobs(
+      id,
+      newBatch,
+      families.families.map((doc) => ({
+        type,
+        // The side lets a side-limited Manager see and cancel only their own families.
+        payload: {
+          householdId: doc._id,
+          previousStatus: doc.inviteStatus,
+          side: doc.side,
+          ...(options.eventId ? { eventId: options.eventId } : {}),
+        },
+        idempotencyKey:
+          options.keyOf?.(doc._id.toHexString(), newBatch) ??
+          `${kind}:${doc._id.toHexString()}:${newBatch}`,
+      })),
+      session,
+      now,
+    );
+  };
+  const chooseOptions = { resend: options.resend, dryRun: options.dryRun, pending };
+  const chosen =
+    'system' in sender
+      ? await chooseFamiliesToEmailAsSystem(
+          sender.system,
+          'remind',
+          selection,
+          chooseOptions,
+          queue,
+          now,
+        )
+      : await chooseFamiliesToEmail(
+          sender.token,
+          sender.weddingId,
+          kind,
+          selection,
+          chooseOptions,
+          queue,
+          now,
+        );
   return {
     batchId,
     queued: chosen.families.length,
@@ -656,8 +719,7 @@ export async function sendInvitations(
     throw new AppError('INVITATION_NOT_READY');
   }
   const result = await queueEmails(
-    token,
-    weddingId,
+    { token, weddingId },
     'invite',
     'householdIds' in input ? { householdIds: input.householdIds } : { filter: input.filter },
     { resend: 'resend' in input ? input.resend : false, dryRun: input.dryRun },
@@ -684,8 +746,7 @@ export async function remindFamilies(
   const wedding = await weddingOf(context.weddingId);
   if (!rsvpState(wedding, now).open) throw new AppError('RSVP_CLOSED');
   const result = await queueEmails(
-    token,
-    weddingId,
+    { token, weddingId },
     'remind',
     'householdIds' in input ? { householdIds: input.householdIds } : { filter: input.filter },
     { dryRun: input.dryRun },
@@ -750,6 +811,87 @@ export async function cancelSendBatch(
   return getSendBatch(token, weddingId, batchId);
 }
 
+/**
+ * POST /api/weddings/{weddingId}/events/{eventId}/notify-change (api-spec §10.8): email the
+ * event's latest details to the caller's side's families invited to it who were sent the
+ * invitation, or count them with `dryRun`.
+ */
+export async function notifyEventChange(
+  token: string | undefined,
+  weddingId: ObjectId,
+  eventId: ObjectId,
+  input: { dryRun: boolean },
+  now = new Date(),
+): Promise<SendResult> {
+  const context = await resolveWeddingContext(token, weddingId);
+  if (!(await getEvent(context.weddingId, eventId))) throw new AppError('NOT_FOUND');
+  const result = await queueEmails(
+    { token, weddingId },
+    'update',
+    { eventId },
+    { dryRun: input.dryRun, eventId },
+    now,
+  );
+  if (result.batchId) {
+    logger.info('invitation.update_queued', {
+      weddingId: context.weddingId.toHexString(),
+      batchId: result.batchId,
+      queued: result.queued,
+    });
+  }
+  return result;
+}
+
+/** Days before the deadline that automatic reminders go out (PRD NOTIF-3). */
+const AUTO_REMINDER_DAYS = [7, 2];
+/** Scheduled emails go at 9 AM in the wedding's timezone (PRD NOTIF-7). */
+const SEND_HOUR = 9;
+
+/**
+ * Automatic RSVP reminders (POST /api/cron/daily, api-spec §21.2), run every hour: each wedding
+ * with reminders on gets them during the 9 AM hour of its own timezone, 7 and 2 days before its
+ * deadline. A family gets each one at most once for a given deadline, however often this runs.
+ */
+export async function queueAutomaticReminders(
+  now = new Date(),
+): Promise<{ weddingsDue: number; rsvpRemindersQueued: number }> {
+  let weddingsDue = 0;
+  let rsvpRemindersQueued = 0;
+  for (const wedding of await listAutoReminderWeddings()) {
+    if (hourIn(wedding.timezone, now) !== SEND_HOUR) continue;
+    const days = daysUntil(wedding.rsvpDeadline, wedding.timezone, now);
+    if (!AUTO_REMINDER_DAYS.includes(days)) continue;
+    weddingsDue++;
+    try {
+      const result = await queueEmails(
+        { system: wedding.weddingId },
+        'remind',
+        { filter: 'all_incomplete' },
+        {
+          dryRun: false,
+          keyOf: (householdId) => `autoremind:${householdId}:${wedding.rsvpDeadline}:${days}`,
+        },
+        now,
+      );
+      rsvpRemindersQueued += result.queued;
+    } catch (error) {
+      // One wedding's problem (e.g. archived a moment ago) never stops the others.
+      logger.warn('invitation.auto_remind_failed', {
+        weddingId: wedding.weddingId.toHexString(),
+        err: error,
+      });
+    }
+  }
+  return { weddingsDue, rsvpRemindersQueued };
+}
+
+/** "Friday, 12 Apr 2028 · 4:00 PM onwards" (or "· 9:00 AM – 1:00 PM"). */
+function whenLineOf(event: WeddingEvent): string {
+  const start = formatTime(event.startTime);
+  const time = event.endTime ? `${start} – ${formatTime(event.endTime)}` : `${start} onwards`;
+  return `${formatLongDate(event.date)} · ${time}`;
+}
+
 /** The card for emails: a stable address that always redirects to a fresh image link. */
 const cardUrlOf = (token: string) =>
   new URL(`/api/public/invitations/${token}/card`, getEnv().APP_URL).toString();
@@ -794,28 +936,34 @@ interface JobEmail<P> {
 async function sendJobEmail<P extends object>(
   job: JobDocument,
   tools: JobRunTools,
-  template: 'invitation' | 'rsvp_reminder',
+  template: 'invitation' | 'rsvp_reminder' | 'event_updated',
   render: (props: P) => ReactElement,
   build: () => JobEmail<P>,
   ids: { weddingId: WeddingId; householdId: ObjectId },
 ): Promise<void> {
-  let email = job.sent as JobEmail<P> | null | undefined;
-  if (!email) {
-    email = build();
-    await tools.remember(email as unknown as Record<string, unknown>);
-  }
+  // A retry sends what an earlier attempt really tried to send. Otherwise it's built from the
+  // latest details, and only saved once today's limit lets the attempt start: a send put off
+  // until tomorrow is rebuilt then, so it never carries yesterday's details.
+  const saved = job.sent as JobEmail<P> | null | undefined;
+  const email = saved ?? build();
   try {
-    await sendQueuedEmail({
-      template,
-      to: email.to,
-      subject: email.subject,
-      body: render(email.props),
-      fromName: email.fromName,
-      weddingId: ids.weddingId,
-      householdId: ids.householdId,
-      jobId: job._id,
-      idempotencyKey: job.idempotencyKey,
-    });
+    await sendQueuedEmail(
+      {
+        template,
+        to: email.to,
+        subject: email.subject,
+        body: render(email.props),
+        fromName: email.fromName,
+        weddingId: ids.weddingId,
+        householdId: ids.householdId,
+        jobId: job._id,
+        idempotencyKey: job.idempotencyKey,
+      },
+      new Date(),
+      saved
+        ? {}
+        : { beforeSend: () => tools.remember(email as unknown as Record<string, unknown>) },
+    );
   } catch (error) {
     if (error instanceof DailyEmailLimitError) throw new DeferJobError(error.resetAt);
     throw error;
@@ -864,6 +1012,52 @@ export const invitationJobHandlers: JobHandlers = {
         trustWeddingId(job.weddingId),
         job.payload.householdId as ObjectId,
       );
+    },
+  },
+  'event.updated_notice': {
+    async run(job, tools) {
+      const { weddingId, household, wedding } = await jobContext(job);
+      const eventId = job.payload.eventId as ObjectId;
+      const event = await getEvent(weddingId, eventId);
+      // Deleted, archived, or no longer invited to the event: nothing to tell. A retry of an
+      // email already attempted goes ahead, so the same email is never changed.
+      if (
+        !household ||
+        !wedding ||
+        (!job.sent &&
+          (!event ||
+            !household.email ||
+            wedding.status === 'archived' ||
+            !household.invitedEvents.some((i) => i.eventId.equals(eventId))))
+      ) {
+        return 'skipped';
+      }
+      await sendJobEmail(
+        job,
+        tools,
+        'event_updated',
+        (props: EventUpdatedEmailProps) => createElement(EventUpdatedEmail, props),
+        () => {
+          const coupleNames = coupleNamesOf(wedding);
+          const where = [event!.venueName, event!.address].filter(Boolean).join(', ');
+          return {
+            to: household.email!,
+            subject: `Update from ${coupleNames}: ${event!.name}`,
+            fromName: coupleNames,
+            props: {
+              coupleNames,
+              familyName: household.displayName,
+              eventName: event!.name,
+              whenLine: whenLineOf(event!),
+              ...(where ? { whereLine: where } : {}),
+              ...(event!.mapUrl ? { mapUrl: event!.mapUrl } : {}),
+              pageUrl: inviteLinkOf(household.token),
+            },
+          };
+        },
+        { weddingId, householdId: household._id },
+      );
+      return 'done';
     },
   },
   'rsvp.remind': {

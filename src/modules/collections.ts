@@ -1,6 +1,7 @@
 import 'server-only';
 import type { CollectionSpec } from '@/lib/db/indexes';
 import { rateLimitsSpec } from '@/lib/db/rate-limits.repository';
+import { auditCollectionSpecs } from '@/modules/audit';
 import { authCollectionSpecs } from '@/modules/auth';
 import { eventsCollectionSpecs } from '@/modules/events';
 import { householdsCollectionSpecs } from '@/modules/households';
@@ -26,4 +27,5 @@ export const collectionSpecs: CollectionSpec[] = [
   ...tasksCollectionSpecs,
   ...notificationsCollectionSpecs,
   ...jobsCollectionSpecs,
+  ...auditCollectionSpecs,
 ];
