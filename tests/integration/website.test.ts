@@ -253,7 +253,7 @@ describe('wedding website (Atlas test database)', () => {
       city: 'Kochi',
       story: 'Our story',
       liveStream: null,
-      galleryUrl: null,
+      galleryUrl: expect.stringMatching(/^http:\/\/localhost:3000\/gallery\/[A-Za-z0-9_-]{22}$/),
       indexable: false,
       hero: { coverUrl: `http://localhost:3000/api/public/sites/${slug}/images/cover.jpg` },
       og: { title: expect.stringContaining(`14 April ${YEAR}`), description: 'Join us in Kochi' },

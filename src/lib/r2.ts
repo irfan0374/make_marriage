@@ -82,8 +82,19 @@ export async function presignUpload(
 }
 
 /** A URL to view or download one file, valid for `expiresInSeconds`. */
-export async function presignDownload(key: string, expiresInSeconds: number): Promise<string> {
+export async function presignDownload(
+  key: string,
+  expiresInSeconds: number,
+  /** Save the file under this name instead of opening it. */
+  downloadName?: string,
+): Promise<string> {
   const url = objectUrl(key, expiresInSeconds);
+  if (downloadName) {
+    url.searchParams.set(
+      'response-content-disposition',
+      `attachment; filename="${downloadName.replace(/["\\\r\n]/g, '')}"`,
+    );
+  }
   if (isTest()) return url.toString();
   const signed = await r2().client.sign(url.toString(), {
     method: 'GET',

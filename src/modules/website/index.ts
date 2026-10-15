@@ -15,7 +15,7 @@ export {
   unpublishWebsiteHandler,
   updateWebsiteHandler,
 } from './website.handlers';
-export { getSitePreview } from './website.service';
+export { getSitePreview, refreshSites } from './website.service';
 export type { PublicSite } from './website.types';
 
 /**

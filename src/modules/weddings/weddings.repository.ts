@@ -199,3 +199,84 @@ export async function isSlugUsedByOther(slug: string, weddingId: WeddingId): Pro
   );
   return doc !== null;
 }
+
+/** The wedding whose gallery link is `token` (public lookup; only what the gallery needs). */
+export function findWeddingByGalleryToken(token: string) {
+  return weddings().findOne(
+    { 'gallery.token': token },
+    {
+      projection: {
+        brideName: 1,
+        groomName: 1,
+        weddingDate: 1,
+        timezone: 1,
+        status: 1,
+        gallery: 1,
+        'website.slug': 1,
+      },
+    },
+  );
+}
+
+/** Change gallery switches (`uploadsOpen`, `guestViewing`) or its token; `null` if archived. */
+export function setGalleryFields(
+  weddingId: WeddingId,
+  changes: Record<string, unknown>,
+  now: Date,
+) {
+  return weddings().findOneAndUpdate(
+    { _id: weddingId, status: 'active' },
+    {
+      $set: {
+        ...Object.fromEntries(Object.entries(changes).map(([k, v]) => [`gallery.${k}`, v])),
+        updatedAt: now,
+      },
+    },
+    { returnDocument: 'after', includeResultMetadata: false },
+  );
+}
+
+/**
+ * Reserve gallery storage for uploads about to happen (database-design §7.1): only while the
+ * wedding is active, uploads are open (for guests) and the cap isn't passed. `false` if not.
+ */
+export async function reserveGalleryStorage(
+  weddingId: WeddingId,
+  bytes: number,
+  /** Guests need uploads open; the team can add photos either way. */
+  requireUploadsOpen = true,
+): Promise<boolean> {
+  const result = await weddings().updateOne(
+    {
+      _id: weddingId,
+      status: 'active',
+      ...(requireUploadsOpen ? { 'gallery.uploadsOpen': true } : {}),
+      $expr: {
+        $lte: [
+          { $add: ['$gallery.storageUsedBytes', '$gallery.storageReservedBytes', bytes] },
+          '$gallery.storageCapBytes',
+        ],
+      },
+    },
+    { $inc: { 'gallery.storageReservedBytes': bytes } },
+  );
+  return result.modifiedCount === 1;
+}
+
+/** Move bytes between reserved and used (negative to release or free). */
+export function adjustGalleryStorage(
+  weddingId: WeddingId,
+  change: { reserved?: number; used?: number },
+  session?: ClientSession,
+) {
+  return weddings().updateOne(
+    { _id: weddingId },
+    {
+      $inc: {
+        'gallery.storageReservedBytes': change.reserved ?? 0,
+        'gallery.storageUsedBytes': change.used ?? 0,
+      },
+    },
+    { session },
+  );
+}

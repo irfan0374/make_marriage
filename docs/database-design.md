@@ -807,8 +807,10 @@ Metadata for gallery photos. Files live in R2.
 | `weddingId` | ObjectId | ✅ | | |
 | `albumEventId` | ObjectId | | `null` | `null` means the "General" album |
 | `uploaderName` | string | | `null` | Max 60 characters, entered by the guest |
-| `displayKey` | string | ✅ | | `weddings/{weddingId}/gallery/{photoId}/display.webp` |
-| `thumbKey` | string | ✅ | | `.../thumb.webp` |
+| `uploadedBy` | object | ✅ | | `{ type: "guest" }` or `{ type: "member", userId }` (the couple's own uploads, part 2) |
+| `contentType` | enum | ✅ | | `image/webp`, or `image/jpeg` from browsers that can't make WebP |
+| `displayKey` | string | ✅ | | `weddings/{weddingId}/gallery/{photoId}/display.webp` (`.jpg` for JPEG) |
+| `thumbKey` | string | ✅ | | `.../thumb.webp` (`.jpg` for JPEG) |
 | `width` | int | ✅ | | Display copy width in pixels |
 | `height` | int | ✅ | | Display copy height |
 | `reservedBytes` | int | ✅ | | Size reserved when the upload URL was issued |

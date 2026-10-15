@@ -50,7 +50,7 @@ function navGroups(weddingId: string, isAdmin: boolean): NavItem[][] {
       { label: 'Expenses', icon: Wallet, href: `${base}/expenses` },
       { label: 'Vendors', icon: Store, href: `${base}/vendors` },
       { label: 'Website', icon: Globe, href: `${base}/website` },
-      { label: 'Photo Gallery', icon: Images, href: null },
+      { label: 'Photo Gallery', icon: Images, href: `${base}/gallery` },
     ],
     [
       { label: 'Team', icon: UsersRound, href: `${base}/team` },

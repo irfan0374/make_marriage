@@ -35,7 +35,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
-import { SoonTag } from '@/components/common/soon-tag';
 import { Switch } from '@/components/ui/switch';
 import { timezoneLabel } from '@/config/constants';
 import { useReorderEvents, useUpdateEvent } from '@/features/events/hooks';
@@ -841,19 +840,23 @@ export function LiveStreamCard({ wedding, settings, save, readOnly }: CardProps)
 
 /* ------------------------------------------------------------------------------------------ */
 
-export function GalleryCard() {
+export function GalleryCard({ weddingId, settings, save, readOnly }: CardProps) {
   return (
-    <section className={cn(card, 'flex items-center justify-between gap-4 opacity-65')}>
-      <div>
-        <div className="mb-1 flex items-center gap-2">
-          <h2 className="text-2xl">Photo Gallery</h2>
-          <SoonTag />
-        </div>
-        <p className="text-text-muted text-sm">
-          Link to your private photo gallery so guests can see and add photos after each event.
-        </p>
-      </div>
-      <Switch aria-label="Show the photo gallery on the website" checked={false} disabled />
+    <section className={cn(card, 'space-y-2')}>
+      <CardHeader
+        title="Photo Gallery"
+        description="Link to your private photo gallery so guests can see and add photos."
+        section="gallery"
+        settings={settings}
+        save={save}
+        readOnly={readOnly}
+      />
+      <Link
+        href={`/app/${weddingId}/gallery`}
+        className="text-primary inline-block text-sm font-medium hover:underline"
+      >
+        Gallery settings and QR code →
+      </Link>
     </section>
   );
 }

@@ -4,6 +4,7 @@ import { AppError } from '@/lib/errors';
 import { getEnv } from '@/lib/env';
 import { recordEmailBounced, recordEmailComplaint } from '@/modules/households';
 import { invitationJobHandlers, queueAutomaticReminders } from '@/modules/invitations';
+import { cleanupPendingPhotos } from '@/modules/gallery';
 import { queueTaskReminders, taskJobHandlers } from '@/modules/tasks';
 import { processJobs, type JobHandlers, type ProcessJobsResult } from '@/modules/jobs';
 import {
@@ -77,13 +78,22 @@ export async function handleResendWebhook(
 
 /**
  * POST /api/cron/daily (api-spec §21.2): the scheduled work, called every hour so each wedding
- * gets it at 9 AM in its own timezone: automatic RSVP reminders and task reminders. Safe to call
+ * gets it at 9 AM in its own timezone: automatic RSVP reminders and task reminders; also removes
+ * gallery uploads never confirmed within a day. Safe to call
  * twice.
  */
 export async function runScheduledWork(authorization: string | null) {
   assertCronSecret(authorization);
-  const result = { ...(await queueAutomaticReminders()), ...(await queueTaskReminders()) };
-  if (result.rsvpRemindersQueued > 0 || result.taskRemindersQueued > 0) {
+  const result = {
+    ...(await queueAutomaticReminders()),
+    ...(await queueTaskReminders()),
+    ...(await cleanupPendingPhotos()),
+  };
+  if (
+    result.rsvpRemindersQueued > 0 ||
+    result.taskRemindersQueued > 0 ||
+    result.photosRemoved > 0
+  ) {
     logger.info('cron.daily', result);
   }
   return result;

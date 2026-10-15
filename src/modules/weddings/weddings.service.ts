@@ -27,6 +27,10 @@ import {
   findSlugsLike,
   findWedding,
   findWeddingBySlug,
+  findWeddingByGalleryToken,
+  reserveGalleryStorage,
+  adjustGalleryStorage,
+  setGalleryFields,
   findActiveWeddingTimezones,
   isSlugUsedByOther,
   findWeddingsWithAutoReminders,
@@ -512,3 +516,24 @@ export async function saveCustomExpenseCategories(
 ): Promise<void> {
   await setCustomExpenseCategories(weddingId, categories, now, session);
 }
+
+/** The wedding behind a gallery link, or `null` (an unknown or replaced link). */
+export async function getWeddingByGalleryToken(token: string) {
+  return findWeddingByGalleryToken(token);
+}
+
+/** Change the gallery switches or token; 409 WEDDING_ARCHIVED if the wedding is archived. */
+export async function saveGalleryFields(
+  weddingId: WeddingId,
+  changes: Partial<Pick<WeddingDocument['gallery'], 'uploadsOpen' | 'guestViewing' | 'token'>>,
+  now = new Date(),
+): Promise<WeddingDocument> {
+  const updated = await setGalleryFields(weddingId, changes, now);
+  if (!updated) throw new AppError('WEDDING_ARCHIVED');
+  return normalizedRecord(updated);
+}
+
+/** Reserve gallery storage; `false` if archived, uploads are closed or it would pass the cap. */
+export const reserveGalleryBytes = reserveGalleryStorage;
+/** Move gallery bytes between reserved and used (negative to release or free). */
+export const adjustGalleryBytes = adjustGalleryStorage;

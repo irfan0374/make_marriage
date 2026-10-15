@@ -157,7 +157,7 @@ export function WebsitePage({ weddingId }: { weddingId: string }) {
           <EventsCard {...props} events={events ?? []} onChanged={refreshPreview} />
           <PhotosCard {...props} />
           <LiveStreamCard {...props} />
-          <GalleryCard />
+          <GalleryCard {...props} />
           <SearchCard {...props} />
         </div>
         <div className="sticky top-20 hidden lg:col-span-5 lg:block">

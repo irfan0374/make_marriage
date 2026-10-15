@@ -5,6 +5,7 @@ import { auditCollectionSpecs } from '@/modules/audit';
 import { authCollectionSpecs } from '@/modules/auth';
 import { eventsCollectionSpecs } from '@/modules/events';
 import { expensesCollectionSpecs } from '@/modules/expenses';
+import { galleryCollectionSpecs } from '@/modules/gallery';
 import { householdsCollectionSpecs } from '@/modules/households';
 import { jobsCollectionSpecs } from '@/modules/jobs';
 import { membersCollectionSpecs } from '@/modules/members';
@@ -32,4 +33,5 @@ export const collectionSpecs: CollectionSpec[] = [
   ...auditCollectionSpecs,
   ...vendorsCollectionSpecs,
   ...expensesCollectionSpecs,
+  ...galleryCollectionSpecs,
 ];

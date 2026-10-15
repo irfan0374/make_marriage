@@ -339,13 +339,16 @@ API responses never include password hashes, session or token hashes, or interna
   "uploaderName": "Sana",
   "width": 2000,
   "height": 1500,
+  "albumName": "Mehendi",
   "thumbUrl": "https://<r2-signed-url>",
   "displayUrl": "https://<r2-signed-url>",
+  "downloadUrl": "https://<r2-signed-url-that-saves-the-file>",
   "hidden": false,
-  "createdAt": "2028-04-12T14:30:00.000Z"
+  "sizeBytes": 540000,
+  "uploadedAt": "2028-04-12T14:30:00.000Z"
 }
 ```
-`hidden` is only included in the couple's view.
+`hidden` and `sizeBytes` are only included in the couple's view. Links are valid for 1 hour; `downloadUrl` saves the file as e.g. `mehendi_75859c5c.webp`. Photos of a deleted event are in "General" (`albumEventId: null`).
 
 ### 4.11 Enums reference
 | Field | Values |
@@ -1454,7 +1457,7 @@ Request (any subset):
 | `indexable` | Admins only (`FORBIDDEN` for Managers) |
 | `coverKey` / `photoKeys` changed by someone else since the editor loaded them | `CONFLICT` (409); the editor reloads and the person tries again |
 
-- `sections` merges: send only the switches that change. The gallery section stays hidden on the public site until the photo gallery is built.
+- `sections` merges: send only the switches that change. 
 - `liveStream.startsAt` is UTC or `null` (no countdown: the player shows straight away). The editor takes a date and a time in the wedding's timezone (a date without a time isn't saved); a time skipped when the clocks go forward is refused, and a time that happens twice when they go back means the first one. `"liveStream": null` removes the stream. The live stream section's switch is `sections.liveStream`.
 - Only the fields sent are written: a content save never undoes a publish, an address change or another person's edit to a different field. The cover and photo lists are compare-and-set against what the editor last loaded.
 - A replaced cover or removed photo is deleted from storage once the save succeeds, unless the site still uses it elsewhere.
@@ -1518,7 +1521,7 @@ Response `200`:
 ```
 - Only events with `showOnWebsite: true` are returned, in the couple's order. `highlight` marks the wedding ceremony (preset `wedding`).
 - Disabled sections are returned as `null` (`hero`, `story`, `events`, `photoUrls`, `liveStream`); an empty story or no photos also give `null`.
-- `galleryUrl` is `null` if the gallery section is off (and until the photo gallery is built).
+- `galleryUrl` is the guests' gallery link (§19.2), or `null` if the gallery section is off.
 - Image addresses are stable (18.2), so the cached page and link previews never hold an expired signed link.
 
 Errors: `NOT_FOUND` (404, unknown or unpublished). Archived weddings' published sites stay viewable.
@@ -1549,14 +1552,16 @@ Response `200`:
 }
 ```
 
+`counts` cover ready photos; `storage.reservedBytes` is uploads in progress. `filesDeleteOn` is a year after the wedding.
+
 #### `PATCH /api/weddings/{weddingId}/gallery`
-**Access:** Admin. Request: `{ "uploadsOpen": false, "guestViewing": true }`. Response `200`: gallery object.
+**Access:** Admin. Request: `{ "uploadsOpen": false, "guestViewing": true }` (either). Response `200`: gallery object.
 
 #### `POST /api/weddings/{weddingId}/gallery/regenerate-link`
-**Access:** Admin. The old link and QR code stop working. Response `200`: gallery object with the new `url`.
+**Access:** Admin. The old link and QR code stop working at once, and the wedding website's gallery link changes too. Recorded in the audit log (`gallery.link_regenerated`). Response `200`: gallery object with the new `url`.
 
 #### `GET /api/weddings/{weddingId}/gallery/qr?format=png|svg|pdf`
-**Access:** Member. Returns the QR code file. `pdf` is a printable A5 card with the couple's names.
+**Access:** Member. Returns the QR code file (high error correction; PNG 1200px). The printable card is a page, `/print/gallery/{weddingId}` (team only): an A5 card with the couple's names, date, QR code and short link that opens the browser's print dialog, where it can also be saved as a PDF (decision: no PDF library).
 
 #### `GET /api/weddings/{weddingId}/gallery/photos`
 **Access:** Member
@@ -1570,10 +1575,10 @@ Response `200`:
 Response `200`: `{ "data": [ <Photo> ], "meta": { "nextCursor": "..." } }`
 
 #### `PATCH /api/weddings/{weddingId}/gallery/photos/{photoId}`
-**Access:** Member. Request: `{ "hidden": true }` or `{ "albumEventId": null }`. Response `200`: `<Photo>`.
+**Access:** Member. Request: `{ "hidden": true }` and/or `{ "albumEventId": null }` (an event of this wedding, or `null` for General). Response `200`: `<Photo>`.
 
 #### `DELETE /api/weddings/{weddingId}/gallery/photos/{photoId}`
-**Access:** Member. Deletes the photo and frees its storage. Response `204`.
+**Access:** Member. Deletes the photo and frees its storage (one transaction), then its files. Recorded in the audit log (`photo.deleted`). Response `204`.
 
 #### `POST /api/weddings/{weddingId}/gallery/photos/bulk`
 **Access:** Member
@@ -1587,21 +1592,24 @@ Request:
 | `hide`, `unhide`, `delete` | none |
 | `move` | `albumEventId` (`null` for General) |
 
-Maximum 200 photos per request. Response `200`: `{ "data": { "updated": 2 } }`
+Maximum 200 photos per request. Other weddings' photo ids are ignored. Response `200`: `{ "data": { "updated": 2 } }`
+
+#### `POST /api/weddings/{weddingId}/gallery/uploads` and `/uploads/complete`
+**Access:** Member. The team's own photos ("Upload photos"): the same request and response as the guests' 19.2 uploads, but allowed while guest uploads are off (the wedding must be active), shown under the member's own name (`uploaderName` in the request is ignored), and with no per-device rate limit. Storage cap and photo limit apply.
 
 #### `POST /api/weddings/{weddingId}/gallery/download-urls`
-**Access:** Member. Used by the browser to build ZIP files.
+**Access:** Member (the team only; guests download one photo at a time). Used by the browser to build ZIP files (decision: our own small "store" ZIP writer, no library).
 
-Request: `{ "album": "all", "cursor": null }` (`album` can be `all`, `general`, or an event ID)
+Request: `{ "album": "all", "cursor": null }` (`album` can be `all`, `general`, `hidden`, or an event ID; `all` includes hidden photos), or `{ "photoIds": [...] }` for a selection (at most 200, one part).
 
 Response `200`:
 ```json
 {
-  "data": [ { "photoId": "66f4...", "fileName": "mehendi_0001.webp", "url": "https://<r2-signed-url>" } ],
+  "data": [ { "photoId": "66f4...", "fileName": "mehendi_75859c5c.webp", "url": "https://<r2-signed-url>", "sizeBytes": 540000 } ],
   "meta": { "nextCursor": "...", "part": 1, "totalParts": 5 }
 }
 ```
-Returns up to 500 photos per call (one ZIP part). URLs are valid for 1 hour.
+Returns up to 500 photos per call (one ZIP part), newest first. URLs are valid for 1 hour. File names are the album and the end of the photo id; repeated names get " (2)" in the ZIP. Each part is saved as `{couple}-photos-part-1-of-5.zip` (or `{couple}-{album}`, `{couple}-selected`).
 
 ### 19.2 Public gallery (guests)
 
@@ -1615,11 +1623,14 @@ Response `200`:
     "weddingName": "Nafiya & Irfan",
     "uploadsOpen": true,
     "guestViewing": true,
-    "albums": [ { "albumEventId": null, "name": "General" }, { "albumEventId": "66f1d0...02", "name": "Mehendi" } ],
+    "albums": [ { "albumEventId": null, "name": "General", "count": 300 }, { "albumEventId": "66f1d0...02", "name": "Mehendi", "count": 420 } ],
+    "photoCount": 720,
     "limits": { "maxFilesPerRequest": 50, "maxDisplayBytes": 2097152, "maxThumbBytes": 204800 }
   }
 }
 ```
+`count` and `photoCount` are the photos guests can see (ready, not hidden), or `null` while guest viewing is off. `uploadsOpen` is `false` for an archived wedding too. Rate limit: 120 requests a minute per link and device (shared with the photo list).
+
 Errors: `LINK_INVALID` (404).
 
 #### `GET /api/public/gallery/{token}/photos`
@@ -1640,8 +1651,8 @@ Request:
   "albumEventId": "66f1d0...02",
   "uploaderName": "Sana",
   "files": [
-    { "clientId": "f1", "width": 2000, "height": 1500, "displayBytes": 512340, "thumbBytes": 38120 },
-    { "clientId": "f2", "width": 1500, "height": 2000, "displayBytes": 498001, "thumbBytes": 36540 }
+    { "clientId": "f1", "contentType": "image/webp", "width": 2000, "height": 1500, "displayBytes": 512340, "thumbBytes": 38120 },
+    { "clientId": "f2", "contentType": "image/webp", "width": 1500, "height": 2000, "displayBytes": 498001, "thumbBytes": 36540 }
   ]
 }
 ```
@@ -1651,6 +1662,9 @@ Request:
 | 1-50 files per request | `VALIDATION_ERROR` |
 | `displayBytes` ≤ 2 MB, `thumbBytes` ≤ 200 KB | `FILE_TOO_LARGE` (413) |
 | Enough storage left | `STORAGE_LIMIT_REACHED` (413) |
+| At most 5,000 photos per wedding | `PHOTO_LIMIT_REACHED` (409) |
+| `albumEventId` is this wedding's event or `null` | `VALIDATION_ERROR` |
+| 30 requests per 10 minutes per link and device (with `complete`) | `RATE_LIMITED` (429) |
 
 Response `200`:
 ```json
@@ -1669,7 +1683,7 @@ Response `200`:
   }
 }
 ```
-All photos are uploaded as `image/webp`.
+Photos are uploaded as `image/webp`, or `image/jpeg` from browsers that can't make WebP (Safari): `contentType` per file (default `image/webp`), the same for both files. `uploaderName` is trimmed (empty means none, max 60). Upload links last 30 minutes.
 
 #### `POST /api/public/gallery/{token}/uploads/complete`
 **Access:** Gallery token. Confirms files have been uploaded to R2.
@@ -1678,9 +1692,9 @@ Request: `{ "photoIds": ["66f4...", "66f4..."] }`
 
 Response `200`:
 ```json
-{ "data": { "ready": ["66f4..."], "missing": ["66f4..."] } }
+{ "data": { "ready": ["66f4..."], "missing": ["66f4..."], "rejected": [] } }
 ```
-`missing` photos weren't found in R2. The browser can retry their upload with the same URLs until they expire. Unconfirmed photos are cleaned up after 24 hours.
+Results follow the order sent. `missing` photos weren't found in R2 (or aren't this link's wedding's): the browser can retry their upload with the same URLs until they expire. `rejected` files weren't real images of their type: they're removed and their storage released. Confirming twice is safe. Unconfirmed photos are cleaned up after 24 hours by the scheduled run (§21.2).
 
 ---
 
@@ -1813,6 +1827,7 @@ Response `503` if the database is unreachable.
 | `ATTACHMENT_LIMIT_REACHED` | 409 | Vendor already has 10 attachments |
 | `FILE_TOO_LARGE` | 413 | File above the size limit |
 | `STORAGE_LIMIT_REACHED` | 413 | Wedding storage cap reached |
+| `PHOTO_LIMIT_REACHED` | 409 | A gallery can hold at most 5,000 photos |
 | `RATE_LIMITED` | 429 | Too many requests. See `Retry-After` |
 | `PLACES_QUOTA_REACHED` | 429 | Monthly vendor search limit reached |
 | `INTERNAL_ERROR` | 500 | Unexpected error. Logged with `requestId` |

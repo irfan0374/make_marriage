@@ -8,7 +8,13 @@ export {
   getUsersByIds,
   requireSession,
 } from './auth.service';
-export { loginHandler, logoutHandler, readSessionToken, signupHandler } from './auth.handlers';
+export {
+  clientInfo,
+  loginHandler,
+  logoutHandler,
+  readSessionToken,
+  signupHandler,
+} from './auth.handlers';
 export { authCollectionSpecs } from './auth.indexes';
 export type { CurrentSession } from './auth.service';
 export type { PublicUser } from './auth.types';

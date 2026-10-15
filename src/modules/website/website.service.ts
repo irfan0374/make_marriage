@@ -40,7 +40,7 @@ type Website = WeddingDocument['website'];
 export const siteCacheTag = (slug: string) => `site:${slug}`;
 
 /** Refresh the cached public pages now. Outside a Next.js request (tests, scripts) there is none. */
-function refreshSites(slugs: (string | null)[]): void {
+export function refreshSites(slugs: (string | null)[]): void {
   for (const slug of new Set(slugs)) {
     if (!slug) continue;
     try {
@@ -322,8 +322,8 @@ async function siteOf(wedding: WeddingDocument): Promise<PublicSite> {
       on('liveStream') && w.liveStream?.enabled
         ? { videoId: w.liveStream.videoId, startsAt: w.liveStream.startsAt?.toISOString() ?? null }
         : null,
-    // The photo gallery isn't built yet (PRD §5.10); its section stays hidden until it is.
-    galleryUrl: null,
+    // The guests' gallery link (PRD WEB-3); a new link shows here once the page refreshes.
+    galleryUrl: on('gallery') ? absolute(`/gallery/${wedding.gallery.token}`) : null,
     indexable: w.indexable,
     og: {
       title: `${couple} · ${formatFullDate(wedding.weddingDate)}`,

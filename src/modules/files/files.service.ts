@@ -112,6 +112,15 @@ export function fileViewUrl(key: string, expiresInSeconds = VIEW_URL_SECONDS): P
   return presignDownload(key, expiresInSeconds);
 }
 
+/** A short-lived URL that saves a stored file as `fileName` instead of opening it. */
+export function fileDownloadUrl(
+  key: string,
+  fileName: string,
+  expiresInSeconds = VIEW_URL_SECONDS,
+): Promise<string> {
+  return presignDownload(key, expiresInSeconds, fileName);
+}
+
 /** Remove a file that's no longer used. Best effort: a failure is logged, never thrown. */
 export async function removeFile(key: string): Promise<void> {
   try {

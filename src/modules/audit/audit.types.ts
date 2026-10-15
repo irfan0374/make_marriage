@@ -13,7 +13,9 @@ export type AuditAction =
   | 'rsvp.cleared'
   | 'household.link_regenerated'
   | 'website.published'
-  | 'website.unpublished';
+  | 'website.unpublished'
+  | 'gallery.link_regenerated'
+  | 'photo.deleted';
 
 /** `auditLogs` collection: sensitive changes, kept 24 months. Never tokens or personal records. */
 export interface AuditLogDocument {
@@ -21,7 +23,7 @@ export interface AuditLogDocument {
   weddingId: ObjectId;
   actor: AuditActor;
   action: AuditAction;
-  targetType: 'household' | 'event' | 'wedding';
+  targetType: 'household' | 'event' | 'wedding' | 'photo';
   targetId: ObjectId | null;
   /** Small details, e.g. `{ eventId, before: 'attending:3', after: 'declined' }`. */
   meta: Record<string, unknown>;

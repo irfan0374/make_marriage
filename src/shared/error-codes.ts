@@ -64,6 +64,7 @@ export const ERROR_CODES = {
   ATTACHMENT_LIMIT_REACHED: { status: 409, message: 'A vendor can have at most 10 attachments.' },
   FILE_TOO_LARGE: { status: 413, message: 'The file is too large.' },
   STORAGE_LIMIT_REACHED: { status: 413, message: 'Storage for this wedding is full.' },
+  PHOTO_LIMIT_REACHED: { status: 409, message: 'This gallery has reached its photo limit.' },
   RATE_LIMITED: { status: 429, message: 'Too many requests. Please try again shortly.' },
   PLACES_QUOTA_REACHED: { status: 429, message: 'Monthly vendor search limit reached.' },
   INTERNAL_ERROR: { status: 500, message: 'Something went wrong. Please try again.' },
