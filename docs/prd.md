@@ -202,7 +202,7 @@ A **household** is a family or group that receives one invitation.
 | ID | Requirement | Priority |
 |---|---|---|
 | EXP-1 | Expense fields: amount (INR), date, category, description, event (optional), vendor (optional), paid by, notes, and receipt (image or PDF, up to 10 MB). | P0 |
-| EXP-2 | Preset categories (Venue, Catering, Decor, Photography and Video, Attire, Jewellery, Makeup and Beauty, Invitations, Entertainment, Transport, Gifts, Miscellaneous) plus custom categories. | P0 |
+| EXP-2 | Preset categories (Venue, Catering, Decor, Photography and Video, Attire, Jewellery, Makeup and Beauty, Invitations, Entertainment, Transport, Gifts, Miscellaneous) plus custom categories. Decision (15 Oct 2026): Admins manage custom categories in Settings; there's no budget figure. | P0 |
 | EXP-3 | "Paid by" can be picked from team members or entered as free text (e.g. "Papa"). | P0 |
 | EXP-4 | Totals overall and grouped by category, event, vendor and paid-by, with a date-range filter. Expenses with no event appear under "General". | P0 |
 | EXP-5 | Amounts are stored as integers in paise and displayed in Indian number format (e.g. ₹12,34,567). | P0 |

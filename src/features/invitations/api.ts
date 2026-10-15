@@ -1,7 +1,5 @@
 import type { Household, RsvpSummary } from '@/modules/households/households.types';
 import type { HostRsvpInput } from '@/modules/households/households.types';
-import type { FilePurpose } from '@/modules/files/files.schemas';
-import type { PresignedUpload } from '@/modules/files/files.types';
 import type {
   InvitationSettings,
   PublicInvitation,
@@ -12,7 +10,7 @@ import type {
 } from '@/modules/invitations/invitations.types';
 import type { BatchCounts } from '@/modules/jobs/jobs.types';
 import type { GuestRsvpInput } from '@/modules/households/households.types';
-import { ApiError, apiFetch, postJson } from '@/shared/api-client';
+import { apiFetch, postJson } from '@/shared/api-client';
 
 const wedding = (weddingId: string) => `/api/weddings/${weddingId}`;
 const households = (weddingId: string) => `${wedding(weddingId)}/households`;
@@ -42,36 +40,7 @@ export const getRsvpSummary = (weddingId: string) =>
   apiFetch<RsvpSummary>(`${wedding(weddingId)}/rsvp/summary`);
 export const rsvpExportUrl = (weddingId: string) => `${wedding(weddingId)}/rsvp/export`;
 
-/**
- * Upload a file straight to storage (api-spec §15): ask for a signed URL, PUT the file there,
- * and return the key to save with the record. The app server never sees the file.
- */
-export async function uploadFile(
-  weddingId: string,
-  purpose: FilePurpose,
-  file: File,
-): Promise<string> {
-  const upload = await postJson<PresignedUpload>(`${wedding(weddingId)}/files/presign`, {
-    purpose,
-    fileName: file.name,
-    contentType: file.type,
-    sizeBytes: file.size,
-  });
-  // Content-Length is set by the browser itself from the body; it matches the signed size.
-  const response = await fetch(upload.uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': upload.headers['Content-Type']! },
-    body: file,
-  });
-  if (!response.ok) {
-    throw new ApiError(
-      'FILE_NOT_UPLOADED',
-      "The card couldn't be uploaded. Check your connection and try again.",
-      response.status,
-    );
-  }
-  return upload.key;
-}
+export { uploadFile } from '@/features/files/upload';
 
 // Host tools on a family (api-spec §9.10–9.13).
 export const regenerateLink = (weddingId: string, householdId: string) =>

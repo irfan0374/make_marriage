@@ -4,6 +4,7 @@ import { withTransaction } from '@/lib/db/transaction';
 import { AppError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { deleteEventRecord, getEvent } from '@/modules/events';
+import { moveEventExpensesToGeneral } from '@/modules/expenses';
 import {
   countAllFamiliesInvitedTo,
   countFamiliesInvitedTo,
@@ -11,15 +12,17 @@ import {
 } from '@/modules/households';
 import { resolveWeddingContext } from '@/modules/members';
 import { unlinkEventFromTasks } from '@/modules/tasks';
+import { removeEventFromVendors } from '@/modules/vendors';
 import { requireWritableWedding, lockWeddingTasks } from '@/modules/weddings';
 
 // Deletes that reach across modules (database-design §8). This module sits above the ones it
 // tidies, so they never need to import each other: events don't know about tasks, and tasks only
-// read events. Expenses, vendors and photos join the event cleanup as they're built.
+// read events. Photos join the event cleanup when they're built.
 
 /**
  * DELETE event (api-spec §8.5): the event goes, and in the same transaction its tasks lose their
- * event link and it comes off every family (their replies for it are archived). When families are invited to it, the caller must confirm first, because their
+ * event link, it comes off every vendor, its expenses move to "General", and it comes off every family (their replies for it are
+ * archived). When families are invited to it, the caller must confirm first, because their
  * replies for it go too.
  */
 export async function deleteEvent(
@@ -45,6 +48,8 @@ export async function deleteEvent(
     }
     await unlinkEventFromTasks(context.weddingId, eventId, session);
     await removeEventFromHouseholds(context.weddingId, eventId, event.name, session);
+    await removeEventFromVendors(context.weddingId, eventId, session);
+    await moveEventExpensesToGeneral(context.weddingId, eventId, session);
   });
   logger.info('cleanup.event_deleted', {
     weddingId: context.weddingId.toHexString(),

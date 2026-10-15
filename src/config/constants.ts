@@ -38,3 +38,9 @@ export const MAX_HOUSEHOLDS_PER_WEDDING = 2000;
 
 /** At most this many guest tags per wedding (database-design §7.1). */
 export const MAX_GUEST_TAGS = 50;
+
+/** At most this many vendors per wedding (api-spec §14.2); weddings usually have 10–30. */
+export const MAX_VENDORS_PER_WEDDING = 200;
+
+/** At most this many expenses per wedding (api-spec §13.2); weddings usually log a few hundred. */
+export const MAX_EXPENSES_PER_WEDDING = 5000;

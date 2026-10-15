@@ -4,12 +4,14 @@ import { rateLimitsSpec } from '@/lib/db/rate-limits.repository';
 import { auditCollectionSpecs } from '@/modules/audit';
 import { authCollectionSpecs } from '@/modules/auth';
 import { eventsCollectionSpecs } from '@/modules/events';
+import { expensesCollectionSpecs } from '@/modules/expenses';
 import { householdsCollectionSpecs } from '@/modules/households';
 import { jobsCollectionSpecs } from '@/modules/jobs';
 import { membersCollectionSpecs } from '@/modules/members';
 import { notificationsCollectionSpecs } from '@/modules/notifications';
 import { tasksCollectionSpecs } from '@/modules/tasks';
 import { teamCollectionSpecs } from '@/modules/team';
+import { vendorsCollectionSpecs } from '@/modules/vendors';
 import { weddingsCollectionSpecs } from '@/modules/weddings';
 
 /**
@@ -28,4 +30,6 @@ export const collectionSpecs: CollectionSpec[] = [
   ...notificationsCollectionSpecs,
   ...jobsCollectionSpecs,
   ...auditCollectionSpecs,
+  ...vendorsCollectionSpecs,
+  ...expensesCollectionSpecs,
 ];

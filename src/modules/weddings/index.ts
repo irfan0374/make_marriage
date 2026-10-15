@@ -18,6 +18,7 @@ export {
   getWeddingRecord,
   listActiveWeddingTimezones,
   listAutoReminderWeddings,
+  saveCustomExpenseCategories,
   saveInvitationSettings,
   DEFAULT_INVITATION_MESSAGE,
 } from './weddings.service';

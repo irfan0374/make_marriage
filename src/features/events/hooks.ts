@@ -58,11 +58,13 @@ export function useDeleteEvent(weddingId: string) {
   return useMutation({
     mutationFn: ({ eventId, confirm }: { eventId: string; confirm?: boolean }) =>
       deleteEvent(weddingId, eventId, confirm),
-    // The event comes off families and tasks too.
+    // The event comes off families, tasks and vendors too, and its expenses move to General.
     onSettled: () => {
       void refreshEvents();
       void queryClient.invalidateQueries({ queryKey: ['weddings', weddingId, 'households'] });
       void queryClient.invalidateQueries({ queryKey: ['weddings', weddingId, 'tasks'] });
+      void queryClient.invalidateQueries({ queryKey: ['weddings', weddingId, 'vendors'] });
+      void queryClient.invalidateQueries({ queryKey: ['weddings', weddingId, 'expenses'] });
     },
   });
 }

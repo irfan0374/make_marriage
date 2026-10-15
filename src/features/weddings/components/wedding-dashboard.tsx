@@ -21,6 +21,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react
 import { SoonTag } from '@/components/common/soon-tag';
 import { dateTile, upcomingEvents } from '@/features/events/event-timing';
 import { useEvents } from '@/features/events/hooks';
+import { useExpenseSummary } from '@/features/expenses/hooks';
 import { useHouseholdSummary } from '@/features/guests/hooks';
 import { useInvitationSettings, useRsvpSummary } from '@/features/invitations/hooks';
 import { dueLabel, tasksDueSoon } from '@/features/tasks/task-groups';
@@ -30,12 +31,15 @@ import { useTeam } from '@/features/team/hooks';
 import { useMe, useWedding } from '@/features/weddings/hooks';
 import { firstName, greetingFor, setupSteps } from '@/features/weddings/setup-steps';
 import type { WeddingEvent } from '@/modules/events/events.types';
+import { categoryLabel } from '@/modules/expenses/expenses.schemas';
+import type { ExpenseSummary } from '@/modules/expenses/expenses.types';
 import type { RsvpSummary } from '@/modules/households/households.types';
 import type { Task } from '@/modules/tasks/tasks.types';
 import type { Wedding } from '@/modules/weddings/weddings.types';
 import { ApiError } from '@/shared/api-client';
 import { cn } from '@/shared/cn';
 import { daysUntil, formatDate, formatTime, todayIn } from '@/shared/dates';
+import { formatRupees } from '@/shared/money';
 
 // The wedding's dashboard, laid out as the Stitch "Dashboard" screen (PRD §5.5). Every number is
 // real: until a feature exists its card shows zero or an empty state, never sample data. As
@@ -534,6 +538,49 @@ function RsvpByEvent({
   );
 }
 
+/** The top categories with their share of the total spent. */
+function SpendingByCategory({
+  weddingId,
+  summary,
+}: {
+  weddingId: string;
+  summary: ExpenseSummary | undefined;
+}) {
+  if (!summary || summary.count === 0) {
+    return (
+      <EmptyState
+        icon={Wallet}
+        text="Spending on venue, catering, attire and more will show here."
+        action={{ href: `/app/${weddingId}/expenses`, label: 'Log an expense' }}
+      />
+    );
+  }
+  return (
+    <ul className="space-y-4 pt-5">
+      {summary.byCategory.slice(0, 5).map((row) => {
+        const share = row.amountPaise / summary.totalAmountPaise;
+        return (
+          <li key={row.category}>
+            <p className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="truncate font-medium">{categoryLabel(row.category)}</span>
+              <span className="shrink-0 tabular-nums">
+                {formatRupees(row.amountPaise)}
+                <span className="text-text-muted ml-1 text-xs">({Math.round(share * 100)}%)</span>
+              </span>
+            </p>
+            <div aria-hidden className="bg-background mt-2 h-2 overflow-hidden rounded-full">
+              <div
+                className="bg-primary h-full rounded-full"
+                style={{ width: `${share * 100}%` }}
+              />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function QuickAction({
   href,
   icon: Icon,
@@ -575,6 +622,7 @@ export function WeddingDashboard({
   const { data: me } = useMe();
   const { data: rsvp } = useRsvpSummary(weddingId);
   const { data: invitation } = useInvitationSettings(weddingId);
+  const { data: spending } = useExpenseSummary(weddingId);
 
   if (isPending) {
     return (
@@ -656,7 +704,15 @@ export function WeddingDashboard({
           value={busiest ? busiest.t.attendingHeadcount.toLocaleString('en-IN') : '0'}
           footer={busiest ? `Most at one event: ${busiest.name}` : 'No replies yet'}
         />
-        <StatCard label="Total spent" value="₹0" footer="No expenses logged yet" />
+        <StatCard
+          label="Total spent"
+          value={formatRupees(spending?.totalAmountPaise ?? 0)}
+          footer={
+            spending && spending.count > 0
+              ? `${spending.count} ${spending.count === 1 ? 'payment' : 'payments'} logged`
+              : 'No expenses logged yet'
+          }
+        />
       </section>
 
       <div className="grid grid-cols-1 gap-7 lg:grid-cols-12">
@@ -688,11 +744,11 @@ export function WeddingDashboard({
               timeZone={wedding.timezone}
             />
           </DashCard>
-          <DashCard title="Spending by category" action={<ViewAll label="View expenses" />}>
-            <EmptyState
-              icon={Wallet}
-              text="Spending on venue, catering, attire and more will show here."
-            />
+          <DashCard
+            title="Spending by category"
+            action={<ViewAll label="View expenses" href={`${base}/expenses`} />}
+          >
+            <SpendingByCategory weddingId={weddingId} summary={spending} />
           </DashCard>
           <section aria-labelledby="actions-heading" className={cn(card, 'p-6')}>
             <h2
@@ -711,7 +767,7 @@ export function WeddingDashboard({
                 <QuickAction href={`${base}/settings`} icon={Settings} label="Wedding details" />
               )}
               <QuickAction href={`${base}/guests`} icon={Users} label="Add guests" />
-              <QuickAction href={null} icon={Receipt} label="Add expense" />
+              <QuickAction href={`${base}/expenses`} icon={Receipt} label="Add expense" />
               <QuickAction href={`${base}/tasks`} icon={ListChecks} label="Add task" />
               <QuickAction href={null} icon={QrCode} label="Share gallery QR" />
             </div>

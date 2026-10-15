@@ -298,16 +298,13 @@ API responses never include password hashes, session or token hashes, or interna
   "vendor": { "id": "66f1f0...301", "name": "Lens & Light Studios" },
   "paidBy": { "type": "name", "name": "Papa" },
   "notes": "Balance due after the wedding",
-  "receipt": {
-    "fileName": "advance.pdf",
-    "contentType": "application/pdf",
-    "sizeBytes": 182340,
-    "url": "https://<r2-signed-url>"
-  },
+  "receipt": { "fileName": "advance.pdf", "contentType": "application/pdf", "sizeBytes": 182340 },
+  "editedBy": { "userId": "66f1a1...", "name": "Riya" },
+  "editedAt": "2027-11-02T10:00:00.000Z",
   "createdAt": "2027-11-02T10:00:00.000Z"
 }
 ```
-`vendor.id` is `null` and `vendor.name` shows the saved name if the vendor was deleted. `receipt.url` is a signed link valid for 1 hour.
+`vendor` shows the vendor's current name; `vendor.id` is `null` (and `name` the name saved with the expense) if the vendor was deleted. A member payer is `{ "type": "member", "userId", "name" }`, with the name kept from when it was saved. The receipt opens through 13.8 (a redirect to a signed link valid for 1 hour).
 
 ### 4.9 Vendor
 ```json
@@ -315,21 +312,24 @@ API responses never include password hashes, session or token hashes, or interna
   "id": "66f1f0...301",
   "name": "Lens & Light Studios",
   "category": "photographer",
+  "contactName": "Rohan Varma",
+  "contactRole": "Lead photographer",
   "phone": "+919812345678",
   "whatsapp": "+919812345678",
   "email": "hello@lenslight.example",
   "notes": "",
   "status": "booked",
   "eventIds": ["66f1d0...02", "66f1d0...03"],
-  "source": "google",
-  "placeId": "ChIJ...",
+  "contractAmountPaise": 15000000,
   "attachments": [
-    { "id": "att_1", "fileName": "quote.pdf", "contentType": "application/pdf", "sizeBytes": 220000, "url": "https://<r2-signed-url>" }
+    { "id": "66f1f1...", "fileName": "quote.pdf", "contentType": "application/pdf", "sizeBytes": 220000, "uploadedAt": "2027-10-11T09:00:00.000Z" }
   ],
-  "totalPaidPaise": 7500000,
+  "editedBy": { "userId": "66f1a1...", "name": "Riya" },
+  "editedAt": "2027-10-11T09:00:00.000Z",
   "createdAt": "2027-10-10T10:00:00.000Z"
 }
 ```
+`contractAmountPaise` is the agreed price (optional, `null` when not set). An attachment opens through 14.8 (a redirect to a signed link). What's been paid comes from the expense summary's `byVendor` (13.5), not from the vendor itself.
 
 ### 4.10 Photo
 ```json
@@ -497,10 +497,10 @@ Rules:
 - Field rules are the same as §6.1. Unknown fields return `VALIDATION_ERROR`; only fields that differ from the saved values are written.
 - A **changed** `weddingDate` must be from today to 5 years ahead in the wedding's timezone (the new one if `timezone` is changed in the same request). An unchanged date is never re-checked, so a wedding that has already happened can still be edited.
 - Changing the names or date does **not** change the website address (`website.slug`), so links already shared keep working. The address is changed only through §17.4.
-- `customExpenseCategories` and `guestTags` are accepted once the expenses and guests modules are built; until then they are rejected as unknown fields.
+- `guestTags` changes through guest families (§9); custom expense categories through `PUT /expense-categories` (13.7). Neither is a field of this request.
 - Turning `sidesEnabled` off keeps each household's `side` value but hides it everywhere, and Managers' side scopes stop applying.
 - Removing a tag from `guestTags` removes it from all households.
-- Removing a custom category that is used by expenses returns `409 CATEGORY_IN_USE`.
+- Custom expense categories are managed with 13.7 (Admins only).
 
 ### 6.4 `POST /api/weddings/{weddingId}/archive`
 **Access:** Admin. Makes the wedding read-only. Response `200`: `{ "data": <Wedding> }`.
@@ -1136,7 +1136,7 @@ Response `201`: `{ "data": [ <Task> ] }`
 
 Response `200`: `{ "data": [ <Expense> ], "meta": { "nextCursor": "...", "total": 84, "totalAmountPaise": 245000000 } }`
 
-`totalAmountPaise` is the total of all expenses matching the filters.
+`totalAmountPaise` is the total of all expenses matching the filters. `limit` 1–100 (default 50). `paidBy` matches the payer's name as shown (a member's or a typed name).
 
 ### 13.2 `POST /api/weddings/{weddingId}/expenses`
 **Access:** Member
@@ -1160,15 +1160,19 @@ Request:
 | `amountPaise` | Integer, 1 to 100,000,000,000 |
 | `category` | Preset or custom category of this wedding |
 | `paidBy` | `{ "type": "member", "userId": "..." }` or `{ "type": "name", "name": "Papa" }` |
-| `receipt.key` | From the upload flow (Section 15), purpose `receipt` |
+| `receipt.key` | From the upload flow (Section 15), purpose `receipt`; the file's first bytes must match its type (image or PDF) |
+| `eventId`, `vendorId` | This wedding's event and saved vendor, or `null` |
+| `paidBy.userId` | A current member of the wedding |
 
-Response `201`: `<Expense>`. Errors: `FILE_NOT_UPLOADED`, `VALIDATION_ERROR`.
+A custom category is matched ignoring case and saved in its own spelling. At most 5,000 expenses per wedding.
+
+Response `201`: `<Expense>`. Errors: `FILE_NOT_UPLOADED`, `UNSUPPORTED_FILE_TYPE`, `VALIDATION_ERROR`, `EXPENSE_LIMIT_REACHED` (409).
 
 ### 13.3 `PATCH /api/weddings/{weddingId}/expenses/{expenseId}`
-**Access:** Member. Any subset of fields. `"receipt": null` removes the receipt. Response `200`: `<Expense>`.
+**Access:** Member. Any subset of fields; only those sent change (so an unchanged payer who has left the team, or a deleted vendor's name, stays). `"receipt": null` removes the receipt, and a replaced or removed receipt is deleted from storage. Response `200`: `<Expense>`.
 
 ### 13.4 `DELETE /api/weddings/{weddingId}/expenses/{expenseId}`
-**Access:** Member. Response `204`.
+**Access:** Member. Its receipt is deleted too. Response `204`.
 
 ### 13.5 `GET /api/weddings/{weddingId}/expenses/summary`
 **Access:** Member. Query: `from`, `to` (optional).
@@ -1188,7 +1192,19 @@ Response `200`:
 ```
 
 ### 13.6 `GET /api/weddings/{weddingId}/expenses/export`
-**Access:** Member. Same filters as the list. Returns `text/csv` with amounts in rupees.
+**Access:** Member. Same filters as the list. Returns `text/csv` (Date, Description, Category, Amount (₹), Event, Vendor, Paid by, Notes, Receipt) with amounts in rupees; no event shows as "General".
+
+### 13.7 `GET` / `PUT /api/weddings/{weddingId}/expense-categories`
+**Access:** GET: Member. PUT: Admin. The wedding's custom categories (the 12 presets are always there).
+
+PUT request: `{ "categories": ["Mehendi artist", "Priest"] }` (the whole list; at most 30, each 1–40 characters, unique ignoring case, not a preset's name).
+
+Response `200`: `{ "data": ["Mehendi artist", "Priest"] }`. Errors: `FORBIDDEN` (Managers), `CATEGORY_IN_USE` (409, removing a category an expense uses; `details: { category, expenses }`).
+
+### 13.8 `GET /api/weddings/{weddingId}/expenses/{expenseId}/receipt`
+**Access:** Member. Redirects (`302`) to a signed link to the receipt, valid for 1 hour. `404` without one.
+
+Deleting an event moves its expenses to "General" (`eventId: null`, 8.5).
 
 ---
 
@@ -1203,7 +1219,7 @@ Response `200`:
 | `category` | Comma-separated categories |
 | `status` | Comma-separated statuses |
 | `eventId` | Event ID |
-| `sort` | `name` (default), `-createdAt`, `-totalPaid` |
+| `sort` | `name` (default), `-createdAt` |
 
 Response `200`: `{ "data": [ <Vendor> ] }` (no pagination, at most a few dozen)
 
@@ -1224,9 +1240,9 @@ Request:
   "placeId": null
 }
 ```
-Required: `name`, `category`. Set `placeId` when saving a Google result (Section 16.4).
+Required: `name`, `category`. Optional: `contactName`, `contactRole` (each up to 80 characters), `contractAmountPaise` (0 to ₹1 billion in paise, or `null`). Phones are stored as `+` and digits (10 digits = +91); events must be this wedding's. Set `placeId` when saving a Google result (Section 16.4, later). At most 200 vendors per wedding.
 
-Response `201`: `<Vendor>`. Errors: `VENDOR_ALREADY_SAVED` (409, same `placeId`).
+Response `201`: `<Vendor>`. Errors: `VALIDATION_ERROR`, `VENDOR_LIMIT_REACHED` (409), `VENDOR_ALREADY_SAVED` (409, same `placeId`).
 
 ### 14.3 `GET /api/weddings/{weddingId}/vendors/{vendorId}`
 **Access:** Member. Response `200`: `<Vendor>` plus `meta.expenses` (linked expenses, newest first).
@@ -1235,17 +1251,22 @@ Response `201`: `<Vendor>`. Errors: `VENDOR_ALREADY_SAVED` (409, same `placeId`)
 **Access:** Member. Any subset of fields. Response `200`: `<Vendor>`.
 
 ### 14.5 `DELETE /api/weddings/{weddingId}/vendors/{vendorId}`
-**Access:** Member. Linked expenses keep the vendor's name. Attachments are deleted. Response `204`.
+**Access:** Member. Linked expenses keep the vendor's name. Attachments are deleted. Deleting an event removes it from every vendor's `eventIds` (8.5). Response `204`.
 
 ### 14.6 `POST /api/weddings/{weddingId}/vendors/{vendorId}/attachments`
 **Access:** Member
 
 Request: `{ "key": "weddings/66f1b.../vendors/66f1f.../q1.pdf", "fileName": "quote.pdf" }`
 
-Response `201`: `<Vendor>`. Errors: `FILE_NOT_UPLOADED`, `ATTACHMENT_LIMIT_REACHED` (409, max 10).
+The key must come from an upload URL for this vendor (`purpose: "vendor_attachment"` with its `vendorId`), so a file uploaded for one vendor can't be attached to another. The file's first bytes must match its type (JPEG, PNG, WebP or PDF); a mismatch is deleted and refused.
+
+Response `201`: `<Vendor>`. Errors: `FILE_NOT_UPLOADED`, `UNSUPPORTED_FILE_TYPE`, `ATTACHMENT_LIMIT_REACHED` (409, max 10).
 
 ### 14.7 `DELETE /api/weddings/{weddingId}/vendors/{vendorId}/attachments/{attachmentId}`
-**Access:** Member. Response `204`.
+**Access:** Member. The file is deleted from storage. Response `204`.
+
+### 14.8 `GET /api/weddings/{weddingId}/vendors/{vendorId}/attachments/{attachmentId}`
+**Access:** Member. Redirects (`302`) to a signed link to the file, valid for 1 hour.
 
 ---
 
@@ -1277,7 +1298,7 @@ Request:
 | `website_cover` | `image/jpeg`, `image/webp` | 2 MB (resized in the browser) |
 | `website_photo` | `image/jpeg`, `image/webp` | 2 MB (resized in the browser) |
 | `receipt` | `image/jpeg`, `image/png`, `image/webp`, `application/pdf` | 10 MB |
-| `vendor_attachment` | `image/jpeg`, `image/png`, `image/webp`, `application/pdf` | 10 MB (`vendorId` required) |
+| `vendor_attachment` | `image/jpeg`, `image/png`, `image/webp`, `application/pdf` | 10 MB (`vendorId` required, and only for this purpose; the key lands in that vendor's folder) |
 
 Response `200`:
 ```json
@@ -1768,6 +1789,8 @@ Response `503` if the database is unreachable.
 | `TASK_LIMIT_REACHED` | 409 | A wedding already has 500 tasks |
 | `HOUSEHOLD_LIMIT_REACHED` | 409 | A wedding already has 2,000 guest families |
 | `VENDOR_ALREADY_SAVED` | 409 | This Google place is already in the vendor list |
+| `VENDOR_LIMIT_REACHED` | 409 | A wedding can have at most 200 vendors |
+| `EXPENSE_LIMIT_REACHED` | 409 | A wedding can have at most 5,000 expenses |
 | `ATTACHMENT_LIMIT_REACHED` | 409 | Vendor already has 10 attachments |
 | `FILE_TOO_LARGE` | 413 | File above the size limit |
 | `STORAGE_LIMIT_REACHED` | 413 | Wedding storage cap reached |

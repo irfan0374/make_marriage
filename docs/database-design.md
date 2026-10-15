@@ -709,10 +709,14 @@ At most 500 tasks per wedding (api-spec §12.2).
 | `eventId` | ObjectId | | `null` | `null` means "General" |
 | `vendorId` | ObjectId | | `null` | → `vendors._id` |
 | `vendorNameSnapshot` | string | | `null` | Copied when linked. Kept if the vendor is deleted |
-| `paidBy` | object | ✅ | | `{ type: "member", userId, name }` or `{ type: "name", name }`. `name` 1-80 characters |
+| `paidBy` | object | ✅ | | `{ type: "member", userId, name }` (the member's name when saved) or `{ type: "name", name }`. `name` 1-80 characters |
 | `notes` | string | | `""` | Max 1,000 characters |
-| `receipt` | object | | `null` | `{ key, fileName, contentType, sizeBytes }`. Image or PDF, ≤ 10 MB |
-| `createdByUserId` | ObjectId | ✅ | | |
+| `receipt` | object | | `null` | `{ key, fileName, contentType, sizeBytes }`. Image or PDF, ≤ 10 MB, key under `weddings/{weddingId}/receipts/` |
+| `createdByUserId` | ObjectId | ✅ | |
+| `editedByUserId` | ObjectId | ✅ | creator | Last person to change it |
+| `editedAt` | Date | ✅ | `createdAt` | | |
+
+At most 5,000 expenses per wedding. Writes run under the wedding lock (like guests, tasks and vendors), so an event or custom category can't disappear while an expense is linked to it. The vendor's current name is shown while it exists; `vendorNameSnapshot` is shown once it's deleted.
 
 **Preset category keys:** `venue`, `catering`, `decor`, `photography_video`, `attire`, `jewellery`, `makeup_beauty`, `invitations`, `entertainment`, `transport`, `gifts`, `miscellaneous`.
 
@@ -767,6 +771,8 @@ db.expenses.aggregate([
 | `weddingId` | ObjectId | ✅ | | |
 | `name` | string | ✅ | | 1-120 characters |
 | `category` | enum | ✅ | | `venue`, `caterer`, `photographer`, `videographer`, `decorator`, `makeup_artist`, `mehendi_artist`, `dj_music`, `florist`, `transport`, `priest_officiant`, `other` |
+| `contactName` | string | ✅ | `""` | Contact person, max 80 characters |
+| `contactRole` | string | ✅ | `""` | e.g. "Lead photographer", max 80 characters |
 | `phone` | string | | `null` | 7-15 digits, optional `+` |
 | `whatsapp` | string | | `null` | Same rule as phone |
 | `email` | string | | `null` | Valid email |
@@ -775,7 +781,11 @@ db.expenses.aggregate([
 | `eventIds` | ObjectId[] | ✅ | `[]` | Events in the same wedding, no duplicates |
 | `source` | enum | ✅ | `"manual"` | `manual`, `google` |
 | `placeId` | string | | `null` | Only Google content kept long-term |
-| `attachments` | object[] | ✅ | `[]` | Max 10. Each `{ key, fileName, contentType, sizeBytes, uploadedAt }`. Image or PDF, ≤ 10 MB |
+| `contractAmountPaise` | long | | `null` | The agreed price, 0 to ₹1 billion |
+| `attachments` | object[] | ✅ | `[]` | Max 10. Each `{ _id, key, fileName, contentType, sizeBytes, uploadedAt }`. Image or PDF, ≤ 10 MB; keys under `weddings/{weddingId}/vendors/{vendorId}/` |
+| `createdByUserId` | ObjectId | ✅ | | |
+| `editedByUserId` | ObjectId | ✅ | creator | Last person to change it |
+| `editedAt` | Date | ✅ | `createdAt` | |
 
 **Indexes**
 | Index | Type | Serves |
@@ -783,6 +793,8 @@ db.expenses.aggregate([
 | `{ weddingId: 1, category: 1, status: 1 }` | | Vendor list with filters |
 | `{ weddingId: 1, eventIds: 1 }` | Multikey | Vendors for an event, event delete cleanup |
 | `{ weddingId: 1, placeId: 1 }` | Unique, partial (`placeId` is a string) | Prevent saving the same Google place twice |
+
+At most 200 vendors per wedding. Writes run under the wedding lock, like guests and tasks.
 
 **Total paid per vendor:** the `byVendor` group of the expense summary, or a single `$match: { weddingId, vendorId }` + `$group` on the vendor page.
 

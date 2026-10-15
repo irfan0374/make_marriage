@@ -56,6 +56,11 @@ export const ERROR_CODES = {
     message: 'A wedding can have at most 2,000 guest families.',
   },
   VENDOR_ALREADY_SAVED: { status: 409, message: 'This vendor is already saved.' },
+  VENDOR_LIMIT_REACHED: { status: 409, message: 'A wedding can have at most 200 vendors.' },
+  EXPENSE_LIMIT_REACHED: {
+    status: 409,
+    message: 'A wedding can have at most 5,000 expenses.',
+  },
   ATTACHMENT_LIMIT_REACHED: { status: 409, message: 'A vendor can have at most 10 attachments.' },
   FILE_TOO_LARGE: { status: 413, message: 'The file is too large.' },
   STORAGE_LIMIT_REACHED: { status: 413, message: 'Storage for this wedding is full.' },

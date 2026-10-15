@@ -4,7 +4,6 @@ import { ImportGuestsDialog } from './import-guests-dialog';
 
 import {
   CalendarPlus,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -20,6 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { FilterSelect } from '@/components/common/filter-select';
 import { Button } from '@/components/ui/button';
 import { useEvents } from '@/features/events/hooks';
 import { useHouseholds, useHouseholdSummary } from '@/features/guests/hooks';
@@ -42,8 +42,6 @@ import { FamilyModal, type FamilyModalMode } from './family-modal';
 
 const PAGE_SIZE = 50;
 const card = 'border-border bg-surface rounded-card shadow-card border';
-const select =
-  'border-border bg-surface hover:border-primary/40 h-10 max-w-52 appearance-none truncate rounded-full border pr-9 pl-4 text-sm';
 
 const INVITE_LABEL: Record<InviteStatus, string> = {
   not_sent: 'Not sent',
@@ -85,40 +83,6 @@ const NO_FILTERS: Filters = {
   inviteStatus: '',
   responseStatus: '',
 };
-
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <span className="relative shrink-0">
-      <select
-        aria-label={`Filter by ${label.toLowerCase()}`}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={select}
-      >
-        <option value="">{label}: All</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        aria-hidden
-        className="text-text-muted pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2"
-      />
-    </span>
-  );
-}
 
 function EmptyState({
   onAdd,

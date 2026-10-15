@@ -8,6 +8,7 @@ import { FormAlert } from '@/components/common/form-field';
 import { useForm } from '@/components/common/use-form';
 import { Button } from '@/components/ui/button';
 import { MAX_WEDDING_YEARS_AHEAD } from '@/config/constants';
+import { ExpenseCategoriesSettings } from '@/features/expenses/components/expense-categories-settings';
 import { useUpdateWedding, useWedding } from '@/features/weddings/hooks';
 import {
   canCheckWeddingDate,
@@ -24,8 +25,8 @@ import {
 } from './wedding-detail-fields';
 
 // Wedding settings (api-spec §6.3), admins only. Built from the "Wedding details" and
-// "Bride side & groom side" parts of the Stitch "Settings" screen; the rest of that screen
-// (tags, expense categories, archive, vendor radius) arrives with those features.
+// "Bride side & groom side" parts of the Stitch "Settings" screen, plus expense categories; the
+// rest of that screen (tags, archive, vendor radius) arrives with those features.
 
 const card = 'border-border bg-surface rounded-card border p-6 md:p-8';
 
@@ -208,13 +209,19 @@ export function WeddingSettings({ weddingId }: { weddingId: string }) {
           </button>
         </div>
       ) : (
-        <SettingsForm
-          // Discard starts the form again from the saved wedding. A refetch alone doesn't
-          // remount, so edits in progress are kept.
-          key={resets}
-          wedding={wedding}
-          onDiscard={() => setResets((n) => n + 1)}
-        />
+        <>
+          <SettingsForm
+            // Discard starts the form again from the saved wedding. A refetch alone doesn't
+            // remount, so edits in progress are kept.
+            key={resets}
+            wedding={wedding}
+            onDiscard={() => setResets((n) => n + 1)}
+          />
+          <ExpenseCategoriesSettings
+            weddingId={weddingId}
+            readOnly={wedding.status === 'archived'}
+          />
+        </>
       )}
     </div>
   );

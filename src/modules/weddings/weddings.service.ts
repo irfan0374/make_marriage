@@ -30,6 +30,7 @@ import {
   lockTaskWrites,
   findWeddingSummaries,
   insertWedding,
+  setCustomExpenseCategories,
   setGuestTags,
   setInvitation,
   updateWeddingDetails,
@@ -454,4 +455,14 @@ export async function listActiveWeddingTimezones(): Promise<
       WEDDING_TIMEZONES.map((tz) => tz.value),
     ),
   }));
+}
+
+/** Save the custom expense categories; call under `lockWeddingTasks` (the expenses module checks use). */
+export async function saveCustomExpenseCategories(
+  weddingId: WeddingId,
+  categories: string[],
+  session: ClientSession,
+  now = new Date(),
+): Promise<void> {
+  await setCustomExpenseCategories(weddingId, categories, now, session);
 }

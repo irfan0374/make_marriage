@@ -13,7 +13,7 @@ import {
 import { randomToken } from '@/lib/tokens';
 import { resolveWeddingContext } from '@/modules/members';
 import { requireWritableWedding } from '@/modules/weddings';
-import { fileProblem, SNIFF_BYTES, sniffImageType, type FilePurpose } from './files.schemas';
+import { fileProblem, SNIFF_BYTES, sniffFileType, type FilePurpose } from './files.schemas';
 import type { PresignedUpload, PresignFileInput, VerifiedFile } from './files.types';
 
 // Files in R2 (architecture §8): upload URLs, checking an upload before it's linked to a
@@ -31,10 +31,16 @@ const EXTENSIONS: Record<string, string> = {
   'application/pdf': 'pdf',
 };
 
-const FOLDERS: Record<FilePurpose, string> = { invitation: 'invitation' };
+const FOLDERS: Record<FilePurpose, string> = {
+  invitation: 'invitation',
+  vendor_attachment: 'vendors',
+  receipt: 'receipts',
+};
 
-function folderOf(weddingId: WeddingId, purpose: FilePurpose): string {
-  return `weddings/${weddingId.toHexString()}/${FOLDERS[purpose]}/`;
+/** A vendor's files sit in their own folder, so one vendor's upload can't be attached to another. */
+function folderOf(weddingId: WeddingId, purpose: FilePurpose, vendorId?: string): string {
+  const base = `weddings/${weddingId.toHexString()}/${FOLDERS[purpose]}/`;
+  return vendorId ? `${base}${vendorId.toLowerCase()}/` : base;
 }
 
 /** POST /api/weddings/{weddingId}/files/presign (api-spec §15.2). */
@@ -49,7 +55,7 @@ export async function presignFileUpload(
   const problem = fileProblem(input.purpose, input);
   if (problem) throw new AppError(problem);
 
-  const key = `${folderOf(context.weddingId, input.purpose)}${randomToken(12)}.${EXTENSIONS[input.contentType]}`;
+  const key = `${folderOf(context.weddingId, input.purpose, input.vendorId)}${randomToken(12)}.${EXTENSIONS[input.contentType]}`;
   const { url, headers } = await presignUpload(
     key,
     input.contentType,
@@ -75,18 +81,23 @@ export async function verifyUploadedFile(
   weddingId: WeddingId,
   purpose: FilePurpose,
   key: string,
+  vendorId?: ObjectId,
 ): Promise<VerifiedFile> {
-  if (!key.startsWith(folderOf(weddingId, purpose)) || key.includes('..')) {
+  if (
+    !key.startsWith(folderOf(weddingId, purpose, vendorId?.toHexString())) ||
+    key.includes('..')
+  ) {
     throw new AppError('FILE_NOT_UPLOADED');
   }
   const stored = await headObject(key);
   if (!stored) throw new AppError('FILE_NOT_UPLOADED');
   const problem = fileProblem(purpose, stored);
   if (problem) throw new AppError(problem);
-  if (stored.contentType.toLowerCase().startsWith('image/')) {
+  // Every allowed type (images and PDF) can be recognised by its first bytes.
+  {
     const start = await readObjectStart(key, SNIFF_BYTES);
     if (!start) throw new AppError('FILE_NOT_UPLOADED');
-    if (sniffImageType(start) !== stored.contentType.toLowerCase()) {
+    if (sniffFileType(start) !== stored.contentType.toLowerCase()) {
       await removeFile(key);
       throw new AppError('UNSUPPORTED_FILE_TYPE');
     }

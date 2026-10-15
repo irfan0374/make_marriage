@@ -138,3 +138,17 @@ export function findActiveWeddingTimezones() {
     .find({ status: 'active' }, { projection: { timezone: 1 } })
     .toArray();
 }
+
+/** Replace the wedding's custom expense categories (called under the wedding lock). */
+export function setCustomExpenseCategories(
+  weddingId: WeddingId,
+  categories: string[],
+  now: Date,
+  session: ClientSession,
+) {
+  return weddings().updateOne(
+    { _id: weddingId },
+    { $set: { customExpenseCategories: categories, updatedAt: now } },
+    { session },
+  );
+}
