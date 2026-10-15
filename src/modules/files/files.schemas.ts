@@ -4,7 +4,13 @@ import { objectIdString } from '@/shared/validation';
 // Client-safe: file pickers check files with these same rules before asking for an upload URL
 // (api-spec §15.2). Purposes are added as their features are built.
 
-export const FILE_PURPOSES = ['invitation', 'vendor_attachment', 'receipt'] as const;
+export const FILE_PURPOSES = [
+  'invitation',
+  'vendor_attachment',
+  'receipt',
+  'website_cover',
+  'website_photo',
+] as const;
 export type FilePurpose = (typeof FILE_PURPOSES)[number];
 
 const MB = 1024 * 1024;
@@ -18,6 +24,9 @@ export const FILE_RULES: Record<FilePurpose, { types: readonly string[]; maxByte
   vendor_attachment: { types: IMAGE_OR_PDF, maxBytes: 10 * MB },
   /** Expense receipts (PRD EXP-1). */
   receipt: { types: IMAGE_OR_PDF, maxBytes: 10 * MB },
+  /** Website images are resized in the browser before upload (PRD WEB-3). */
+  website_cover: { types: ['image/jpeg', 'image/webp'], maxBytes: 2 * MB },
+  website_photo: { types: ['image/jpeg', 'image/webp'], maxBytes: 2 * MB },
 };
 
 export const presignFileSchema = z

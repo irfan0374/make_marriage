@@ -20,12 +20,15 @@ import {
 } from '@/modules/members';
 import { canonicalTimeZone } from '@/shared/dates';
 import { isReservedSlug, slugWithSuffix, suggestSlug } from '@/shared/slug';
+import { DEFAULT_ACCENT_COLOR } from '@/modules/website/website.schemas';
 import { objectIdString } from '@/shared/validation';
 import {
   DuplicateSlugError,
   findSlugsLike,
   findWedding,
+  findWeddingBySlug,
   findActiveWeddingTimezones,
+  isSlugUsedByOther,
   findWeddingsWithAutoReminders,
   lockTaskWrites,
   findWeddingSummaries,
@@ -33,6 +36,7 @@ import {
   setCustomExpenseCategories,
   setGuestTags,
   setInvitation,
+  setWebsiteFields,
   updateWeddingDetails,
   type WeddingDetails,
 } from './weddings.repository';
@@ -98,7 +102,7 @@ function newWeddingDocument(
       published: false,
       publishedAt: null,
       theme: 'classic',
-      accentColor: '#B4535F',
+      accentColor: DEFAULT_ACCENT_COLOR,
       sections: {
         hero: true,
         story: true,
@@ -398,13 +402,8 @@ export async function ensureGuestTags(
   return tags.map((t) => known.get(t.toLowerCase())!);
 }
 
-/**
- * The whole wedding record, for modules that build on it (the invitation page and its
- * settings). `null` if it's gone. Callers check access themselves.
- */
-export async function getWeddingRecord(weddingId: WeddingId): Promise<WeddingDocument | null> {
-  const doc = await findWedding(weddingId);
-  if (!doc) return null;
+/** Early test weddings stored some timezones in lowercase; always use the standard spelling. */
+function normalizedRecord(doc: WeddingDocument): WeddingDocument {
   return {
     ...doc,
     venue: doc.venue ?? '',
@@ -413,6 +412,53 @@ export async function getWeddingRecord(weddingId: WeddingId): Promise<WeddingDoc
       WEDDING_TIMEZONES.map((tz) => tz.value),
     ),
   };
+}
+
+/**
+ * The whole wedding record, for modules that build on it (the invitation page and its
+ * settings). `null` if it's gone. Callers check access themselves.
+ */
+export async function getWeddingRecord(weddingId: WeddingId): Promise<WeddingDocument | null> {
+  const doc = await findWedding(weddingId);
+  return doc ? normalizedRecord(doc) : null;
+}
+
+/** The wedding whose website address is `slug`, published or not. Callers check access. */
+export async function getWeddingBySlug(slug: string): Promise<WeddingDocument | null> {
+  const doc = await findWeddingBySlug(slug);
+  return doc ? normalizedRecord(doc) : null;
+}
+
+/** Whether `slug` is free for this wedding: not reserved and not used by another wedding. */
+export async function isSlugAvailable(slug: string, weddingId: WeddingId): Promise<boolean> {
+  return !isReservedSlug(slug) && !(await isSlugUsedByOther(slug, weddingId));
+}
+
+/** The first free `base`, `base-2`, `base-3`, ... (PRD WEB-1). */
+export const suggestFreeSlug = availableSlug;
+
+/**
+ * Change only the given website fields (see `setWebsiteFields`); `expected` values must still
+ * hold. 409 WEDDING_ARCHIVED if the wedding was archived meanwhile, 409 CONFLICT if an expected
+ * value changed (someone else saved first), 409 SLUG_TAKEN if another wedding took the address.
+ */
+export async function saveWebsiteFields(
+  weddingId: WeddingId,
+  changes: Record<string, unknown>,
+  expected: Record<string, unknown> = {},
+  now = new Date(),
+): Promise<WeddingDocument> {
+  let updated: WeddingDocument | null;
+  try {
+    updated = await setWebsiteFields(weddingId, changes, expected, now);
+  } catch (error) {
+    if (error instanceof DuplicateSlugError) throw new AppError('SLUG_TAKEN');
+    throw error;
+  }
+  if (updated) return normalizedRecord(updated);
+  const current = await findWedding(weddingId);
+  if (!current || current.status !== 'active') throw new AppError('WEDDING_ARCHIVED');
+  throw new AppError('CONFLICT');
 }
 
 /** Save the invitation settings; 409 WEDDING_ARCHIVED if the wedding was archived meanwhile. */

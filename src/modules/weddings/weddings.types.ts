@@ -50,13 +50,13 @@ export interface WeddingDocument {
     slug: string | null;
     published: boolean;
     publishedAt: Date | null;
-    theme: 'classic' | 'floral' | 'modern';
+    theme: 'classic' | 'elegant' | 'modern';
     accentColor: string;
     sections: Record<'hero' | 'story' | 'events' | 'photos' | 'liveStream' | 'gallery', boolean>;
     story: string;
     coverKey: string | null;
     photoKeys: string[];
-    liveStream: { url: string; videoId: string; startsAt: Date; enabled: boolean } | null;
+    liveStream: { url: string; videoId: string; startsAt: Date | null; enabled: boolean } | null;
     indexable: boolean;
   };
   gallery: {

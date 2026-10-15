@@ -362,7 +362,8 @@ API responses never include password hashes, session or token hashes, or interna
 | `expense.category` (presets) | `venue`, `catering`, `decor`, `photography_video`, `attire`, `jewellery`, `makeup_beauty`, `invitations`, `entertainment`, `transport`, `gifts`, `miscellaneous`, or a custom category |
 | `vendor.category` | `venue`, `caterer`, `photographer`, `videographer`, `decorator`, `makeup_artist`, `mehendi_artist`, `dj_music`, `florist`, `transport`, `priest_officiant`, `other` |
 | `vendor.status` | `shortlisted`, `booked`, `completed` |
-| `website.theme` | `classic`, `floral`, `modern` |
+| `website.theme` | `classic`, `elegant`, `modern` |
+| `website.accentColor` | `#4A2545` (plum, default), `#9E3D60`, `#2A6F72`, `#2D6A4F`, `#1D3557`, `#6F4E37` |
 
 ---
 
@@ -1280,7 +1281,7 @@ Used for invitation media, website photos, receipts and vendor attachments. Gall
 3. Send the returned `key` in the related request (e.g. create expense). The API checks the file exists and belongs to this wedding.
 
 ### 15.2 `POST /api/weddings/{weddingId}/files/presign`
-**Access:** Member (website purposes: Admin for cover, Member for photos)
+**Access:** Member (every purpose, including the website's cover and photos)
 
 Request:
 ```json
@@ -1416,8 +1417,8 @@ Response `200`:
     "url": "https://<app-domain>/w/nafiya-irfan-14-apr-2028",
     "published": false,
     "publishedAt": null,
-    "theme": "floral",
-    "accentColor": "#B4535F",
+    "theme": "elegant",
+    "accentColor": "#4A2545",
     "sections": { "hero": true, "story": true, "events": true, "photos": true, "liveStream": true, "gallery": true },
     "story": "We met at...",
     "cover": { "key": "weddings/.../cover.webp", "url": "https://<r2-signed-url>" },
@@ -1434,8 +1435,8 @@ Response `200`:
 Request (any subset):
 ```json
 {
-  "theme": "floral",
-  "accentColor": "#B4535F",
+  "theme": "elegant",
+  "accentColor": "#4A2545",
   "sections": { "story": false },
   "story": "We met at...",
   "coverKey": "weddings/.../cover.webp",
@@ -1446,29 +1447,41 @@ Request (any subset):
 ```
 | Rule | Error |
 |---|---|
-| `liveStream.url` must be a `youtube.com` or `youtu.be` link | `INVALID_YOUTUBE_URL` (400) |
-| `photoKeys` max 12 | `VALIDATION_ERROR` |
-| Keys must come from the upload flow | `FILE_NOT_UPLOADED` |
+| `liveStream.url` must be a video link on `youtube.com` or `youtu.be` (`watch?v=`, `youtu.be/`, `/live/`, `/shorts/`, `/embed/`) | `INVALID_YOUTUBE_URL` (400) |
+| `accentColor` one of the six colours (§4), `theme` one of `classic`, `elegant`, `modern` | `VALIDATION_ERROR` |
+| `photoKeys` max 12, no repeats; `story` max 5,000 characters | `VALIDATION_ERROR` |
+| Keys must come from the upload flow (purpose `website_cover` / `website_photo`), and be real JPEG or WebP images | `FILE_NOT_UPLOADED`, `UNSUPPORTED_FILE_TYPE` |
+| `indexable` | Admins only (`FORBIDDEN` for Managers) |
+| `coverKey` / `photoKeys` changed by someone else since the editor loaded them | `CONFLICT` (409); the editor reloads and the person tries again |
 
-Response `200`: same shape as 17.1. Changes to a published site appear within a minute (the cache is refreshed on save).
+- `sections` merges: send only the switches that change. The gallery section stays hidden on the public site until the photo gallery is built.
+- `liveStream.startsAt` is UTC or `null` (no countdown: the player shows straight away). The editor takes a date and a time in the wedding's timezone (a date without a time isn't saved); a time skipped when the clocks go forward is refused, and a time that happens twice when they go back means the first one. `"liveStream": null` removes the stream. The live stream section's switch is `sections.liveStream`.
+- Only the fields sent are written: a content save never undoes a publish, an address change or another person's edit to a different field. The cover and photo lists are compare-and-set against what the editor last loaded.
+- A replaced cover or removed photo is deleted from storage once the save succeeds, unless the site still uses it elsewhere.
+
+Response `200`: same shape as 17.1. The public page is refreshed at once on every save (otherwise it's cached for a minute).
 
 ### 17.3 `GET /api/weddings/{weddingId}/website/slug-check?slug=nafiya-irfan-14-apr-2028`
 **Access:** Admin
 
 Response `200`:
 ```json
-{ "data": { "slug": "nafiya-irfan-14-apr-2028", "available": false, "suggestion": "nafiya-irfan-14-apr-2028-2" } }
+{ "data": { "slug": "nafiya-irfan-14-apr-2028", "available": false, "reason": "taken", "suggestion": "nafiya-irfan-14-apr-2028-2" } }
 ```
+`reason` is `invalid` (not 3-60 lowercase letters, numbers and single hyphens), `reserved`, `taken` or `null` when available. `suggestion` is only given when taken.
 
 ### 17.4 `PUT /api/weddings/{weddingId}/website/slug`
 **Access:** Admin. Request: `{ "slug": "irfan-and-nafiya" }`
 
 Rules: 3-60 characters, lowercase letters, numbers and single hyphens, not reserved.
 
-Response `200`: website object. Errors: `SLUG_TAKEN` (409), `SLUG_RESERVED` (400).
+Response `200`: website object. Errors: `SLUG_TAKEN` (409), `SLUG_RESERVED` (400). The old address stops working at once.
 
 ### 17.5 `POST /api/weddings/{weddingId}/website/publish` and `/unpublish`
-**Access:** Admin. Response `200`: website object.
+**Access:** Admin. Response `200`: website object. Recorded in the audit log (`website.published`, `website.unpublished`). Archived weddings can't publish or unpublish; a published site stays online.
+
+### 17.6 Preview `/w/{slug}/preview` (page)
+**Access:** Members of the wedding (session cookie); anyone else gets the same 404 as an unknown address. Shows the site as it is now, published or not, with a banner and "Back to editor". `?embed=1` hides the banner (the editor's live preview).
 
 ---
 
@@ -1485,27 +1498,33 @@ Response `200`:
     "groomName": "Irfan",
     "weddingDate": "2028-04-14",
     "city": "Kochi",
-    "theme": "floral",
-    "accentColor": "#B4535F",
+    "theme": "elegant",
+    "accentColor": "#4A2545",
     "sections": { "hero": true, "story": true, "events": true, "photos": true, "liveStream": true, "gallery": true },
     "story": "We met at...",
-    "coverUrl": "https://<r2-signed-url>",
-    "photoUrls": ["https://<r2-signed-url>"],
+    "url": "https://<app-domain>/w/nafiya-irfan-14-apr-2028",
+    "timezone": "Asia/Kolkata",
+    "hero": { "coverUrl": "https://<app-domain>/api/public/sites/nafiya-irfan-14-apr-2028/images/k3Xa9.jpg" },
+    "photoUrls": ["https://<app-domain>/api/public/sites/nafiya-irfan-14-apr-2028/images/p1.jpg"],
     "events": [
-      { "name": "Wedding", "date": "2028-04-14", "startTime": "11:00", "endTime": "14:00", "venueName": "Grand Hyatt", "address": "...", "mapUrl": "...", "dressCode": "" }
+      { "name": "Wedding", "date": "2028-04-14", "startTime": "11:00", "endTime": "14:00", "venueName": "Grand Hyatt", "address": "...", "mapUrl": "...", "dressCode": "", "highlight": true }
     ],
     "liveStream": { "videoId": "xyz123", "startsAt": "2028-04-14T05:30:00.000Z" },
     "galleryUrl": "https://<app-domain>/gallery/q8Zt2mKp4vX9sL1aB7cD3e",
     "indexable": false,
-    "og": { "title": "Nafiya & Irfan · 14 April 2028", "description": "Join us in Kochi", "imageUrl": "https://<r2-signed-url>" }
+    "og": { "title": "Nafiya & Irfan · 14 April 2028", "description": "Join us in Kochi", "imageUrl": "https://<app-domain>/api/public/sites/nafiya-irfan-14-apr-2028/images/k3Xa9.jpg" }
   }
 }
 ```
-- Only events with `showOnWebsite: true` are returned.
-- Disabled sections are returned as `null`.
-- `galleryUrl` is `null` if the gallery section is off.
+- Only events with `showOnWebsite: true` are returned, in the couple's order. `highlight` marks the wedding ceremony (preset `wedding`).
+- Disabled sections are returned as `null` (`hero`, `story`, `events`, `photoUrls`, `liveStream`); an empty story or no photos also give `null`.
+- `galleryUrl` is `null` if the gallery section is off (and until the photo gallery is built).
+- Image addresses are stable (18.2), so the cached page and link previews never hold an expired signed link.
 
-Errors: `NOT_FOUND` (404, unknown or unpublished).
+Errors: `NOT_FOUND` (404, unknown or unpublished). Archived weddings' published sites stay viewable.
+
+### 18.2 `GET /api/public/sites/{slug}/images/{file}`
+**Access:** Public for a published site; for an unpublished one, only its team (the preview). Redirects (`302`, cached privately for 30 minutes) to a signed link to the cover or one of the photos, valid for 1 hour. Any other file is `404`.
 
 ---
 
@@ -1872,6 +1891,7 @@ Response `503` if the database is unreachable.
 | PUT | `/api/weddings/{id}/website/slug` | Admin |
 | POST | `/api/weddings/{id}/website/publish`, `/unpublish` | Admin |
 | GET | `/api/public/sites/{slug}` | Public |
+| GET | `/api/public/sites/{slug}/images/{file}` | Public (published), team (draft) |
 | GET | `/api/weddings/{id}/gallery` | Member |
 | PATCH | `/api/weddings/{id}/gallery` | Admin |
 | POST | `/api/weddings/{id}/gallery/regenerate-link` | Admin |

@@ -8,7 +8,12 @@ export type AuditActor =
 
 /** Actions recorded so far (database-design §7.13); more arrive with their features. */
 export type AuditAction =
-  'rsvp.submitted' | 'rsvp.recorded_by_host' | 'rsvp.cleared' | 'household.link_regenerated';
+  | 'rsvp.submitted'
+  | 'rsvp.recorded_by_host'
+  | 'rsvp.cleared'
+  | 'household.link_regenerated'
+  | 'website.published'
+  | 'website.unpublished';
 
 /** `auditLogs` collection: sensitive changes, kept 24 months. Never tokens or personal records. */
 export interface AuditLogDocument {
@@ -16,7 +21,7 @@ export interface AuditLogDocument {
   weddingId: ObjectId;
   actor: AuditActor;
   action: AuditAction;
-  targetType: 'household' | 'event';
+  targetType: 'household' | 'event' | 'wedding';
   targetId: ObjectId | null;
   /** Small details, e.g. `{ eventId, before: 'attending:3', after: 'declined' }`. */
   meta: Record<string, unknown>;

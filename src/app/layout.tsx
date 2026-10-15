@@ -15,6 +15,8 @@ const inter = Inter({
 const fraunces = Fraunces({
   subsets: ['latin'],
   weight: ['500'],
+  // Italic for the wedding website's editorial touches (the "&" between names, dates).
+  style: ['normal', 'italic'],
   variable: '--font-fraunces',
   display: 'swap',
 });

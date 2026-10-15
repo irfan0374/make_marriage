@@ -81,6 +81,16 @@ export function formatDate(date: string): string {
   }).format(utcDay(date));
 }
 
+/** "14 April 2028", for the wedding website and link previews. */
+export function formatFullDate(date: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(utcDay(date));
+}
+
 /** "Friday, 14 Apr 2028". */
 export function formatLongDate(date: string): string {
   const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'UTC' }).format(
@@ -122,6 +132,51 @@ export function zonedTimeToUtc(date: string, time: string, timeZone: string): Da
   };
   const first = asUtc - offsetAt(asUtc);
   return new Date(asUtc - offsetAt(first));
+}
+
+/** The wall-clock date (`YYYY-MM-DD`) and time (`HH:mm`) of an instant in `timeZone`. */
+export function localParts(instant: Date, timeZone: string): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(instant);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    time: `${get('hour')}:${get('minute')}`,
+  };
+}
+
+/**
+ * The instant a wall-clock `date` and `time` happen in `timeZone`, strictly: `null` if that time
+ * doesn't exist there (skipped when clocks go forward, e.g. 01:30 on 26 Mar 2028 in London).
+ * When it happens twice (clocks go back), the first one, e.g. 01:30 BST not GMT.
+ */
+export function localTimeToUtc(date: string, time: string, timeZone: string): Date | null {
+  const [y, mo, d] = date.split('-').map(Number) as [number, number, number];
+  const [h = 0, mi = 0] = time.split(':').map(Number);
+  const asUtc = Date.UTC(y, mo - 1, d, h, mi);
+  const offsetAt = (instant: number) => {
+    const local = localParts(new Date(instant), timeZone);
+    const [ly, lmo, ld] = local.date.split('-').map(Number) as [number, number, number];
+    const [lh, lmi] = local.time.split(':').map(Number) as [number, number];
+    return Date.UTC(ly, lmo - 1, ld, lh, lmi) - Math.floor(instant / 60000) * 60000;
+  };
+  // Offsets either side of any change that day; each gives a candidate that must round-trip.
+  const HOURS_12 = 12 * 60 * 60 * 1000;
+  const candidates = [...new Set([offsetAt(asUtc - HOURS_12), offsetAt(asUtc + HOURS_12)])]
+    .map((offset) => asUtc - offset)
+    .filter((instant) => {
+      const back = localParts(new Date(instant), timeZone);
+      return back.date === date && back.time === time;
+    })
+    .sort((a, b) => a - b);
+  return candidates.length > 0 ? new Date(candidates[0]!) : null;
 }
 
 /** The hour (0–23) it is now in `timeZone`, e.g. for "9 AM in the wedding's timezone". */

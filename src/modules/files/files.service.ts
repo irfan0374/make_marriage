@@ -35,6 +35,8 @@ const FOLDERS: Record<FilePurpose, string> = {
   invitation: 'invitation',
   vendor_attachment: 'vendors',
   receipt: 'receipts',
+  website_cover: 'website',
+  website_photo: 'website',
 };
 
 /** A vendor's files sit in their own folder, so one vendor's upload can't be attached to another. */

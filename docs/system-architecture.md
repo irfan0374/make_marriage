@@ -299,7 +299,7 @@ events/
 | Account | `/login`, `/signup`, `/forgot-password`, `/reset-password` | `/api/auth/*`, `/api/me` | Public |
 | Join a wedding | `/join/{token}` | `/api/member-invites/*` | Member invite token, then login |
 | Private app | `/app` (wedding picker), `/app/{weddingId}/*` | `/api/weddings/{weddingId}/*` | Logged-in members of that wedding |
-| Wedding website | `/w/{slug}` | `/api/public/sites/*` | Anyone, if published |
+| Wedding website | `/w/{slug}` (team preview `/w/{slug}/preview`) | `/api/public/sites/*` | Anyone, if published; the team, always |
 | Guest invitation | `/invited/{token}` | `/api/public/invitations/*` | Personal household token |
 | Photo gallery | `/gallery/{token}` | `/api/public/gallery/*` | Gallery token |
 | System | none | `/api/cron/*`, `/api/webhooks/*`, `/api/health` | Secret or signature |
@@ -341,7 +341,7 @@ Every private request resolves who the user is, which wedding they're working in
 | Events, guests, invitations, RSVPs, tasks, expenses, vendors, website content, gallery photos | ✅ | ✅ |
 | Wedding profile, sides setting, location | ✅ | ❌ |
 | Team members and roles | ✅ | ❌ |
-| Publish website, change its address | ✅ | ❌ |
+| Publish website, change its address, search-engine indexing | ✅ | ❌ |
 | Gallery settings and link regeneration | ✅ | ❌ |
 | Archive or unarchive the wedding | ✅ | ❌ |
 

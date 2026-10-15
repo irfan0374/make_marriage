@@ -4,6 +4,8 @@ import {
   addMonths,
   addYears,
   zonedTimeToUtc,
+  localParts,
+  localTimeToUtc,
   hourIn,
   canonicalTimeZone,
   daysUntil,
@@ -102,5 +104,43 @@ describe('hourIn', () => {
     expect(hourIn('Asia/Kolkata', at)).toBe(9);
     expect(hourIn('Asia/Dubai', at)).toBe(7);
     expect(hourIn('Europe/London', at)).toBe(4);
+  });
+});
+
+describe('localTimeToUtc', () => {
+  it('converts ordinary times in each wedding timezone', () => {
+    expect(localTimeToUtc('2028-04-14', '11:00', 'Asia/Kolkata')?.toISOString()).toBe(
+      '2028-04-14T05:30:00.000Z',
+    );
+    expect(localTimeToUtc('2027-12-12', '11:00', 'Asia/Singapore')?.toISOString()).toBe(
+      '2027-12-12T03:00:00.000Z',
+    );
+    expect(localTimeToUtc('2028-07-01', '18:00', 'Europe/London')?.toISOString()).toBe(
+      '2028-07-01T17:00:00.000Z',
+    );
+  });
+
+  it('refuses times skipped when clocks go forward', () => {
+    expect(localTimeToUtc('2028-03-26', '01:30', 'Europe/London')).toBeNull();
+    expect(localTimeToUtc('2028-03-12', '02:30', 'America/New_York')).toBeNull();
+    expect(localTimeToUtc('2028-03-26', '02:00', 'Europe/London')?.toISOString()).toBe(
+      '2028-03-26T01:00:00.000Z',
+    );
+  });
+
+  it('takes the first of a time that happens twice when clocks go back', () => {
+    // 01:30 BST (UTC+1), not 01:30 GMT an hour later.
+    expect(localTimeToUtc('2028-10-29', '01:30', 'Europe/London')?.toISOString()).toBe(
+      '2028-10-29T00:30:00.000Z',
+    );
+    // 01:30 EDT (UTC-4), not EST.
+    expect(localTimeToUtc('2028-11-05', '01:30', 'America/New_York')?.toISOString()).toBe(
+      '2028-11-05T05:30:00.000Z',
+    );
+  });
+
+  it('round-trips through localParts', () => {
+    const at = localTimeToUtc('2028-11-05', '23:45', 'America/New_York')!;
+    expect(localParts(at, 'America/New_York')).toEqual({ date: '2028-11-05', time: '23:45' });
   });
 });

@@ -27,6 +27,9 @@
   --brand-pending-text: #7a5a2e;
   --brand-danger-bg: #f6e9e6;
   --brand-danger-text: #8a3a2e;
+  /* Wedding website: deep gold for small labels, and the red of a "Live" badge. */
+  --brand-gold-deep: #7a5a2e;
+  --brand-live: #b3261e;
 
   /* Shape (§18.4): cards 16px, inputs 12px, buttons pill (rounded-full). */
   --radius: 1rem;
@@ -117,6 +120,14 @@
   --color-pending-text: var(--brand-pending-text);
   --color-danger-bg: var(--brand-danger-bg);
   --color-danger-text: var(--brand-danger-text);
+  --color-gold-deep: var(--brand-gold-deep);
+  --color-live: var(--brand-live);
+
+  /* Wedding website (§18, PRD WEB-2): shades of the couple's accent colour, set per page. */
+  --color-site: var(--site-accent);
+  --color-site-deep: var(--site-accent-deep);
+  --color-site-soft: var(--site-accent-soft);
+  --color-site-tint: var(--site-accent-tint);
 
   --radius-sm: calc(var(--radius) * 0.5);
   --radius-md: var(--radius-input-size);
@@ -129,6 +140,17 @@
   /* Soft plum-tinted shadows for app cards and chrome (Stitch "Dashboard"). */
   --shadow-card: 0 2px 12px color-mix(in srgb, var(--brand-primary) 3%, transparent);
   --shadow-chrome: 0 1px 8px color-mix(in srgb, var(--brand-primary) 3%, transparent);
+}
+
+/*
+ * 4. Wedding website: the couple's accent colour (one of a tested set, PRD WEB-2) is set as
+ * `--site-accent` on the page root; the darker and lighter shades follow from it.
+ */
+.wedding-site {
+  --site-accent: var(--brand-primary);
+  --site-accent-deep: color-mix(in srgb, var(--site-accent) 70%, black);
+  --site-accent-soft: color-mix(in srgb, var(--site-accent) 14%, white);
+  --site-accent-tint: color-mix(in srgb, var(--site-accent) 6%, white);
 }
 
 @layer base {

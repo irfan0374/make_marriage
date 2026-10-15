@@ -152,3 +152,50 @@ export function setCustomExpenseCategories(
     { session },
   );
 }
+
+/**
+ * Change only the given website fields (`$set` paths under `website.`), so one person's save never
+ * undoes another's change to a different field. `expected` are values the matching fields must
+ * still have (a compare-and-set, e.g. the photos the editor started from). Returns the updated
+ * wedding, or `null` if it was archived or an expected value changed meanwhile. A taken address
+ * throws `DuplicateSlugError`.
+ */
+export async function setWebsiteFields(
+  weddingId: WeddingId,
+  changes: Record<string, unknown>,
+  expected: Record<string, unknown>,
+  now: Date,
+) {
+  const prefix = (fields: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(fields).map(([k, v]) => [`website.${k}`, v]));
+  try {
+    return await weddings().findOneAndUpdate(
+      { _id: weddingId, status: 'active', ...prefix(expected) },
+      { $set: { ...prefix(changes), updatedAt: now } },
+      { returnDocument: 'after', includeResultMetadata: false },
+    );
+  } catch (error) {
+    if (
+      error instanceof MongoServerError &&
+      error.code === 11000 &&
+      Object.keys(error.keyPattern ?? {}).includes('website.slug')
+    ) {
+      throw new DuplicateSlugError();
+    }
+    throw error;
+  }
+}
+
+/** The wedding whose website lives at `/w/{slug}` (public lookup; callers check `published`). */
+export function findWeddingBySlug(slug: string) {
+  return weddings().findOne({ 'website.slug': slug });
+}
+
+/** Whether another wedding uses this website address. */
+export async function isSlugUsedByOther(slug: string, weddingId: WeddingId): Promise<boolean> {
+  const doc = await weddings().findOne(
+    { 'website.slug': slug, _id: { $ne: weddingId } },
+    { projection: { _id: 1 } },
+  );
+  return doc !== null;
+}

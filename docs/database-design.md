@@ -300,13 +300,13 @@ The tenant root. Every other tenant document points to a wedding through `weddin
 | `slug` | string | `null` | Pattern `^[a-z0-9]+(-[a-z0-9]+)*$`, 3-60 characters, unique, not a reserved word |
 | `published` | bool | `false` | |
 | `publishedAt` | Date | `null` | |
-| `theme` | enum | `"classic"` | `classic`, `floral`, `modern` |
-| `accentColor` | string | `"#B4535F"` | Hex `#RRGGBB` |
+| `theme` | enum | `"classic"` | `classic`, `elegant`, `modern` |
+| `accentColor` | string | `"#4A2545"` | One of six tested colours (api-spec §4); an older value shows as the default |
 | `sections` | object | all `true` | `{ hero, story, events, photos, liveStream, gallery }`, each bool |
 | `story` | string | `""` | Max 5,000 characters |
 | `coverKey` | string | `null` | R2 key |
 | `photoKeys` | string[] | `[]` | Max 12 |
-| `liveStream` | object | `null` | `{ url, videoId, startsAt (Date), enabled (bool) }`. URL must be YouTube |
+| `liveStream` | object | `null` | `{ url, videoId, startsAt (Date or `null`), enabled (bool) }`. URL must be a YouTube video link |
 | `indexable` | bool | `false` | Search engine indexing |
 
 **`gallery`**
@@ -363,8 +363,8 @@ The tenant root. Every other tenant document points to a wedding through `weddin
     "slug": "nafiya-irfan-14-apr-2028",
     "published": true,
     "publishedAt": { "$date": "2028-01-10T08:00:00Z" },
-    "theme": "floral",
-    "accentColor": "#B4535F",
+    "theme": "elegant",
+    "accentColor": "#4A2545",
     "sections": { "hero": true, "story": true, "events": true, "photos": true, "liveStream": true, "gallery": true },
     "story": "We met at...",
     "coverKey": "weddings/66f1b.../website/cover.webp",
@@ -949,7 +949,7 @@ Autocomplete calls for setting the wedding location are not counted.
 |---|---|---|---|
 | `weddingId` | ObjectId | ✅ | |
 | `actor` | object | ✅ | `{ type: "user" | "guest" | "system", userId?, householdId? }` |
-| `action` | string | ✅ | e.g. `member.invited`, `member.removed`, `member.role_changed`, `event.deleted`, `household.deleted`, `household.link_regenerated`, `rsvp.submitted` (actor `guest`), `rsvp.recorded_by_host`, `rsvp.cleared`, `vendor.deleted`, `expense.deleted`, `website.published`, `gallery.link_regenerated`, `photo.deleted`, `wedding.archived` |
+| `action` | string | ✅ | e.g. `member.invited`, `member.removed`, `member.role_changed`, `event.deleted`, `household.deleted`, `household.link_regenerated`, `rsvp.submitted` (actor `guest`), `rsvp.recorded_by_host`, `rsvp.cleared`, `vendor.deleted`, `expense.deleted`, `website.published`, `website.unpublished`, `gallery.link_regenerated`, `photo.deleted`, `wedding.archived` |
 | `targetType` | string | ✅ | e.g. `household`, `event` |
 | `targetId` | ObjectId | | |
 | `meta` | object | | Small details, e.g. `{ before: "manager", after: "admin" }`; replies store `{ changes: [{ eventId, before: "attending:3", after: "declined" }] }`. No passwords, tokens or full personal records |

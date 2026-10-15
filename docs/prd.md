@@ -225,7 +225,7 @@ A **household** is a family or group that receives one invitation.
 | ID | Requirement | Priority |
 |---|---|---|
 | WEB-1 | Public URL `/w/{slug}` with a custom slug (e.g. `/w/riya-and-arjun`). Slugs are unique, lowercase letters, numbers and single hyphens, 3 to 60 characters, with reserved words blocked. The suggestion is `{bride}-{groom}-{dd}-{mon}-{yyyy}`, with a suffix if taken. | P0 |
-| WEB-2 | At least 3 themes, each with an accent colour choice. | P0 |
+| WEB-2 | At least 3 themes, each with an accent colour choice. Decision (15 Oct 2026): Classic, Elegant and Modern (from the Stitch designs; no florals), with six preset accent colours. | P0 |
 | WEB-3 | Sections the couple can toggle: hero (names, date, city, cover photo), our story, events (only those marked "show on website"), photos (up to 12), live stream, and a link to the photo gallery. | P0 |
 | WEB-4 | Publish and unpublish. Unpublished sites return a 404 to visitors. Admins can preview. | P0 |
 | WEB-5 | Live stream: the couple pastes a YouTube live or video URL, only YouTube domains are accepted, and it is embedded with the privacy-enhanced YouTube player. The couple can set a start time and toggle the section on or off. | P0 |
