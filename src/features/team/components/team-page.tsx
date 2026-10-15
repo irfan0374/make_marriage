@@ -15,6 +15,7 @@ import {
   NewLinkDialog,
   RemoveMemberDialog,
 } from './team-dialogs';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // Team (Stitch "Team" and "Team (Manager view)"): admins manage members and invitations;
 // Managers see who's on the team, read-only.
@@ -95,9 +96,7 @@ export function TeamPage({ weddingId }: { weddingId: string }) {
       </div>
 
       {isPending ? (
-        <p role="status" className="text-text-muted py-12 text-center">
-          Loading the team…
-        </p>
+        <WeddingLoader label="Loading the team" size="section" />
       ) : error ? (
         <div role="alert" className="space-y-3 py-12 text-center">
           <p className="text-text-muted">We couldn&apos;t load the team.</p>

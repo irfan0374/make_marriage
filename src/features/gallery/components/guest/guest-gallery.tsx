@@ -9,6 +9,7 @@ import { getPublicGallery } from '../../api';
 import { usePublicPhotos } from '../../hooks';
 import { PhotoViewer } from '../photo-viewer';
 import { AddPhotosSheet } from './add-photos-sheet';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The guests' photo gallery (Stitch "Guest Photo Gallery (Home & Viewer)", desktop and phone,
 // and "Guest Gallery States"): add photos without an account, browse albums, open a photo.
@@ -200,9 +201,7 @@ export function GuestGallery({ token, initial }: { token: string; initial: Publi
               {!open && <ClosedNotice className="md:hidden" />}
 
               {photos.isPending ? (
-                <p role="status" className="text-text-muted py-16 text-center text-sm">
-                  Loading photos…
-                </p>
+                <WeddingLoader label="Loading photos" size="section" />
               ) : photos.isError ? (
                 <div role="alert" className="py-16 text-center">
                   <p className="text-text-muted text-sm">We couldn&apos;t load the photos.</p>
@@ -240,15 +239,7 @@ export function GuestGallery({ token, initial }: { token: string; initial: Publi
                   </ul>
                   <div ref={sentinel} />
                   {(hasNextPage || isFetchingNextPage) && (
-                    <div
-                      role="status"
-                      className="flex flex-col items-center justify-center gap-2 py-10"
-                    >
-                      <span className="border-primary size-6 animate-spin rounded-full border-2 border-t-transparent" />
-                      <span className="text-text-muted text-sm font-medium">
-                        Loading more memories…
-                      </span>
-                    </div>
+                    <WeddingLoader label="Loading more memories" size="inline" />
                   )}
                 </section>
               )}

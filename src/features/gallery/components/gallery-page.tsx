@@ -49,6 +49,7 @@ import { useZipDownload } from '../use-zip-download';
 import { AddPhotosSheet } from './guest/add-photos-sheet';
 import { PhotoViewer } from './photo-viewer';
 import { ZipDialog } from './zip-dialog';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The couple's Photo Gallery (Stitch "Photo Gallery"; PRD §5.10): share the link, QR code and
 // print card, the gallery's switches and storage, every photo guests added to hide, move or
@@ -87,11 +88,7 @@ export function GalleryPage({ weddingId }: { weddingId: string }) {
   const list = photos.data?.pages.flatMap((p) => p.items) ?? [];
 
   if (isPending || !wedding) {
-    return (
-      <p role="status" className="text-text-muted py-20 text-center">
-        Loading your gallery…
-      </p>
-    );
+    return <WeddingLoader label="Loading your gallery" size="page" />;
   }
   if (error) {
     return (
@@ -230,9 +227,7 @@ export function GalleryPage({ weddingId }: { weddingId: string }) {
       )}
 
       {photos.isPending ? (
-        <p role="status" className="text-text-muted py-16 text-center">
-          Loading photos…
-        </p>
+        <WeddingLoader label="Loading photos" size="section" />
       ) : list.length === 0 ? (
         <EmptyGrid filter={filter} url={gallery.url} />
       ) : (

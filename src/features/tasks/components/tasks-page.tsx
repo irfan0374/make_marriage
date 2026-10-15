@@ -40,6 +40,7 @@ import { DeleteTaskDialog } from './delete-task-dialog';
 import { StarterDialog } from './starter-dialog';
 import { TaskPanel, type TaskPanelMode } from './task-panel';
 import { TaskRow } from './task-row';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The Tasks page (Stitch "Tasks", "Tasks (Empty)", "Tasks (No results)"; PRD TASK-1 to TASK-3):
 // who does what for each celebration, grouped by when it's due.
@@ -193,11 +194,7 @@ export function TasksPage({ weddingId }: { weddingId: string }) {
   const [showDone, setShowDone] = useState(true);
 
   if (isPending || !wedding) {
-    return (
-      <p role="status" className="text-text-muted py-20 text-center">
-        Loading your tasks…
-      </p>
-    );
+    return <WeddingLoader label="Loading your tasks" size="page" />;
   }
   if (error) {
     return (

@@ -16,6 +16,7 @@ import { cn } from '@/shared/cn';
 import { formatDate, todayIn } from '@/shared/dates';
 import { formatRupees } from '@/shared/money';
 import { ExpensePanel, type ExpensePanelMode } from './expense-panel';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The Expenses page (Stitch "Expenses"; PRD EXP-1 to EXP-8): what's been spent, by category,
 // event and who paid; the ledger with filters; and a panel to add or edit an expense.
@@ -153,11 +154,7 @@ export function ExpensesPage({ weddingId }: { weddingId: string }) {
   const { data: page, error, isPending, refetch } = useExpenses(weddingId, query);
 
   if (!wedding || !summary || (isPending && !page)) {
-    return (
-      <p role="status" className="text-text-muted py-20 text-center">
-        Loading your expenses…
-      </p>
-    );
+    return <WeddingLoader label="Loading your expenses" size="page" />;
   }
   if (error && !page) {
     return (

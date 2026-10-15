@@ -40,6 +40,7 @@ import { ApiError } from '@/shared/api-client';
 import { cn } from '@/shared/cn';
 import { daysUntil, formatDate, formatTime, todayIn } from '@/shared/dates';
 import { formatRupees } from '@/shared/money';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The wedding's dashboard, laid out as the Stitch "Dashboard" screen (PRD §5.5). Every number is
 // real: until a feature exists its card shows zero or an empty state, never sample data. As
@@ -321,7 +322,7 @@ function UpcomingEvents({
   events: WeddingEvent[] | undefined;
   today: string;
 }) {
-  if (!events) return <p className="text-text-muted py-10 text-center text-sm">Loading…</p>;
+  if (!events) return <WeddingLoader size="section" />;
   const upcoming = upcomingEvents(events, today);
   if (upcoming.length === 0) {
     return events.length === 0 ? (
@@ -374,7 +375,7 @@ function TasksDueSoon({
   today: string;
   timeZone: string;
 }) {
-  if (!tasks) return <p className="text-text-muted py-10 text-center text-sm">Loading…</p>;
+  if (!tasks) return <WeddingLoader size="section" />;
   const soon = tasksDueSoon(tasks, today);
   if (soon.length === 0) {
     return tasks.length === 0 ? (
@@ -625,11 +626,7 @@ export function WeddingDashboard({
   const { data: spending } = useExpenseSummary(weddingId);
 
   if (isPending) {
-    return (
-      <p role="status" className="text-text-muted py-20 text-center">
-        Loading your wedding…
-      </p>
-    );
+    return <WeddingLoader label="Loading your wedding" size="page" />;
   }
 
   if (error) {

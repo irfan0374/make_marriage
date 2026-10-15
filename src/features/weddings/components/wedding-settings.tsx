@@ -23,6 +23,7 @@ import {
   WeddingDetailFields,
   type WeddingDetailValues,
 } from './wedding-detail-fields';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // Wedding settings (api-spec §6.3), admins only. Built from the "Wedding details" and
 // "Bride side & groom side" parts of the Stitch "Settings" screen, plus expense categories; the
@@ -194,9 +195,7 @@ export function WeddingSettings({ weddingId }: { weddingId: string }) {
         Back to dashboard
       </Link>
       {isPending ? (
-        <p role="status" className="text-text-muted py-20 text-center">
-          Loading settings…
-        </p>
+        <WeddingLoader label="Loading settings" size="page" />
       ) : error ? (
         <div role="alert" className="space-y-3 py-20 text-center">
           <p className="text-text-muted">We couldn&apos;t load this wedding.</p>

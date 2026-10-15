@@ -35,6 +35,7 @@ import {
 import { SendDialog } from '@/features/invitations/components/send-dialog';
 import { FamilyDetails, SideChip } from './family-details';
 import { FamilyModal, type FamilyModalMode } from './family-modal';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The Guests page (Stitch "Guests (Interactive)"; PRD GUEST-1, 2, 4, 5, 6, 7): families, the
 // events they're invited to, totals per event, and bulk actions. A Manager limited to one side
@@ -157,11 +158,7 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
   const { data: page, error, isPending, refetch } = useHouseholds(weddingId, query);
 
   if (!wedding || !summary) {
-    return (
-      <p role="status" className="text-text-muted py-20 text-center">
-        Loading your guests…
-      </p>
-    );
+    return <WeddingLoader label="Loading your guests" size="page" />;
   }
 
   const eventList = events ?? [];
@@ -474,9 +471,7 @@ export function GuestsPage({ weddingId }: { weddingId: string }) {
                   </button>
                 </div>
               ) : isPending ? (
-                <p role="status" className="text-text-muted py-16 text-center text-sm">
-                  Loading families…
-                </p>
+                <WeddingLoader label="Loading families" size="section" />
               ) : households.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-16 text-center">
                   <SearchX aria-hidden className="text-text-muted size-7" />

@@ -8,6 +8,7 @@ import { useMe } from '@/features/weddings/hooks';
 import { formatDate } from '@/shared/dates';
 import { RoleBadge } from './role-badge';
 import { SimpleHeader } from './simple-header';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 /**
  * `/app`: no weddings → create one; one wedding → open it; several → pick one.
@@ -39,9 +40,7 @@ export function AppEntry() {
             </button>
           </div>
         ) : !me || me.weddings.length < 2 ? (
-          <p className="text-text-muted text-center" role="status">
-            Loading…
-          </p>
+          <WeddingLoader size="page" />
         ) : (
           <>
             <h1 className="text-3xl">Your weddings</h1>

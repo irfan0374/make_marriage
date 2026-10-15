@@ -10,6 +10,7 @@ import type { StarterKey, StarterTask } from '@/modules/tasks/tasks.types';
 import { ApiError } from '@/shared/api-client';
 import { cn } from '@/shared/cn';
 import { formatDate } from '@/shared/dates';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // "Starter checklist" (Stitch, PRD TASK-3): common wedding tasks with due dates counted back from
 // the wedding. Pick the ones you need; they're added unassigned, ready to edit.
@@ -92,9 +93,7 @@ export function StarterDialog({
     >
       <FormAlert message={error} />
       {isPending ? (
-        <p role="status" className="text-text-muted py-8 text-center text-sm">
-          Loading the checklist…
-        </p>
+        <WeddingLoader label="Loading the checklist" size="section" />
       ) : items && available.length === 0 ? (
         <p className="text-text-muted flex flex-col items-center gap-3 py-8 text-center text-sm">
           <ListChecks aria-hidden className="text-primary size-6" />

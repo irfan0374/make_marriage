@@ -51,6 +51,7 @@ import { SendProgress } from './send-progress';
 import { ApiError } from '@/shared/api-client';
 import { cn } from '@/shared/cn';
 import { daysUntil, formatDate, formatLongDate, todayIn } from '@/shared/dates';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The Invitations & RSVP page (Stitch "Invitations and RSVP"; PRD INV-1 to INV-3, INV-16,
 // INV-19): the card, message and deadline; how far sending has got; and replies per event.
@@ -769,11 +770,7 @@ export function InvitationsPage({ weddingId }: { weddingId: string }) {
     );
   }
   if (!wedding || !settings || !events || !summary) {
-    return (
-      <p role="status" className="text-text-muted py-20 text-center">
-        Loading your invitation…
-      </p>
-    );
+    return <WeddingLoader label="Loading your invitation" size="page" />;
   }
 
   return (

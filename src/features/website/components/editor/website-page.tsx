@@ -45,6 +45,7 @@ import {
   StoryCard,
   type CardProps,
 } from './section-cards';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The Website page (Stitch "Website"; PRD §5.9): edit the couple's public site, with a live
 // preview beside it. Every change saves straight away. Publishing and the address are for
@@ -72,11 +73,7 @@ export function WebsitePage({ weddingId }: { weddingId: string }) {
   const [skipIntro, setSkipIntro] = useState(false);
 
   if (isPending || !wedding) {
-    return (
-      <p role="status" className="text-text-muted py-20 text-center">
-        Loading your website…
-      </p>
-    );
+    return <WeddingLoader label="Loading your website" size="page" />;
   }
   if (error) {
     return (

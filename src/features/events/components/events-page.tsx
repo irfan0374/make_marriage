@@ -35,6 +35,7 @@ import { EventCard } from './event-card';
 import { EventPanel, type PanelMode } from './event-panel';
 import { NotifyChangeDialog } from './notify-change-dialog';
 import { QuickAddDialog } from './quick-add-dialog';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The Events page (Stitch "Events", "Add event", "Events (Empty)"; PRD SETUP-2 to SETUP-5): the
 // wedding's celebrations as a timeline, in the couple's order. Drag (or use the keyboard on the
@@ -111,11 +112,7 @@ export function EventsPage({ weddingId }: { weddingId: string }) {
   );
 
   if (isPending) {
-    return (
-      <p role="status" className="text-text-muted py-20 text-center">
-        Loading your events…
-      </p>
-    );
+    return <WeddingLoader label="Loading your events" size="page" />;
   }
   if (error) {
     return (

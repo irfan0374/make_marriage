@@ -21,6 +21,7 @@ import { formatRupees } from '@/shared/money';
 import { VendorCard } from './vendor-card';
 import { VendorDetails } from './vendor-details';
 import { VendorModal, type VendorModalMode } from './vendor-modal';
+import { WeddingLoader } from '@/components/common/wedding-loader';
 
 // The Vendors page (Stitch "Vendors"; PRD VEND-1 to VEND-7): the couple's caterers,
 // photographers and others as cards, filters, and a details panel. "Find nearby" (Google
@@ -95,11 +96,7 @@ export function VendorsPage({ weddingId }: { weddingId: string }) {
   const [modal, setModal] = useState<VendorModalMode | null>(null);
 
   if (isPending || !wedding) {
-    return (
-      <p role="status" className="text-text-muted py-20 text-center">
-        Loading your vendors…
-      </p>
-    );
+    return <WeddingLoader label="Loading your vendors" size="page" />;
   }
   if (error) {
     return (
