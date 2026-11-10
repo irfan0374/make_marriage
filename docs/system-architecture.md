@@ -475,7 +475,7 @@ Both are protected by a secret. Moving to Vercel Cron on the Pro plan needs only
 | Page | Behaviour |
 |---|---|
 | Wedding website `/w/{slug}` | Server-rendered with link preview tags, cached and refreshed when the couple saves changes, hidden from search engines unless the couple opts in |
-| Website address | `{bride}-{groom}-{dd}-{mon}-{yyyy}`, e.g. `nafiya-irfan-14-apr-2028`. A suffix is added if taken, and the Admin can edit it before publishing |
+| Website address | `{bride}-{groom}-{dd}-{mon}-{yyyy}`, e.g. `kadheeja-muhammed-14-apr-2028`. A suffix is added if taken, and the Admin can edit it before publishing |
 | Live stream | YouTube links only, embedded with YouTube's privacy-enhanced player, with a countdown to the start time |
 | Invitation `/invited/{token}` | Server-rendered greeting, invitation media, and only the household's own events. After the page loads, the browser calls `POST /api/public/invitations/{token}/opened` to mark it opened, so link-preview bots (WhatsApp, Gmail) never count as opens |
 | Gallery `/gallery/{token}` | Upload and browse, hidden from search engines |

@@ -66,8 +66,8 @@ async function newUser(name: string) {
 async function newWedding(cookie: string, weddingDate = `${YEAR}-04-14`): Promise<string> {
   const res = await createWedding(
     request('POST', '/api/weddings', cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate,
       city: 'Kochi',
     }),
@@ -119,7 +119,7 @@ const remove = (weddingId: string, taskId: string, cookie: string) =>
 
 describe('tasks (Atlas test database)', () => {
   it('adds, edits, completes and deletes a task', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
 
     const res = await add(weddingId, admin.cookie, {
@@ -135,7 +135,7 @@ describe('tasks (Atlas test database)', () => {
       assignee: null,
       eventId: null,
       completedAt: null,
-      createdBy: { userId: admin.userId, name: 'Nafiya' },
+      createdBy: { userId: admin.userId, name: 'Kadheeja' },
       source: 'manual',
     });
 
@@ -153,7 +153,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('assigns to team members only, and emails them (not yourself)', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const manager = await newManager(weddingId, admin.cookie);
     const outsider = await newUser('Meera');
@@ -175,7 +175,7 @@ describe('tasks (Atlas test database)', () => {
     const [sent] = testOutbox();
     expect(sent).toMatchObject({
       to: manager.email,
-      subject: 'Nafiya assigned you: Book mehendi artist',
+      subject: 'Kadheeja assigned you: Book mehendi artist',
     });
     expect(sent!.html).toContain(`/app/${weddingId}/tasks`);
 
@@ -196,7 +196,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('filters by status, assignee, event and due date', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const manager = await newManager(weddingId, admin.cookie);
     const ev = await createEvent(
@@ -250,7 +250,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('only links events of this wedding, and keeps tasks when their event is deleted', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const other = await newUser('Meera');
     const otherWeddingId = await newWedding(other.cookie);
@@ -286,7 +286,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('unassigns tasks when someone leaves the team', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const manager = await newManager(weddingId, admin.cookie);
     const task = (
@@ -319,7 +319,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('clears stored assignments when assignment races with member removal', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const manager = await newManager(weddingId, admin.cookie);
     const team = await (
@@ -348,7 +348,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('adds starter tasks with due dates counted back from the wedding, once', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie, `${YEAR}-04-14`);
     const starter = async () =>
       (
@@ -396,7 +396,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('imports overlapping starter checklists concurrently without duplicates', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const responses = await Promise.all(
       Array.from({ length: 3 }, () =>
@@ -415,7 +415,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('keeps status and completedAt consistent under concurrent changes', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const task = (await (await add(weddingId, admin.cookie, { title: 'Confirm venue' })).json())
       .data;
@@ -435,7 +435,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('cannot save a deleted event link during concurrent cleanup', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const event = (
       await (
@@ -466,7 +466,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('starter due dates never fall before today', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     // A wedding two months away: "10 months before" has already passed.
     const soon = addDays(TODAY, 60);
     const weddingId = await newWedding(admin.cookie, soon);
@@ -482,7 +482,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it(`stops at ${MAX_TASKS_PER_WEDDING} tasks`, async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const now = new Date();
     await getDb()
@@ -522,7 +522,7 @@ describe('tasks (Atlas test database)', () => {
   });
 
   it('keeps weddings apart, lets Managers plan, and is read-only when archived', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const manager = await newManager(weddingId, admin.cookie);
     const task = (await (await add(weddingId, manager.cookie, { title: 'Book caterer' })).json())
@@ -561,7 +561,7 @@ describe('tasks (Atlas test database)', () => {
 
 describe('task priority and last updated (Atlas test database)', () => {
   it('defaults to Medium, filters by priority, and older tasks read as Medium', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const medium = (await (await add(weddingId, admin.cookie, { title: 'Book decor' })).json())
       .data;
@@ -594,11 +594,11 @@ describe('task priority and last updated (Atlas test database)', () => {
   });
 
   it('shows who changed a task last, and cleanups don’t count', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const manager = await newManager(weddingId, admin.cookie);
     const created = (await (await add(weddingId, admin.cookie, { title: 'Book DJ' })).json()).data;
-    expect(created.editedBy).toEqual({ userId: admin.userId, name: 'Nafiya' });
+    expect(created.editedBy).toEqual({ userId: admin.userId, name: 'Kadheeja' });
     expect(created.editedAt).toBe(created.createdAt);
 
     const edited = (

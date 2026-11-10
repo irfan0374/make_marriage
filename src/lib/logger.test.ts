@@ -9,7 +9,7 @@ describe('redact', () => {
       redact({
         email: 'a@example.com',
         password: 'p',
-        user: { sessionId: 's', resetToken: 't', name: 'Irfan', passwordHash: 'h' },
+        user: { sessionId: 's', resetToken: 't', name: 'Muhammed', passwordHash: 'h' },
         headers: { authorization: 'Bearer x', cookie: 'c' },
         MONGODB_URI: 'mongodb://u:p@h',
         inviteLink: 'https://app.example/invited/abc',
@@ -21,7 +21,7 @@ describe('redact', () => {
       user: {
         sessionId: '[redacted]',
         resetToken: '[redacted]',
-        name: 'Irfan',
+        name: 'Muhammed',
         passwordHash: '[redacted]',
       },
       headers: { authorization: '[redacted]', cookie: '[redacted]' },

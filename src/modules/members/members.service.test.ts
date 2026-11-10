@@ -14,7 +14,7 @@ vi.mock('./members.repository', () => ({
 
 const userId = new ObjectId();
 const weddingId = new ObjectId();
-const user = { id: userId.toHexString(), email: 'irfan@example.com', name: 'Irfan' };
+const user = { id: userId.toHexString(), email: 'muhammed@example.com', name: 'Muhammed' };
 
 beforeEach(() => {
   vi.clearAllMocks();

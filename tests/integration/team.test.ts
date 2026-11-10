@@ -56,8 +56,8 @@ async function newUser(name: string, email = `${name.toLowerCase()}.${++counter}
 async function newWedding(cookie: string, sidesEnabled = true): Promise<string> {
   const res = await createWedding(
     request('POST', '/api/weddings', cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
       sidesEnabled,
@@ -92,7 +92,7 @@ const cancel = (weddingId: string, inviteId: string, cookie: string) =>
   );
 
 async function setUp() {
-  const admin = await newUser('Nafiya');
+  const admin = await newUser('Kadheeja');
   const weddingId = await newWedding(admin.cookie);
   return { admin, weddingId };
 }
@@ -120,8 +120,8 @@ describe('member invitations (Atlas test database)', () => {
     expect(testOutbox()).toHaveLength(1);
     const [sent] = testOutbox();
     expect(sent).toMatchObject({ to: email });
-    expect(sent!.from).toMatch(/^"Nafiya via Make My Marriage" <invites@example\.com>$/);
-    expect(sent!.subject).toBe('Nafiya & Irfan invited you to help plan their wedding');
+    expect(sent!.from).toMatch(/^"Kadheeja via Make My Marriage" <invites@example\.com>$/);
+    expect(sent!.subject).toBe('Kadheeja & Muhammed invited you to help plan their wedding');
     expect(sent!.html).toContain(data.inviteLink);
     expect(sent!.text).toContain(data.inviteLink);
 
@@ -135,9 +135,9 @@ describe('member invitations (Atlas test database)', () => {
     const shown = await peek(token);
     expect(shown.status).toBe(200);
     expect((await shown.json()).data).toMatchObject({
-      weddingName: 'Nafiya & Irfan',
+      weddingName: 'Kadheeja & Muhammed',
       invitedEmail: email,
-      invitedByName: 'Nafiya',
+      invitedByName: 'Kadheeja',
       role: 'manager',
       sideScope: 'groom',
     });

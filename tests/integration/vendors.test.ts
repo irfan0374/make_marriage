@@ -53,7 +53,7 @@ async function setup() {
   const email = `vendor.${++counter}.${Date.now()}@example.com`;
   const res = await signup(
     request('POST', '/api/auth/signup', undefined, {
-      name: 'Nafiya',
+      name: 'Kadheeja',
       email,
       password: 'correct-horse-42',
     }),
@@ -61,8 +61,8 @@ async function setup() {
   const cookie = res.headers.get('set-cookie')!.split(';')[0]!;
   const wedding = await createWedding(
     request('POST', '/api/weddings', cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
     }),
@@ -124,7 +124,7 @@ describe('vendors (Atlas test database)', () => {
       eventIds: [sangeet],
       contractAmountPaise: 15_000_000,
       attachments: [],
-      editedBy: { name: 'Nafiya' },
+      editedBy: { name: 'Kadheeja' },
     });
     await add(weddingId, cookie, { name: 'Royal Caterers', category: 'caterer', status: 'booked' });
 

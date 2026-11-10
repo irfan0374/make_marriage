@@ -16,7 +16,7 @@ import { WeddingLoader } from '@/components/common/wedding-loader';
 
 const card = 'bg-surface border-border rounded-2xl border shadow-card';
 
-/** "N&I" from "Nafiya & Irfan". */
+/** "K&M" from "Kadheeja & Muhammed". */
 function monogram(name: string): string {
   return name
     .split('&')

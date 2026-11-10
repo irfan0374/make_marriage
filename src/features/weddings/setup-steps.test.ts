@@ -67,7 +67,7 @@ describe('greetingFor', () => {
 
 describe('firstName', () => {
   it('uses the first word', () => {
-    expect(firstName('  Nafiya Begum ')).toBe('Nafiya');
-    expect(firstName('Irfan')).toBe('Irfan');
+    expect(firstName('  Kadheeja Begum ')).toBe('Kadheeja');
+    expect(firstName('Muhammed')).toBe('Muhammed');
   });
 });

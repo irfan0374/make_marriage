@@ -80,8 +80,8 @@ async function newUser(name: string) {
 async function newWedding(cookie: string, sidesEnabled = false): Promise<string> {
   const res = await createWedding(
     request('POST', '/api/weddings', cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
       sidesEnabled,
@@ -140,7 +140,7 @@ const runQueue = async (authorization = CRON) => {
 const tokenOf = (link: string) => link.split('/invited/')[1]!;
 
 async function setup() {
-  const admin = await newUser('Nafiya');
+  const admin = await newUser('Kadheeja');
   const weddingId = await newWedding(admin.cookie);
   const mehendi = await newEvent(weddingId, admin.cookie);
   const sharma = await newFamily(weddingId, admin.cookie, {
@@ -494,7 +494,7 @@ describe('reminders and side limits (Atlas test database)', () => {
   });
 
   it("sends only a side-limited Manager's own families", async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie, true);
     const mehendi = await newEvent(weddingId, admin.cookie);
     for (const side of ['bride', 'groom']) {

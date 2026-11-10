@@ -51,7 +51,7 @@ export function DashboardMockup({ className }: { className?: string }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="font-heading text-lg">Nafiya &amp; Irfan</p>
+              <p className="font-heading text-lg">Kadheeja &amp; Muhammed</p>
               <span className="bg-primary-tint text-primary rounded-full px-2 py-0.5 text-[0.625rem] font-medium">
                 48 days to go
               </span>
@@ -127,7 +127,7 @@ export function InvitePhoneMockup({ className }: { className?: string }) {
       <PhoneFrame>
         <Eyebrow>Personal invite</Eyebrow>
         <p className="font-heading mt-2 text-center text-lg">Sharma family</p>
-        <p className="text-text-muted text-center text-xs">Nafiya &amp; Irfan invite you</p>
+        <p className="text-text-muted text-center text-xs">Kadheeja &amp; Muhammed invite you</p>
         <div className="bg-background border-border mt-4 rounded-xl border p-3">
           <div className="flex justify-between text-sm font-medium">
             <span>Sangeet</span>
@@ -169,7 +169,9 @@ export function RsvpPhoneMockup({ className }: { className?: string }) {
       <PhoneFrame>
         <Eyebrow>Your invitation</Eyebrow>
         <p className="font-heading mt-2 text-center text-lg">Sharma family</p>
-        <p className="text-text-muted text-center text-xs">Nafiya &amp; Irfan warmly invite you</p>
+        <p className="text-text-muted text-center text-xs">
+          Kadheeja &amp; Muhammed warmly invite you
+        </p>
 
         <div className="bg-background border-border mt-4 rounded-xl border p-3">
           <p className="text-sm font-medium">Sangeet</p>

@@ -64,11 +64,11 @@ async function newUser(name: string) {
 }
 
 async function setup() {
-  const admin = await newUser('Nafiya');
+  const admin = await newUser('Kadheeja');
   const wedding = await createWedding(
     request('POST', '/api/weddings', admin.cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
     }),
@@ -134,9 +134,9 @@ describe('expenses (Atlas test database)', () => {
       category: 'catering',
       eventId: sangeet,
       vendor: { id: caterer, name: 'Royal Caterers' },
-      paidBy: { type: 'member', userId: admin.id, name: 'Nafiya' },
+      paidBy: { type: 'member', userId: admin.id, name: 'Kadheeja' },
       receipt: null,
-      editedBy: { name: 'Nafiya' },
+      editedBy: { name: 'Kadheeja' },
     });
     await add(weddingId, admin.cookie, {
       amountPaise: 90_000_000,
@@ -210,7 +210,7 @@ describe('expenses (Atlas test database)', () => {
       byVendor: [{ vendorId: caterer, name: 'Royal Caterers', amountPaise: 15_200_050 }],
       byPaidBy: [
         { name: 'Papa', amountPaise: 95_000_050 },
-        { name: 'Nafiya', amountPaise: 10_200_000 },
+        { name: 'Kadheeja', amountPaise: 10_200_000 },
       ],
     });
     expect(sum.byEvent).toEqual(

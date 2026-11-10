@@ -10,7 +10,7 @@ import {
 
 describe('slugify', () => {
   it('lowercases and joins words with single hyphens', () => {
-    expect(slugify('  Nafiya  Begum! ')).toBe('nafiya-begum');
+    expect(slugify('  Kadheeja  Begum! ')).toBe('kadheeja-begum');
     expect(slugify("D'Souza--Pereira")).toBe('d-souza-pereira');
   });
 
@@ -22,7 +22,7 @@ describe('slugify', () => {
 
 describe('suggestSlug', () => {
   it('builds {bride}-{groom}-{dd}-{mon}-{yyyy}', () => {
-    expect(suggestSlug('Nafiya', 'Irfan', '2028-04-14')).toBe('nafiya-irfan-14-apr-2028');
+    expect(suggestSlug('Kadheeja', 'Muhammed', '2028-04-14')).toBe('kadheeja-muhammed-14-apr-2028');
     expect(suggestSlug('Riya', 'Arjun', '2027-01-05')).toBe('riya-arjun-05-jan-2027');
   });
 
@@ -41,7 +41,9 @@ describe('suggestSlug', () => {
 
 describe('slugWithSuffix', () => {
   it('adds -N and stays within the limit', () => {
-    expect(slugWithSuffix('nafiya-irfan-14-apr-2028', 2)).toBe('nafiya-irfan-14-apr-2028-2');
+    expect(slugWithSuffix('kadheeja-muhammed-14-apr-2028', 2)).toBe(
+      'kadheeja-muhammed-14-apr-2028-2',
+    );
     const long = slugWithSuffix('a'.repeat(SLUG_MAX), 12);
     expect(long.length).toBe(SLUG_MAX);
     expect(long).toMatch(SLUG_PATTERN);
@@ -51,6 +53,6 @@ describe('slugWithSuffix', () => {
 describe('isReservedSlug', () => {
   it('blocks app routes', () => {
     expect(isReservedSlug('admin')).toBe(true);
-    expect(isReservedSlug('nafiya-irfan-14-apr-2028')).toBe(false);
+    expect(isReservedSlug('kadheeja-muhammed-14-apr-2028')).toBe(false);
   });
 });

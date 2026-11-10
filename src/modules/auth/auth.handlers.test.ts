@@ -10,7 +10,7 @@ vi.mock('./auth.service', () => ({
   logout: vi.fn(),
 }));
 
-const user = { id: '66f1a2b3c4d5e6f708091011', email: 'irfan@example.com', name: 'Irfan' };
+const user = { id: '66f1a2b3c4d5e6f708091011', email: 'muhammed@example.com', name: 'Muhammed' };
 const expiresAt = new Date(Date.now() + 30 * 24 * 3_600_000);
 
 function post(path: string, body?: unknown, headers: Record<string, string> = {}) {
@@ -33,8 +33,8 @@ describe('POST /api/auth/signup', () => {
     vi.mocked(service.signup).mockResolvedValueOnce({ user, token: 'raw-token', expiresAt });
     const res = await signupHandler(
       post('/api/auth/signup', {
-        name: ' Irfan ',
-        email: 'IRFAN@Example.com',
+        name: ' Muhammed ',
+        email: 'MUHAMMED@Example.com',
         password: 'correct-horse-42',
       }),
     );
@@ -46,7 +46,7 @@ describe('POST /api/auth/signup', () => {
     expect(Number(/Max-Age=(\d+)/.exec(cookie)![1])).toBeGreaterThan(29 * 24 * 3600);
     // Input is normalised before it reaches the service; the client IP is the first hop.
     expect(service.signup).toHaveBeenCalledWith(
-      { name: 'Irfan', email: 'irfan@example.com', password: 'correct-horse-42' },
+      { name: 'Muhammed', email: 'muhammed@example.com', password: 'correct-horse-42' },
       { ip: '203.0.113.7', userAgent: null },
     );
   });
@@ -54,8 +54,8 @@ describe('POST /api/auth/signup', () => {
   it('rejects short passwords and unknown fields with VALIDATION_ERROR', async () => {
     const res = await signupHandler(
       post('/api/auth/signup', {
-        name: 'Irfan',
-        email: 'irfan@example.com',
+        name: 'Muhammed',
+        email: 'muhammed@example.com',
         password: 'short',
         role: 'admin',
       }),
@@ -69,7 +69,7 @@ describe('POST /api/auth/signup', () => {
     const res = await signupHandler(
       post(
         '/api/auth/signup',
-        { name: 'Irfan', email: 'irfan@example.com', password: 'correct-horse-42' },
+        { name: 'Muhammed', email: 'muhammed@example.com', password: 'correct-horse-42' },
         { origin: 'https://evil.example' },
       ),
     );
@@ -82,7 +82,7 @@ describe('POST /api/auth/login', () => {
   it('sets the session cookie on success', async () => {
     vi.mocked(service.login).mockResolvedValueOnce({ user, token: 'raw-token', expiresAt });
     const res = await loginHandler(
-      post('/api/auth/login', { email: 'irfan@example.com', password: 'x' }),
+      post('/api/auth/login', { email: 'muhammed@example.com', password: 'x' }),
     );
     expect(res.status).toBe(200);
     expect(res.headers.get('set-cookie')).toContain('mmm_session=raw-token');
@@ -91,7 +91,7 @@ describe('POST /api/auth/login', () => {
   it('returns 401 INVALID_CREDENTIALS without setting a cookie', async () => {
     vi.mocked(service.login).mockRejectedValueOnce(new AppError('INVALID_CREDENTIALS'));
     const res = await loginHandler(
-      post('/api/auth/login', { email: 'irfan@example.com', password: 'x' }),
+      post('/api/auth/login', { email: 'muhammed@example.com', password: 'x' }),
     );
     expect(res.status).toBe(401);
     expect((await res.json()).error.code).toBe('INVALID_CREDENTIALS');
@@ -103,7 +103,7 @@ describe('POST /api/auth/login', () => {
       new AppError('RATE_LIMITED', undefined, { headers: { 'Retry-After': '120' } }),
     );
     const res = await loginHandler(
-      post('/api/auth/login', { email: 'irfan@example.com', password: 'x' }),
+      post('/api/auth/login', { email: 'muhammed@example.com', password: 'x' }),
     );
     expect(res.status).toBe(429);
     expect(res.headers.get('retry-after')).toBe('120');

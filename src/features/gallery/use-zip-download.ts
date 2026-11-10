@@ -61,7 +61,7 @@ function save(blob: Blob, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-/** "nafiya-irfan-mehendi" from a label. */
+/** "kadheeja-muhammed-mehendi" from a label. */
 const slug = (text: string) =>
   text
     .toLowerCase()

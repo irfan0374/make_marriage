@@ -70,8 +70,8 @@ async function newUser(name: string) {
 async function newWedding(cookie: string, sidesEnabled = true): Promise<string> {
   const res = await createWedding(
     request('POST', '/api/weddings', cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
       sidesEnabled,
@@ -156,7 +156,7 @@ const sharma = {
 
 describe('guest families (Atlas test database)', () => {
   it('adds, reads, edits and deletes a family', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const mehendi = await newEvent(weddingId, admin.cookie, 'Mehendi');
 
@@ -178,7 +178,7 @@ describe('guest families (Atlas test database)', () => {
       invitedEvents: [{ eventId: mehendi, headcount: 2 }],
       inviteStatus: 'not_sent',
       responseStatus: 'none',
-      createdBy: { name: 'Nafiya' },
+      createdBy: { name: 'Kadheeja' },
     });
     // The personal link token is stored, never returned in the list.
     expect(family.token).toBeUndefined();
@@ -210,7 +210,7 @@ describe('guest families (Atlas test database)', () => {
   });
 
   it('checks events, headcounts and sides', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const other = await newUser('Meera');
     const otherWedding = await newWedding(other.cookie);
@@ -246,7 +246,7 @@ describe('guest families (Atlas test database)', () => {
   });
 
   it('searches, filters, sorts and pages', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const sangeet = await newEvent(weddingId, admin.cookie, 'Sangeet');
     await add(weddingId, admin.cookie, { ...sharma, invitedEvents: [{ eventId: sangeet }] });
@@ -299,7 +299,7 @@ describe('guest families (Atlas test database)', () => {
   });
 
   it('limits a side-scoped Manager to their side everywhere', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const manager = await newManager(weddingId, admin.cookie, 'groom');
     const bride = (await (await add(weddingId, admin.cookie, sharma)).json()).data;
@@ -350,7 +350,7 @@ describe('guest families (Atlas test database)', () => {
   });
 
   it('warns about possible duplicates', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const family = (await (await add(weddingId, admin.cookie, sharma)).json()).data;
     const check = async (query: string) =>
@@ -370,7 +370,7 @@ describe('guest families (Atlas test database)', () => {
   });
 
   it('bulk invites, tags and removes events', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const wedding = await newEvent(weddingId, admin.cookie, 'Wedding');
     const a = (await (await add(weddingId, admin.cookie, sharma)).json()).data;
@@ -425,7 +425,7 @@ describe('guest families (Atlas test database)', () => {
   });
 
   it('deleting an event asks first, then takes it off every family', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const haldi = await newEvent(weddingId, admin.cookie, 'Haldi');
     const family = (
@@ -487,7 +487,7 @@ describe('guest families (Atlas test database)', () => {
   });
 
   it('keeps weddings apart and is read-only when archived', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const family = (await (await add(weddingId, admin.cookie, sharma)).json()).data;
     const stranger = await newUser('Meera');

@@ -59,12 +59,12 @@ async function newUser(name: string) {
 
 /** A wedding with unusual names, so its suggested address is unique to this run. */
 async function setup() {
-  const admin = await newUser('Nafiya');
+  const admin = await newUser('Kadheeja');
   const tag = `${Date.now().toString(36)}${++counter}`;
   const wedding = await createWedding(
     request('POST', '/api/weddings', admin.cookie, {
-      brideName: `Nafiya${tag}`,
-      groomName: 'Irfan',
+      brideName: `Kadheeja${tag}`,
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
     }),
@@ -301,7 +301,7 @@ describe('wedding website (Atlas test database)', () => {
       reason: 'taken',
       suggestion: `${taken}-2`,
     });
-    const fresh = `nafiya-irfan-${Date.now().toString(36)}`;
+    const fresh = `kadheeja-muhammed-${Date.now().toString(36)}`;
     expect((await check(fresh)).data).toMatchObject({ available: true });
 
     const put = (slug: string, cookie = admin.cookie) =>

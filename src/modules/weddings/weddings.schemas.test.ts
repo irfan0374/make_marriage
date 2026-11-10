@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWeddingSchema, updateWeddingSchema, weddingDateProblem } from './weddings.schemas';
 
 const valid = {
-  brideName: ' Nafiya ',
-  groomName: 'Irfan',
+  brideName: ' Kadheeja ',
+  groomName: 'Muhammed',
   weddingDate: '2028-04-14',
   city: 'Kochi',
 };
@@ -21,8 +21,8 @@ const errors = (input: unknown) =>
 describe('createWeddingSchema', () => {
   it('trims names and defaults the optional fields', () => {
     expect(createWeddingSchema.parse(valid)).toEqual({
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: '2028-04-14',
       city: 'Kochi',
       venue: '',

@@ -3,7 +3,7 @@ import { incrementWindow, readWindow } from '@/lib/db/rate-limits.repository';
 import { AppError } from '@/lib/errors';
 
 export interface RateLimitRule {
-  /** Counter key, e.g. `login:email:irfan@example.com`. */
+  /** Counter key, e.g. `login:email:muhammed@example.com`. */
   key: string;
   limit: number;
   windowMs: number;

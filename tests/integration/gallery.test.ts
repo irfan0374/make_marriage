@@ -67,11 +67,11 @@ async function newUser(name: string) {
 }
 
 async function setup() {
-  const admin = await newUser('Nafiya');
+  const admin = await newUser('Kadheeja');
   const wedding = await createWedding(
     request('POST', '/api/weddings', admin.cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
     }),
@@ -167,7 +167,7 @@ describe('photo gallery (Atlas test database)', () => {
     const info = (await (await publicGallery(request('GET', pub(token)), params({ token }))).json())
       .data;
     expect(info).toMatchObject({
-      weddingName: 'Nafiya & Irfan',
+      weddingName: 'Kadheeja & Muhammed',
       uploadsOpen: true,
       guestViewing: true,
       photoCount: 0,
@@ -491,7 +491,7 @@ describe('photo gallery (Atlas test database)', () => {
     );
     // Shown under the member's own name.
     expect((await listed.json()).data[0]).toMatchObject({
-      uploaderName: 'Nafiya',
+      uploaderName: 'Kadheeja',
       albumName: 'Mehendi',
     });
     // Guests still can't.

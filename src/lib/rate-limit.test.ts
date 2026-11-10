@@ -5,7 +5,7 @@ import { enforceRateLimits, MINUTE } from './rate-limit';
 vi.mock('@/lib/db/rate-limits.repository', () => ({ incrementWindow: vi.fn() }));
 
 const now = new Date('2026-09-30T06:05:00Z');
-const rule = { key: 'login:email:irfan@example.com', limit: 5, windowMs: 15 * MINUTE };
+const rule = { key: 'login:email:muhammed@example.com', limit: 5, windowMs: 15 * MINUTE };
 
 describe('enforceRateLimits', () => {
   it('allows hits up to the limit', async () => {

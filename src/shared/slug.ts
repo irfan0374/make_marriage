@@ -33,7 +33,7 @@ export function isReservedSlug(slug: string): boolean {
   return RESERVED.has(slug);
 }
 
-/** "Nafiya Begum!" → "nafiya-begum". Accents are dropped; other scripts are removed. */
+/** "Kadheeja Begum!" → "kadheeja-begum". Accents are dropped; other scripts are removed. */
 export function slugify(text: string): string {
   return text
     .normalize('NFKD')
@@ -48,7 +48,7 @@ function trimSlug(slug: string, max: number): string {
 }
 
 /**
- * The suggested address `{bride}-{groom}-{dd}-{mon}-{yyyy}`, e.g. `nafiya-irfan-14-apr-2028`.
+ * The suggested address `{bride}-{groom}-{dd}-{mon}-{yyyy}`, e.g. `kadheeja-muhammed-14-apr-2028`.
  * Names that slugify to nothing (e.g. written in another script) are left out.
  */
 export function suggestSlug(brideName: string, groomName: string, weddingDate: string): string {

@@ -82,8 +82,8 @@ async function newUser(name: string) {
 async function newWedding(cookie: string, sidesEnabled = false): Promise<string> {
   const res = await createWedding(
     request('POST', '/api/weddings', cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
       sidesEnabled,
@@ -157,7 +157,7 @@ const family = async (weddingId: string, householdId: string, cookie: string) =>
   ).data;
 
 async function setup() {
-  const admin = await newUser('Nafiya');
+  const admin = await newUser('Kadheeja');
   const weddingId = await newWedding(admin.cookie);
   const mehendi = await newEvent(weddingId, admin.cookie, 'Mehendi', `${YEAR}-04-12`);
   const sangeet = await newEvent(weddingId, admin.cookie, 'Sangeet', `${YEAR}-04-13`);
@@ -497,7 +497,7 @@ describe('guest invitation page and replies (Atlas test database)', () => {
     // 4:00 PM in Kochi is 10:30 UTC.
     expect(ics).toContain(`DTSTART:${YEAR}0412T103000Z`);
     expect(ics).toContain(`DTEND:${YEAR}0412T133000Z`);
-    expect(ics).toContain('SUMMARY:Mehendi · Nafiya & Irfan');
+    expect(ics).toContain('SUMMARY:Mehendi · Kadheeja & Muhammed');
     expect(ics).toContain('Dress code: Green\\, yellow');
 
     const other = await calendar(
@@ -590,7 +590,7 @@ describe('host tools and totals (Atlas test database)', () => {
   });
 
   it("limits totals to a Manager's side and hides other weddings' families", async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie, true);
     const mehendi = await newEvent(weddingId, admin.cookie, 'Mehendi', `${YEAR}-04-12`);
     const bride = await newFamily(weddingId, admin.cookie, {

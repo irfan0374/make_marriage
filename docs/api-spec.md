@@ -149,15 +149,15 @@ API responses never include password hashes, session or token hashes, or interna
 
 ### 4.1 User
 ```json
-{ "id": "66f1a2...", "email": "irfan@example.com", "name": "Irfan" }
+{ "id": "66f1a2...", "email": "muhammed@example.com", "name": "Muhammed" }
 ```
 
 ### 4.2 Wedding summary (in lists)
 ```json
 {
   "id": "66f1b0...",
-  "brideName": "Nafiya",
-  "groomName": "Irfan",
+  "brideName": "Kadheeja",
+  "groomName": "Muhammed",
   "weddingDate": "2028-04-14",
   "city": "Kochi",
   "status": "active",
@@ -169,8 +169,8 @@ API responses never include password hashes, session or token hashes, or interna
 ```json
 {
   "id": "66f1b0...",
-  "brideName": "Nafiya",
-  "groomName": "Irfan",
+  "brideName": "Kadheeja",
+  "groomName": "Muhammed",
   "weddingDate": "2028-04-14",
   "city": "Kochi",
   "venue": "Grand Hyatt, Bolgatty Island",
@@ -377,7 +377,7 @@ API responses never include password hashes, session or token hashes, or interna
 
 Request:
 ```json
-{ "name": "Irfan", "email": "irfan@example.com", "password": "correct-horse-42" }
+{ "name": "Muhammed", "email": "muhammed@example.com", "password": "correct-horse-42" }
 ```
 | Field | Rules |
 |---|---|
@@ -387,7 +387,7 @@ Request:
 
 Response `201`: sets the session cookie.
 ```json
-{ "data": { "user": { "id": "66f1a2...", "email": "irfan@example.com", "name": "Irfan" } } }
+{ "data": { "user": { "id": "66f1a2...", "email": "muhammed@example.com", "name": "Muhammed" } } }
 ```
 Errors: `VALIDATION_ERROR`, `EMAIL_TAKEN` (409), `WEAK_PASSWORD` (400), `RATE_LIMITED`.
 
@@ -396,7 +396,7 @@ Errors: `VALIDATION_ERROR`, `EMAIL_TAKEN` (409), `WEAK_PASSWORD` (400), `RATE_LI
 
 Request:
 ```json
-{ "email": "irfan@example.com", "password": "correct-horse-42" }
+{ "email": "muhammed@example.com", "password": "correct-horse-42" }
 ```
 Response `200`: sets the session cookie, returns `{ "data": { "user": { ... } } }`.
 
@@ -411,7 +411,7 @@ Removed on 6 Oct 2026 ("Log out of all devices" isn't offered). Logging out (5.3
 ### 5.5 `POST /api/auth/forgot-password`
 **Access:** Public
 
-Request: `{ "email": "irfan@example.com" }`
+Request: `{ "email": "muhammed@example.com" }`
 
 Response `200` always, whether or not the account exists:
 ```json
@@ -437,15 +437,15 @@ Response `200`:
 ```json
 {
   "data": {
-    "user": { "id": "66f1a2...", "email": "irfan@example.com", "name": "Irfan" },
-    "weddings": [ { "id": "66f1b0...", "brideName": "Nafiya", "groomName": "Irfan", "weddingDate": "2028-04-14", "city": "Kochi", "status": "active", "myRole": "admin" } ]
+    "user": { "id": "66f1a2...", "email": "muhammed@example.com", "name": "Muhammed" },
+    "weddings": [ { "id": "66f1b0...", "brideName": "Kadheeja", "groomName": "Muhammed", "weddingDate": "2028-04-14", "city": "Kochi", "status": "active", "myRole": "admin" } ]
   }
 }
 ```
 Errors: `UNAUTHENTICATED` (401).
 
 ### 5.8 `PATCH /api/me`
-**Access:** Session. Request: `{ "name": "Irfan K" }`. Response `200` with the updated user.
+**Access:** Session. Request: `{ "name": "Muhammed K" }`. Response `200` with the updated user.
 
 ---
 
@@ -457,8 +457,8 @@ Errors: `UNAUTHENTICATED` (401).
 Request:
 ```json
 {
-  "brideName": "Nafiya",
-  "groomName": "Irfan",
+  "brideName": "Kadheeja",
+  "groomName": "Muhammed",
   "weddingDate": "2028-04-14",
   "city": "Kochi",
   "venue": "Grand Hyatt, Bolgatty Island",
@@ -483,8 +483,8 @@ Server-side defaults: timezone `Asia/Kolkata`, invitation message, website setti
 Request (any subset):
 ```json
 {
-  "brideName": "Nafiya",
-  "groomName": "Irfan",
+  "brideName": "Kadheeja",
+  "groomName": "Muhammed",
   "weddingDate": "2028-04-14",
   "city": "Kochi",
   "venue": "Grand Hyatt, Bolgatty Island",
@@ -592,7 +592,7 @@ Errors: `LAST_ADMIN` (409), `NOT_FOUND` (not a member of this wedding), `FORBIDD
 
 Response `200`:
 ```json
-{ "data": { "weddingName": "Nafiya & Irfan", "invitedEmail": "uncle@example.com", "invitedByName": "Nafiya", "role": "manager", "sideScope": "bride", "expiresAt": "2026-10-01T09:00:00.000Z" } }
+{ "data": { "weddingName": "Kadheeja & Muhammed", "invitedEmail": "uncle@example.com", "invitedByName": "Kadheeja", "role": "manager", "sideScope": "bride", "expiresAt": "2026-10-01T09:00:00.000Z" } }
 ```
 `sideScope` is `null` for admin invites and when the wedding has sides turned off.
 
@@ -1001,7 +1001,7 @@ Response `200`:
 ```json
 {
   "data": {
-    "wedding": { "brideName": "Nafiya", "groomName": "Irfan", "weddingDate": "2028-04-14", "city": "Kochi", "venue": "Grand Hyatt, Bolgatty" },
+    "wedding": { "brideName": "Kadheeja", "groomName": "Muhammed", "weddingDate": "2028-04-14", "city": "Kochi", "venue": "Grand Hyatt, Bolgatty" },
     "household": { "displayName": "Sharma family", "members": [{ "name": "Rajesh Sharma" }, { "name": "Priya Sharma" }] },
     "invitation": {
       "media": { "type": "image", "url": "https://<r2-signed-url>" },
@@ -1025,7 +1025,7 @@ Response `200`:
         "rsvp": { "status": "attending", "attendingCount": 2, "note": "" }
       }
     ],
-    "websiteUrl": "https://<app-domain>/w/nafiya-irfan-14-apr-2028"
+    "websiteUrl": "https://<app-domain>/w/kadheeja-muhammed-14-apr-2028"
   }
 }
 ```
@@ -1416,8 +1416,8 @@ Response `200`:
 ```json
 {
   "data": {
-    "slug": "nafiya-irfan-14-apr-2028",
-    "url": "https://<app-domain>/w/nafiya-irfan-14-apr-2028",
+    "slug": "kadheeja-muhammed-14-apr-2028",
+    "url": "https://<app-domain>/w/kadheeja-muhammed-14-apr-2028",
     "published": false,
     "publishedAt": null,
     "theme": "elegant",
@@ -1464,17 +1464,17 @@ Request (any subset):
 
 Response `200`: same shape as 17.1. The public page is refreshed at once on every save (otherwise it's cached for a minute).
 
-### 17.3 `GET /api/weddings/{weddingId}/website/slug-check?slug=nafiya-irfan-14-apr-2028`
+### 17.3 `GET /api/weddings/{weddingId}/website/slug-check?slug=kadheeja-muhammed-14-apr-2028`
 **Access:** Admin
 
 Response `200`:
 ```json
-{ "data": { "slug": "nafiya-irfan-14-apr-2028", "available": false, "reason": "taken", "suggestion": "nafiya-irfan-14-apr-2028-2" } }
+{ "data": { "slug": "kadheeja-muhammed-14-apr-2028", "available": false, "reason": "taken", "suggestion": "kadheeja-muhammed-14-apr-2028-2" } }
 ```
 `reason` is `invalid` (not 3-60 lowercase letters, numbers and single hyphens), `reserved`, `taken` or `null` when available. `suggestion` is only given when taken.
 
 ### 17.4 `PUT /api/weddings/{weddingId}/website/slug`
-**Access:** Admin. Request: `{ "slug": "irfan-and-nafiya" }`
+**Access:** Admin. Request: `{ "slug": "muhammed-and-kadheeja" }`
 
 Rules: 3-60 characters, lowercase letters, numbers and single hyphens, not reserved.
 
@@ -1497,25 +1497,25 @@ Response `200`:
 ```json
 {
   "data": {
-    "brideName": "Nafiya",
-    "groomName": "Irfan",
+    "brideName": "Kadheeja",
+    "groomName": "Muhammed",
     "weddingDate": "2028-04-14",
     "city": "Kochi",
     "theme": "elegant",
     "accentColor": "#4A2545",
     "sections": { "hero": true, "story": true, "events": true, "photos": true, "liveStream": true, "gallery": true },
     "story": "We met at...",
-    "url": "https://<app-domain>/w/nafiya-irfan-14-apr-2028",
+    "url": "https://<app-domain>/w/kadheeja-muhammed-14-apr-2028",
     "timezone": "Asia/Kolkata",
-    "hero": { "coverUrl": "https://<app-domain>/api/public/sites/nafiya-irfan-14-apr-2028/images/k3Xa9.jpg" },
-    "photoUrls": ["https://<app-domain>/api/public/sites/nafiya-irfan-14-apr-2028/images/p1.jpg"],
+    "hero": { "coverUrl": "https://<app-domain>/api/public/sites/kadheeja-muhammed-14-apr-2028/images/k3Xa9.jpg" },
+    "photoUrls": ["https://<app-domain>/api/public/sites/kadheeja-muhammed-14-apr-2028/images/p1.jpg"],
     "events": [
       { "name": "Wedding", "date": "2028-04-14", "startTime": "11:00", "endTime": "14:00", "venueName": "Grand Hyatt", "address": "...", "mapUrl": "...", "dressCode": "", "highlight": true }
     ],
     "liveStream": { "videoId": "xyz123", "startsAt": "2028-04-14T05:30:00.000Z" },
     "galleryUrl": "https://<app-domain>/gallery/q8Zt2mKp4vX9sL1aB7cD3e",
     "indexable": false,
-    "og": { "title": "Nafiya & Irfan · 14 April 2028", "description": "Join us in Kochi", "imageUrl": "https://<app-domain>/api/public/sites/nafiya-irfan-14-apr-2028/images/k3Xa9.jpg" }
+    "og": { "title": "Kadheeja & Muhammed · 14 April 2028", "description": "Join us in Kochi", "imageUrl": "https://<app-domain>/api/public/sites/kadheeja-muhammed-14-apr-2028/images/k3Xa9.jpg" }
   }
 }
 ```
@@ -1620,7 +1620,7 @@ Response `200`:
 ```json
 {
   "data": {
-    "weddingName": "Nafiya & Irfan",
+    "weddingName": "Kadheeja & Muhammed",
     "uploadsOpen": true,
     "guestViewing": true,
     "albums": [ { "albumEventId": null, "name": "General", "count": 300 }, { "albumEventId": "66f1d0...02", "name": "Mehendi", "count": 420 } ],

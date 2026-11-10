@@ -33,8 +33,8 @@ const now = new Date('2026-09-30T06:00:00Z');
 function userDoc(overrides: Partial<UserDocument> = {}): UserDocument {
   return {
     _id: new ObjectId(),
-    email: 'irfan@example.com',
-    name: 'Irfan',
+    email: 'muhammed@example.com',
+    name: 'Muhammed',
     passwordHash: '',
     lastLoginAt: null,
     passwordChangedAt: null,
@@ -53,14 +53,14 @@ beforeEach(() => {
 });
 
 async function signedUp(password = 'correct-horse-42') {
-  await signup({ name: 'Irfan', email: 'irfan@example.com', password }, client, now);
+  await signup({ name: 'Muhammed', email: 'muhammed@example.com', password }, client, now);
   return vi.mocked(repo.insertUser).mock.calls[0]![0];
 }
 
 describe('signup', () => {
   it('stores an Argon2id hash, never the password, and starts a 30-day session', async () => {
     const result = await signup(
-      { name: 'Irfan', email: 'irfan@example.com', password: 'correct-horse-42' },
+      { name: 'Muhammed', email: 'muhammed@example.com', password: 'correct-horse-42' },
       client,
       now,
     );
@@ -70,8 +70,8 @@ describe('signup', () => {
 
     expect(result.user).toEqual({
       id: expect.any(String),
-      email: 'irfan@example.com',
-      name: 'Irfan',
+      email: 'muhammed@example.com',
+      name: 'Muhammed',
     });
     expect(result.expiresAt.getTime()).toBe(now.getTime() + SESSION_TTL_MS);
     // Only the hash of the session token reaches the database.
@@ -90,7 +90,11 @@ describe('signup', () => {
 
   it('rejects common passwords with WEAK_PASSWORD', async () => {
     await expect(
-      signup({ name: 'Irfan', email: 'irfan@example.com', password: 'Password123' }, client, now),
+      signup(
+        { name: 'Muhammed', email: 'muhammed@example.com', password: 'Password123' },
+        client,
+        now,
+      ),
     ).rejects.toMatchObject({ code: 'WEAK_PASSWORD' });
     expect(repo.insertUser).not.toHaveBeenCalled();
     // A weak password doesn't use up the sign-up limit.
@@ -101,7 +105,7 @@ describe('signup', () => {
     vi.mocked(repo.insertUser).mockRejectedValueOnce(new repo.DuplicateEmailError());
     await expect(
       signup(
-        { name: 'Irfan', email: 'irfan@example.com', password: 'correct-horse-42' },
+        { name: 'Muhammed', email: 'muhammed@example.com', password: 'correct-horse-42' },
         client,
         now,
       ),
@@ -116,7 +120,7 @@ describe('login', () => {
     vi.mocked(repo.findUserByEmail).mockResolvedValueOnce(user);
 
     const result = await login(
-      { email: 'irfan@example.com', password: 'correct-horse-42' },
+      { email: 'muhammed@example.com', password: 'correct-horse-42' },
       client,
       now,
     );
@@ -128,7 +132,7 @@ describe('login', () => {
     const { passwordHash } = await signedUp();
     vi.mocked(repo.findUserByEmail).mockResolvedValueOnce(userDoc({ passwordHash }));
     const wrongPassword = await login(
-      { email: 'irfan@example.com', password: 'wrong-password' },
+      { email: 'muhammed@example.com', password: 'wrong-password' },
       client,
       now,
     ).catch((e: AppError) => e);
@@ -150,10 +154,10 @@ describe('login', () => {
 
   it('rate-limits by email (5 per 15 min) and by IP (20 per 15 min)', async () => {
     vi.mocked(repo.findUserByEmail).mockResolvedValueOnce(null);
-    await login({ email: 'irfan@example.com', password: 'x' }, client, now).catch(() => {});
+    await login({ email: 'muhammed@example.com', password: 'x' }, client, now).catch(() => {});
     expect(enforceRateLimits).toHaveBeenCalledWith(
       [
-        { key: 'login:email:irfan@example.com', limit: 5, windowMs: 900_000 },
+        { key: 'login:email:muhammed@example.com', limit: 5, windowMs: 900_000 },
         { key: 'login:ip:203.0.113.7', limit: 20, windowMs: 900_000 },
       ],
       now,
@@ -163,7 +167,7 @@ describe('login', () => {
   it('stops before checking the password when rate-limited', async () => {
     vi.mocked(enforceRateLimits).mockRejectedValueOnce(new AppError('RATE_LIMITED'));
     await expect(
-      login({ email: 'irfan@example.com', password: 'x' }, client, now),
+      login({ email: 'muhammed@example.com', password: 'x' }, client, now),
     ).rejects.toMatchObject({ code: 'RATE_LIMITED' });
     expect(repo.findUserByEmail).not.toHaveBeenCalled();
   });
@@ -195,7 +199,7 @@ describe('sessions', () => {
     );
     vi.mocked(repo.findUserById).mockResolvedValueOnce(user);
     const session = await getSession('token', now);
-    expect(session?.user.email).toBe('irfan@example.com');
+    expect(session?.user.email).toBe('muhammed@example.com');
     expect(repo.extendSession).not.toHaveBeenCalled();
   });
 
@@ -206,7 +210,7 @@ describe('sessions', () => {
     vi.mocked(repo.findUserById).mockResolvedValueOnce(user);
     const session = await getSession('token', now);
     const expected = new Date(now.getTime() + SESSION_TTL_MS);
-    expect(session?.user.email).toBe('irfan@example.com');
+    expect(session?.user.email).toBe('muhammed@example.com');
     expect(repo.extendSession).toHaveBeenCalledWith(stale._id, now, expected);
   });
 

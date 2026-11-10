@@ -34,7 +34,7 @@ const getMe = (cookie?: string) =>
   me(new NextRequest('http://localhost/api/me', { headers: cookie ? { cookie } : {} }));
 
 describe('auth (Atlas test database)', () => {
-  const account = { name: 'Irfan', email: 'Irfan@Example.com', password: 'correct-horse-42' };
+  const account = { name: 'Muhammed', email: 'Muhammed@Example.com', password: 'correct-horse-42' };
 
   it('signs up, reads /api/me, logs out, and logs back in', async () => {
     const created = await signup(post('/api/auth/signup', account));
@@ -43,11 +43,11 @@ describe('auth (Atlas test database)', () => {
 
     const meRes = await getMe(cookie);
     expect((await meRes.json()).data.user).toMatchObject({
-      email: 'irfan@example.com',
-      name: 'Irfan',
+      email: 'muhammed@example.com',
+      name: 'Muhammed',
     });
 
-    const stored = await getDb().collection('users').findOne({ email: 'irfan@example.com' });
+    const stored = await getDb().collection('users').findOne({ email: 'muhammed@example.com' });
     expect(stored?.passwordHash).toMatch(/^\$argon2id\$/);
     // The cookie value is never stored as is.
     expect(
@@ -60,19 +60,21 @@ describe('auth (Atlas test database)', () => {
     expect((await getMe(cookie)).status).toBe(401);
 
     const again = await login(
-      post('/api/auth/login', { email: 'irfan@example.com', password: account.password }),
+      post('/api/auth/login', { email: 'muhammed@example.com', password: account.password }),
     );
     expect(again.status).toBe(200);
     expect((await getMe(sessionCookie(again))).status).toBe(200);
   });
 
   it('refuses a second account with the same email', async () => {
-    const res = await signup(post('/api/auth/signup', { ...account, email: 'irfan@example.com' }));
+    const res = await signup(
+      post('/api/auth/signup', { ...account, email: 'muhammed@example.com' }),
+    );
     expect(res.status).toBe(409);
     expect((await res.json()).error.code).toBe('EMAIL_TAKEN');
   });
 
-  // Its own email: the first test's logins already count against irfan@example.com's window.
+  // Its own email: the first test's logins already count against muhammed@example.com's window.
   it('locks login for an email after 5 attempts in 15 minutes', async () => {
     const attempt = () =>
       login(post('/api/auth/login', { email: 'lockout@example.com', password: 'wrong' }));

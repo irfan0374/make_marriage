@@ -55,7 +55,7 @@ export function greetingFor(hour: number): string {
   return 'Good evening';
 }
 
-/** The first word of a name, for "Good morning, Nafiya". */
+/** The first word of a name, for "Good morning, Kadheeja". */
 export function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
 }

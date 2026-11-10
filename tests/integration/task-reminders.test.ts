@@ -73,8 +73,8 @@ async function newUser(name: string) {
 async function newWedding(cookie: string, timezone = TZ) {
   const res = await createWedding(
     request('POST', '/api/weddings', cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
       timezone,
@@ -111,7 +111,7 @@ const jobsFor = (weddingId: string) =>
 
 describe('task due-date reminders (Atlas test database)', () => {
   it('emails each person once a morning with tasks due today, tomorrow and overdue', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const mine = (title: string, dueDate: string | null, extra: Record<string, unknown> = {}) =>
       addTask(weddingId, admin.cookie, { title, dueDate, assigneeUserId: admin.id, ...extra });
@@ -134,7 +134,7 @@ describe('task due-date reminders (Atlas test database)', () => {
     const mail = testOutbox().filter((e) => e.to === admin.email);
     expect(mail).toHaveLength(1);
     const [email] = mail;
-    expect(email!.subject).toBe("3 tasks for Nafiya & Irfan's wedding");
+    expect(email!.subject).toBe("3 tasks for Kadheeja & Muhammed's wedding");
     for (const title of ['Confirm caterer', 'Pick up invitations', 'Book mehendi artist']) {
       expect(email!.html).toContain(title);
     }
@@ -151,7 +151,7 @@ describe('task due-date reminders (Atlas test database)', () => {
   });
 
   it('only reminds about overdue tasks when something is also due today or tomorrow', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     await addTask(weddingId, admin.cookie, {
       title: 'Long overdue',
@@ -163,7 +163,7 @@ describe('task due-date reminders (Atlas test database)', () => {
   });
 
   it('rechecks when sending: finished tasks and people who left drop out', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const manager = await newUser('Ahmed');
     const invite = await createInvite(

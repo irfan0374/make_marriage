@@ -79,11 +79,11 @@ async function newUser(name: string) {
 }
 
 async function setup() {
-  const admin = await newUser('Nafiya');
+  const admin = await newUser('Kadheeja');
   const wedding = await createWedding(
     request('POST', '/api/weddings', admin.cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
     }),

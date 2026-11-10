@@ -57,8 +57,8 @@ async function newUser(name: string) {
 async function newWedding(cookie: string): Promise<string> {
   const res = await createWedding(
     request('POST', '/api/weddings', cookie, {
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
     }),
@@ -118,7 +118,7 @@ const mehendi = {
 
 describe('events (Atlas test database)', () => {
   it('adds, lists, edits and deletes events', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
 
     expect((await (await list(weddingId, admin.cookie)).json()).data).toEqual([]);
@@ -163,7 +163,7 @@ describe('events (Atlas test database)', () => {
   });
 
   it('checks the end time against the saved start time on an edit', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const event = (await (await add(weddingId, admin.cookie, mehendi)).json()).data;
     const same = await patch(weddingId, event.id, admin.cookie, { endTime: '16:00' });
@@ -176,7 +176,7 @@ describe('events (Atlas test database)', () => {
   });
 
   it('quick-adds presets after the existing events, and reorders them', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const first = (await (await add(weddingId, admin.cookie, mehendi)).json()).data;
 
@@ -207,7 +207,7 @@ describe('events (Atlas test database)', () => {
   });
 
   it(`stops at ${MAX_EVENTS_PER_WEDDING} events`, async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const now = new Date();
     await getDb()
@@ -258,7 +258,7 @@ describe('events (Atlas test database)', () => {
   });
 
   it('lets Managers plan events too', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const manager = await newManager(weddingId, admin.cookie);
     const res = await add(weddingId, manager.cookie, mehendi);
@@ -271,7 +271,7 @@ describe('events (Atlas test database)', () => {
   });
 
   it('keeps weddings apart: other weddings get 404 and archived ones are read-only', async () => {
-    const admin = await newUser('Nafiya');
+    const admin = await newUser('Kadheeja');
     const weddingId = await newWedding(admin.cookie);
     const event = (await (await add(weddingId, admin.cookie, mehendi)).json()).data;
 

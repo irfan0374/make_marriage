@@ -46,8 +46,8 @@ async function newUser(name: string): Promise<string> {
 }
 
 const input = {
-  brideName: 'Nafiya',
-  groomName: 'Irfan',
+  brideName: 'Kadheeja',
+  groomName: 'Muhammed',
   weddingDate: `${YEAR}-04-14`,
   city: 'Kochi',
   sidesEnabled: true,
@@ -106,13 +106,13 @@ describe('weddings (Atlas test database)', () => {
   });
 
   it('creates a wedding with its defaults and makes the creator its admin', async () => {
-    const cookie = await newUser('Irfan');
+    const cookie = await newUser('Muhammed');
     const res = await create(cookie);
     expect(res.status).toBe(201);
     const { data } = await res.json();
     expect(data).toMatchObject({
-      brideName: 'Nafiya',
-      groomName: 'Irfan',
+      brideName: 'Kadheeja',
+      groomName: 'Muhammed',
       weddingDate: `${YEAR}-04-14`,
       city: 'Kochi',
       venue: '',
@@ -128,7 +128,7 @@ describe('weddings (Atlas test database)', () => {
     const _id = ObjectId.createFromHexString(data.id);
     const stored = await getDb().collection('weddings').findOne({ _id });
     expect(stored).toMatchObject({
-      website: { slug: `nafiya-irfan-14-apr-${YEAR}`, published: false, indexable: false },
+      website: { slug: `kadheeja-muhammed-14-apr-${YEAR}`, published: false, indexable: false },
       gallery: { uploadsOpen: true, guestViewing: true, storageCapBytes: 3 * 1024 ** 3 },
       invitation: { autoRemindersEnabled: true },
       schemaVersion: 1,
@@ -257,7 +257,7 @@ describe('editing wedding details (Atlas test database)', () => {
     const before = await weddings().findOne({ _id });
 
     const res = await update(data.id, cookie, {
-      brideName: 'Nafiya',
+      brideName: 'Kadheeja',
       city: ' Thrissur ',
       venue: 'Lulu Convention Centre',
       timezone: 'Asia/Dubai',
@@ -265,7 +265,7 @@ describe('editing wedding details (Atlas test database)', () => {
     });
     expect(res.status).toBe(200);
     expect((await res.json()).data).toMatchObject({
-      brideName: 'Nafiya',
+      brideName: 'Kadheeja',
       city: 'Thrissur',
       venue: 'Lulu Convention Centre',
       timezone: 'Asia/Dubai',
@@ -294,11 +294,14 @@ describe('editing wedding details (Atlas test database)', () => {
 
     // A wedding that has happened can still have a name fixed, with its date sent unchanged.
     await weddings().updateOne({ _id }, { $set: { weddingDate: '2020-01-01' } });
-    const fix = await update(data.id, cookie, { weddingDate: '2020-01-01', groomName: 'Irfan K' });
+    const fix = await update(data.id, cookie, {
+      weddingDate: '2020-01-01',
+      groomName: 'Muhammed K',
+    });
     expect(fix.status).toBe(200);
     expect((await fix.json()).data).toMatchObject({
       weddingDate: '2020-01-01',
-      groomName: 'Irfan K',
+      groomName: 'Muhammed K',
     });
   });
 

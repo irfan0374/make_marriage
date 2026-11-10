@@ -51,7 +51,7 @@ function senderAddress(): string {
 }
 
 /**
- * The From line, with a display name when given: `"Nafiya via Make My Marriage" <invites@…>`
+ * The From line, with a display name when given: `"Kadheeja via Make My Marriage" <invites@…>`
  * (PRD open question 5: the couple's name, sent from the app's domain).
  */
 export function fromLine(displayName?: string): string {

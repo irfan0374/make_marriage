@@ -159,9 +159,9 @@ People who log in: the couple and family members. Guests never have a user recor
 ```json
 {
   "_id": { "$oid": "66f1a2b3c4d5e6f708091011" },
-  "email": "irfan@example.com",
+  "email": "muhammed@example.com",
   "passwordHash": "$argon2id$v=19$m=19456,t=2,p=1$...",
-  "name": "Irfan",
+  "name": "Muhammed",
   "lastLoginAt": { "$date": "2026-09-24T06:30:00Z" },
   "passwordChangedAt": null,
   "schemaVersion": 1,
@@ -213,7 +213,7 @@ Fixed-window counters for rate limits and the daily email limit.
 
 | Field | Type | Req | Default | Rules |
 |---|---|---|---|---|
-| `key` | string | ✅ | | e.g. `login:email:irfan@example.com`, `rsvp:token:abc`, `email:daily:2026-09-24` |
+| `key` | string | ✅ | | e.g. `login:email:muhammed@example.com`, `rsvp:token:abc`, `email:daily:2026-09-24` |
 | `windowStart` | Date | ✅ | | Start of the time window |
 | `count` | int | ✅ | 0 | |
 | `expiresAt` | Date | ✅ | | End of the window plus a small margin |
@@ -331,8 +331,8 @@ The tenant root. Every other tenant document points to a wedding through `weddin
 ```json
 {
   "_id": { "$oid": "66f1b0000000000000000001" },
-  "brideName": "Nafiya",
-  "groomName": "Irfan",
+  "brideName": "Kadheeja",
+  "groomName": "Muhammed",
   "weddingDate": "2028-04-14",
   "city": "Kochi",
   "venue": "Grand Hyatt, Bolgatty Island",
@@ -360,7 +360,7 @@ The tenant root. Every other tenant document points to a wedding through `weddin
     "autoRemindersEnabled": true
   },
   "website": {
-    "slug": "nafiya-irfan-14-apr-2028",
+    "slug": "kadheeja-muhammed-14-apr-2028",
     "published": true,
     "publishedAt": { "$date": "2028-01-10T08:00:00Z" },
     "theme": "elegant",

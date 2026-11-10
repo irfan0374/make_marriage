@@ -21,7 +21,7 @@ vi.mock('./weddings.service', () => ({
 }));
 
 const weddingId = '66f1b0000000000000000001';
-const wedding = { id: weddingId, brideName: 'Nafiya', groomName: 'Irfan' };
+const wedding = { id: weddingId, brideName: 'Kadheeja', groomName: 'Muhammed' };
 const cookie = 'mmm_session=raw-token';
 
 function post(body: unknown, origin = 'http://localhost') {
@@ -44,8 +44,8 @@ beforeEach(() => vi.clearAllMocks());
 
 describe('POST /api/weddings', () => {
   const input = {
-    brideName: 'Nafiya',
-    groomName: 'Irfan',
+    brideName: 'Kadheeja',
+    groomName: 'Muhammed',
     weddingDate: `${YEAR}-04-14`,
     city: 'Kochi',
     sidesEnabled: true,
@@ -112,7 +112,10 @@ describe('GET /api/me', () => {
   });
 
   it('returns the user and their weddings', async () => {
-    const me = { user: { id: 'u1', email: 'irfan@example.com', name: 'Irfan' }, weddings: [] };
+    const me = {
+      user: { id: 'u1', email: 'muhammed@example.com', name: 'Muhammed' },
+      weddings: [],
+    };
     vi.mocked(service.getMe).mockResolvedValueOnce(me);
     const res = await getMeHandler(
       new NextRequest('http://localhost/api/me', { headers: { cookie } }),

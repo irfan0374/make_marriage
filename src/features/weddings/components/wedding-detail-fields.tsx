@@ -72,14 +72,14 @@ export function WeddingDetailFields({
           label="Bride's name"
           autoComplete="off"
           maxLength={PERSON_NAME_MAX}
-          placeholder="e.g. Nafiya"
+          placeholder="e.g. Kadheeja"
           {...text('brideName')}
         />
         <FormField
           label="Groom's name"
           autoComplete="off"
           maxLength={PERSON_NAME_MAX}
-          placeholder="e.g. Irfan"
+          placeholder="e.g. Muhammed"
           {...text('groomName')}
         />
       </div>

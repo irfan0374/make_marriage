@@ -60,7 +60,7 @@ function messageOf(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Something went wrong. Please try again.';
 }
 
-/** The address without the protocol, e.g. "makemymarriage.in/w/nafiya-irfan-14-apr-2028". */
+/** The address without the protocol, e.g. "makemymarriage.in/w/kadheeja-muhammed-14-apr-2028". */
 const bareUrl = (url: string) => url.replace(/^https?:\/\//, '');
 
 export function WebsitePage({ weddingId }: { weddingId: string }) {
